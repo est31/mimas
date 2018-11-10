@@ -1,0 +1,17 @@
+# This allows us to optimize dependencies
+cargo-features = ["profile-overrides"]
+
+[package]
+name = "mehlon"
+version = "0.1.0"
+authors = ["est31 <MTest31@outlook.com>"]
+
+[dependencies]
+noise = "0.5"
+cgmath = "0.16"
+glium = "0.22"
+winit = "0.16"
+
+# This allows us to optimize dependencies
+[profile.dev.overrides."*"]
+opt-level = 3
