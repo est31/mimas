@@ -6,6 +6,7 @@ pub const BLOCKSIZE :usize = 16;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MapBlock {
 	Air,
+	Water,
 	Ground,
 }
 
@@ -40,10 +41,11 @@ pub fn gen_chunk(seed :u32, pos :Vector3<usize>) -> MapChunk {
 			let elev_blocks = (::clamp(elev as f32, 0.0, elev as f32)) as usize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let el = std::cmp::min(elev_blocks, BLOCKSIZE);
-				if el >= 1 {
+				if el == 0 {
+					*res.get_blk_mut(x, y, 0) = MapBlock::Water;
+				}
 				for z in 0 .. el {
 					*res.get_blk_mut(x, y, z) = MapBlock::Ground;
-				}
 				}
 			}
 		}

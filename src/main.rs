@@ -59,7 +59,7 @@ fn main() {
 		.map(|m| glium::VertexBuffer::new(&display, &m).unwrap())
 		.collect::<Vec<_>>();
 
-	let mut grab_cursor = true;
+	let grab_cursor = true;
 
 	if grab_cursor {
 		display.gl_window().hide_cursor(true);
@@ -169,30 +169,38 @@ fn mesh_for_chunk(offs :Vector3<usize>, chunk :&MapChunk) ->
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
 			for z in 0 .. BLOCKSIZE {
-				if *chunk.get_blk(x, y, z) == MapBlock::Ground {
+				let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), normal| {
+					r.push(Vertex { position: [x, y, z], normal });
+					r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
+					r.push(Vertex { position: [x, y + yd, z + zd], normal });
 
-					let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), normal| {
-						r.push(Vertex { position: [x, y, z], normal });
-						r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-						r.push(Vertex { position: [x, y + yd, z + zd], normal });
-
-						r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-						r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], normal });
-						r.push(Vertex { position: [x, y + yd, z + zd], normal });
-					};
-					let (x, y, z) = ((offs.x + x) as f32, (offs.y + y) as f32, (offs.z + z) as f32);
-					// X-Y face
-					push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), [0.0, 1.0, 0.0]);
-					// X-Z face
-					push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), [0.0, 0.5, 0.0]);
-					// Y-Z face
-					push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), [0.0, 0.5, 0.0]);
-					// X-Y face (z+1)
-					push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), [0.0, 1.0, 0.0]);
-					// X-Z face (y+1)
-					push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), [0.0, 0.5, 0.0]);
-					// Y-Z face (x+1)
-					push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), [0.0, 0.5, 0.0]);
+					r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
+					r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], normal });
+					r.push(Vertex { position: [x, y + yd, z + zd], normal });
+				};
+				let mut push_block = |normal, normalh| {
+						let (x, y, z) = ((offs.x + x) as f32, (offs.y + y) as f32, (offs.z + z) as f32);
+						// X-Y face
+						push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), normal);
+						// X-Z face
+						push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), normalh);
+						// Y-Z face
+						push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+						// X-Y face (z+1)
+						push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), normal);
+						// X-Z face (y+1)
+						push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), normalh);
+						// Y-Z face (x+1)
+						push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+				};
+				match *chunk.get_blk(x, y, z) {
+					MapBlock::Air => (),
+					MapBlock::Ground => {
+						push_block([0.0, 1.0, 0.0], [0.0, 0.5, 0.0]);
+					},
+					MapBlock::Water => {
+						push_block([0.0, 0.0, 1.0], [0.0, 0.0, 5.0]);
+					},
 				}
 			}
 		}
