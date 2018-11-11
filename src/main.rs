@@ -1,5 +1,3 @@
-#![feature(euclidean_division)]
-
 extern crate noise;
 extern crate cgmath;
 #[macro_use]
@@ -220,6 +218,12 @@ fn clamp(a :f32, min :f32, max :f32) -> f32 {
 	}
 }
 
+// TODO: once euclidean division stabilizes,
+// use it: https://github.com/rust-lang/rust/issues/49048
+fn mod_euc(a :f32, b :f32) -> f32 {
+	((a % b) + b) % b
+}
+
 struct Camera {
 	aspect_ratio :f32,
 	pitch :f32,
@@ -260,7 +264,7 @@ impl Camera {
 		let factor = 0.7;
 		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -89.999, 89.999);
 		self.yaw += factor * delta.x as f32;
-		self.yaw = (self.yaw + 180.0).mod_euc(360.0) - 180.0;
+		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
 
 		println!("pos {} {} {} rot {} {}", self.pos.x, self.pos.y, self.pos.z, self.pitch, self.yaw);
 	}
