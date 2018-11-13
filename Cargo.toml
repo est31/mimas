@@ -11,6 +11,9 @@ noise = "0.5"
 cgmath = "0.16"
 glium = "0.22"
 winit = "0.16"
+#glium-brush = { path = "../glium-brush" }
+glium-brush = { git = "https://github.com/est31/glium-brush" }
+#glium-brush = "0.2"
 
 # This allows us to optimize dependencies
 [profile.dev.overrides."*"]

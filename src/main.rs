@@ -3,6 +3,7 @@ extern crate cgmath;
 #[macro_use]
 extern crate glium;
 extern crate winit;
+extern crate glium_brush;
 
 mod map;
 
@@ -10,6 +11,10 @@ use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
 use glium::{glutin, Surface};
 use cgmath::{Vector3, Point3, InnerSpace, Matrix3, Matrix4, One, Zero};
 use cgmath::{Deg, Rotation, EuclideanSpace, Matrix};
+use glium_brush::GlyphBrush;
+use glium_brush::glyph_brush::{
+	rusttype::{self, Font}, Section,
+};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -57,12 +62,16 @@ fn main() {
 		.map(|m| glium::VertexBuffer::new(&display, &m).unwrap())
 		.collect::<Vec<_>>();
 
-	let grab_cursor = true;
+	let grab_cursor = false;
 
 	if grab_cursor {
 		display.gl_window().hide_cursor(true);
 		display.gl_window().grab_cursor(true).unwrap();
 	}
+
+	let kenpixel: &[u8] = include_bytes!("../assets/kenney-pixel.ttf");
+	let fonts = vec![Font::from_bytes(kenpixel).unwrap()];
+	let mut glyph_brush = GlyphBrush::new(&display, fonts);
 
 	let mut last_pos :Option<winit::dpi::LogicalPosition> = None;
 	loop {
@@ -72,6 +81,17 @@ fn main() {
 			pmatrix : camera.get_perspective()
 		};
 
+		let screen_dims = display.get_framebuffer_dimensions();
+		// TODO turn off anti-aliasing of the font
+		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
+		glyph_brush.queue(Section {
+			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}", camera.pos.x, camera.pos.y,
+				camera.pos.z, camera.pitch, camera.yaw),
+			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
+			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
+			color : [0.9, 0.9, 0.9, 1.0],
+			.. Section::default()
+		});
 
 		let params = glium::draw_parameters::DrawParameters {
 			depth : glium::Depth {
@@ -87,11 +107,14 @@ fn main() {
 		// drawing a frame
 		let mut target = display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
+
 		for buff in vbuffs.iter() {
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&program, &uniforms, &params).unwrap();
 		}
+		glyph_brush.draw_queued(&display, &mut target);
+
 		target.finish().unwrap();
 
 		let mut swidth = 1024.0;
@@ -265,8 +288,6 @@ impl Camera {
 		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -89.999, 89.999);
 		self.yaw += factor * delta.x as f32;
 		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
-
-		println!("pos {} {} {} rot {} {}", self.pos.x, self.pos.y, self.pos.z, self.pitch, self.yaw);
 	}
 
 	fn direction(&self) -> Vector3<f32> {
