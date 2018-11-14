@@ -3,7 +3,7 @@ extern crate cgmath;
 #[macro_use]
 extern crate glium;
 extern crate winit;
-extern crate glium_brush;
+extern crate glium_glyph;
 
 mod map;
 
@@ -11,8 +11,8 @@ use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
 use glium::{glutin, Surface};
 use cgmath::{Vector3, Point3, InnerSpace, Matrix3, Matrix4, One, Zero};
 use cgmath::{Deg, Rotation, EuclideanSpace, Matrix};
-use glium_brush::GlyphBrush;
-use glium_brush::glyph_brush::{
+use glium_glyph::GlyphBrush;
+use glium_glyph::glyph_brush::{
 	rusttype::{self, Font}, Section,
 };
 
