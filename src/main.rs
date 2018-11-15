@@ -94,8 +94,9 @@ fn main() {
 			// TODO: only update if the position actually changed from the prior one
 			// this spares us needless chatter with the GPU
 			let mut vertices = Vec::new();
+
 			push_block(&mut vertices,
-				[selected_pos.x as f32, selected_pos.y as f32, selected_pos.z as f32],
+				[selected_pos.x as f32, selected_pos.y as f32, selected_pos.z as f32 + 1.0],
 				[1.0, 0.0, 0.0], [0.5, 0.0, 0.0]);
 			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
 			selbuff = vec![vbuff];
@@ -340,9 +341,9 @@ impl Camera {
 		println!("{:?} -> {:?}", self.pos, pointing_at_distance);
 		for (x, y, z) in WalkVoxels::<f32, isize>::new(self.pos.into(),
 				pointing_at_distance.into(), &VoxelOrigin::Center) {
-			print!("({}, {}, {}), ", x, y, z);
 			let v = Vector3::new(x as isize, y as isize, z as isize);
 			if let Some(blk) = map.get_blk(v.x, v.y, v.z) {
+				print!("({}, {}, {}) {:?} ", x, y, z, blk);
 				if blk.is_pointable() {
 					println!("found. {:?}", blk);
 					return Some(v);
