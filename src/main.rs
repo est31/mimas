@@ -63,8 +63,9 @@ fn main() {
 		.map(|(p, c)| mesh_for_chunk(*p, c))
 		.map(|m| glium::VertexBuffer::new(&display, &m).unwrap())
 		.collect::<Vec<_>>();
+	let mut selbuff = Vec::new();
 
-	let grab_cursor = false;
+	let grab_cursor = true;
 
 	if grab_cursor {
 		display.gl_window().hide_cursor(true);
@@ -83,12 +84,21 @@ fn main() {
 			pmatrix : camera.get_perspective()
 		};
 
-
 		let selected_pos = camera.get_selected_pos(&map);
 		let mut sel_text = "sel = None".to_string();
+		selbuff.clear();
 		if let Some(selected_pos) = selected_pos {
-			//println!("selected");
-			sel_text = format!("sel = ({}, {}, {})", selected_pos.x, selected_pos.y, selected_pos.z);
+			let blk = map.get_blk(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
+			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
+
+			// TODO: only update if the position actually changed from the prior one
+			// this spares us needless chatter with the GPU
+			let mut vertices = Vec::new();
+			push_block(&mut vertices,
+				[selected_pos.x as f32, selected_pos.y as f32, selected_pos.z as f32],
+				[1.0, 0.0, 0.0], [0.5, 0.0, 0.0]);
+			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
+			selbuff = vec![vbuff];
 		}
 
 		let screen_dims = display.get_framebuffer_dimensions();
@@ -118,7 +128,7 @@ fn main() {
 		let mut target = display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
-		for buff in vbuffs.iter() {
+		for buff in vbuffs.iter().chain(selbuff.iter()) {
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&program, &uniforms, &params).unwrap();
@@ -194,43 +204,48 @@ struct Vertex {
 
 implement_vertex!(Vertex, position, normal);
 
+#[inline]
+fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], normal :[f32; 3], normalh :[f32; 3]) {
+	let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), normal| {
+		r.push(Vertex { position: [x, y, z], normal });
+		r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
+		r.push(Vertex { position: [x, y + yd, z + zd], normal });
+
+		r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
+		r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], normal });
+		r.push(Vertex { position: [x, y + yd, z + zd], normal });
+	};
+	// X-Y face
+	push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), normal);
+	// X-Z face
+	push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), normalh);
+	// Y-Z face
+	push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+	// X-Y face (z+1)
+	push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), normal);
+	// X-Z face (y+1)
+	push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), normalh);
+	// Y-Z face (x+1)
+	push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+}
+
 fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
 			for z in 0 .. BLOCKSIZE {
-				let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), normal| {
-					r.push(Vertex { position: [x, y, z], normal });
-					r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-					r.push(Vertex { position: [x, y + yd, z + zd], normal });
-
-					r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-					r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], normal });
-					r.push(Vertex { position: [x, y + yd, z + zd], normal });
-				};
-				let mut push_block = |normal, normalh| {
-						let (x, y, z) = (offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32);
-						// X-Y face
-						push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), normal);
-						// X-Z face
-						push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), normalh);
-						// Y-Z face
-						push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
-						// X-Y face (z+1)
-						push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), normal);
-						// X-Z face (y+1)
-						push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), normalh);
-						// Y-Z face (x+1)
-						push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+				let mut push_blk = |normal, normalh| {
+						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
+						push_block(&mut r, pos, normal, normalh);
 				};
 				match *chunk.get_blk(x, y, z) {
 					MapBlock::Air => (),
 					MapBlock::Ground => {
-						push_block([0.0, 1.0, 0.0], [0.0, 0.5, 0.0]);
+						push_blk([0.0, 1.0, 0.0], [0.0, 0.5, 0.0]);
 					},
 					MapBlock::Water => {
-						push_block([0.0, 0.0, 1.0], [0.0, 0.0, 5.0]);
+						push_blk([0.0, 0.0, 1.0], [0.0, 0.0, 5.0]);
 					},
 				}
 			}
