@@ -4,6 +4,7 @@ extern crate cgmath;
 extern crate glium;
 extern crate winit;
 extern crate glium_glyph;
+extern crate line_drawing;
 
 mod map;
 
@@ -15,6 +16,7 @@ use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	rusttype::{self, Font}, Section,
 };
+use line_drawing::{VoxelOrigin, WalkVoxels};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -81,12 +83,20 @@ fn main() {
 			pmatrix : camera.get_perspective()
 		};
 
+
+		let selected_pos = camera.get_selected_pos(&map);
+		let mut sel_text = "sel = None".to_string();
+		if let Some(selected_pos) = selected_pos {
+			//println!("selected");
+			sel_text = format!("sel = ({}, {}, {})", selected_pos.x, selected_pos.y, selected_pos.z);
+		}
+
 		let screen_dims = display.get_framebuffer_dimensions();
 		// TODO turn off anti-aliasing of the font
 		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
 		glyph_brush.queue(Section {
-			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}", camera.pos.x, camera.pos.y,
-				camera.pos.z, camera.pitch, camera.yaw),
+			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}, {}", camera.pos.x, camera.pos.y,
+				camera.pos.z, camera.pitch, camera.yaw, sel_text),
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
 			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
@@ -184,7 +194,7 @@ struct Vertex {
 
 implement_vertex!(Vertex, position, normal);
 
-fn mesh_for_chunk(offs :Vector3<usize>, chunk :&MapChunk) ->
+fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. BLOCKSIZE {
@@ -200,7 +210,7 @@ fn mesh_for_chunk(offs :Vector3<usize>, chunk :&MapChunk) ->
 					r.push(Vertex { position: [x, y + yd, z + zd], normal });
 				};
 				let mut push_block = |normal, normalh| {
-						let (x, y, z) = ((offs.x + x) as f32, (offs.y + y) as f32, (offs.z + z) as f32);
+						let (x, y, z) = (offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32);
 						// X-Y face
 						push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), normal);
 						// X-Z face
@@ -306,5 +316,25 @@ impl Camera {
 		let zfar = 1024.0;
 		let znear = 0.1;
 		cgmath::perspective(fov, self.aspect_ratio, znear, zfar).into()
+	}
+
+	pub fn get_selected_pos(&self, map :&Map) -> Option<Vector3<isize>> {
+		const SELECTION_RANGE :f32 = 10.0;
+		let pointing_at_distance = self.pos + self.direction() * SELECTION_RANGE;
+
+		println!("{:?} -> {:?}", self.pos, pointing_at_distance);
+		for (x, y, z) in WalkVoxels::<f32, isize>::new(self.pos.into(),
+				pointing_at_distance.into(), &VoxelOrigin::Center) {
+			print!("({}, {}, {}), ", x, y, z);
+			let v = Vector3::new(x as isize, y as isize, z as isize);
+			if let Some(blk) = map.get_blk(v.x, v.y, v.z) {
+				if blk.is_pointable() {
+					println!("found. {:?}", blk);
+					return Some(v);
+				}
+			}
+		}
+		println!("nothing found");
+		None
 	}
 }
