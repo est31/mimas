@@ -117,6 +117,7 @@ fn main() {
 				.. Default::default()
 			},
 			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullingDisabled,
+			blend :glium::Blend::alpha_blending(),
 			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
 			.. Default::default()
 		};
@@ -254,11 +255,12 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
 	const DELTA :f32 = 0.05;
 	const DELTAH :f32 = DELTA / 2.0;
+	const COLOR :[f32; 4] = [0.0, 0.0, 0.3, 0.5];
 	let mut vertices = Vec::new();
 
 	push_block(&mut vertices,
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
-		[1.0, 0.0, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0], 1.0 + DELTA);
+		COLOR, COLOR, 1.0 + DELTA);
 	vertices
 }
 
