@@ -90,7 +90,7 @@ fn main() {
 		let selected_pos = camera.get_selected_pos(&map);
 		let mut sel_text = "sel = None".to_string();
 		selbuff.clear();
-		if let Some(selected_pos) = selected_pos {
+		if let Some((selected_pos, _)) = selected_pos {
 			let blk = map.get_blk(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
 			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
 
@@ -180,13 +180,14 @@ fn main() {
 						last_pos = Some(position);
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
-						if state == glutin::ElementState::Pressed
-								&& button == glutin::MouseButton::Left {
-							// Removing nodes
-							if let Some(selected_pos) = selected_pos {
-								{
+						if state == glutin::ElementState::Pressed {
+							if let Some((selected_pos, before_selected)) = selected_pos {
+								if button == glutin::MouseButton::Left {
 									let blk = map.get_blk_mut(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
 									*blk = MapBlock::Air;
+								} else if button == glutin::MouseButton::Right {
+									let blk = map.get_blk_mut(before_selected.x, before_selected.y, before_selected.z).unwrap();
+									*blk = MapBlock::Wood;
 								}
 								vbuffs = gen_vbuffs(&display, &map);
 							}
@@ -259,7 +260,10 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 						push_blk([0.0, 1.0, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]);
 					},
 					MapBlock::Water => {
-						push_blk([0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 5.0, 1.0]);
+						push_blk([0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.5, 1.0]);
+					},
+					MapBlock::Wood => {
+						push_blk([0.5, 0.25, 0.0, 1.0], [0.25, 0.125, 0.0, 1.0]);
 					},
 				}
 			}
@@ -359,16 +363,17 @@ impl Camera {
 		cgmath::perspective(fov, self.aspect_ratio, znear, zfar).into()
 	}
 
-	pub fn get_selected_pos(&self, map :&Map) -> Option<Vector3<isize>> {
+	pub fn get_selected_pos(&self, map :&Map) -> Option<(Vector3<isize>, Vector3<isize>)> {
 		const SELECTION_RANGE :f32 = 10.0;
 		let pointing_at_distance = self.pos + self.direction() * SELECTION_RANGE;
 
-		for (x, y, z) in WalkVoxels::<f32, isize>::new(self.pos.into(),
-				pointing_at_distance.into(), &VoxelOrigin::Center) {
-			let v = Vector3::new(x as isize, y as isize, z as isize);
-			if let Some(blk) = map.get_blk(v.x, v.y, v.z) {
+		for ((xs, ys, zs), (xe, ye, ze)) in WalkVoxels::<f32, isize>::new(self.pos.into(),
+				pointing_at_distance.into(), &VoxelOrigin::Center).steps() {
+			let vs = Vector3::new(xs as isize, ys as isize, zs as isize);
+			let ve = Vector3::new(xe as isize, ye as isize, ze as isize);
+			if let Some(blk) = map.get_blk(ve.x, ve.y, ve.z) {
 				if blk.is_pointable() {
-					return Some(v);
+					return Some((ve, vs));
 				}
 			}
 		}

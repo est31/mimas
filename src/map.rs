@@ -9,13 +9,15 @@ pub enum MapBlock {
 	Air,
 	Water,
 	Ground,
+	Wood,
 }
 
 impl MapBlock {
 	pub fn is_pointable(&self) -> bool {
 		match self {
 			MapBlock::Water |
-			MapBlock::Ground => true,
+			MapBlock::Ground |
+			MapBlock::Wood => true,
 			_ => false
 		}
 	}
