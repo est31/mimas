@@ -59,10 +59,13 @@ fn main() {
 	let program = glium::Program::from_source(&display, vertex_shader_src,
 		fragment_shader_src, None).unwrap();
 
-	let vbuffs = map.chunks.iter()
-		.map(|(p, c)| mesh_for_chunk(*p, c))
-		.map(|m| glium::VertexBuffer::new(&display, &m).unwrap())
-		.collect::<Vec<_>>();
+	let gen_vbuffs = |display, map :&Map| {
+		map.chunks.iter()
+			.map(|(p, c)| mesh_for_chunk(*p, c))
+			.map(|m| glium::VertexBuffer::new(display, &m).unwrap())
+			.collect::<Vec<_>>()
+	};
+	let mut vbuffs = gen_vbuffs(&display, &map);
 	let mut selbuff = Vec::new();
 
 	let grab_cursor = true;
@@ -175,6 +178,19 @@ fn main() {
 							camera.handle_mouse_move(delta);
 						}
 						last_pos = Some(position);
+					},
+					glutin::WindowEvent::MouseInput { state, button, .. } => {
+						if state == glutin::ElementState::Pressed
+								&& button == glutin::MouseButton::Left {
+							// Removing nodes
+							if let Some(selected_pos) = selected_pos {
+								{
+									let blk = map.get_blk_mut(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
+									*blk = MapBlock::Air;
+								}
+								vbuffs = gen_vbuffs(&display, &map);
+							}
+						}
 					},
 
 					_ => (),
