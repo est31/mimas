@@ -93,11 +93,7 @@ fn main() {
 
 			// TODO: only update if the position actually changed from the prior one
 			// this spares us needless chatter with the GPU
-			let mut vertices = Vec::new();
-
-			push_block(&mut vertices,
-				[selected_pos.x as f32, selected_pos.y as f32, selected_pos.z as f32 + 1.0],
-				[1.0, 0.0, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0]);
+			let vertices = selection_mesh(selected_pos);
 			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
@@ -206,7 +202,7 @@ struct Vertex {
 implement_vertex!(Vertex, position, color);
 
 #[inline]
-fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4]) {
+fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32) {
 	let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), color| {
 		r.push(Vertex { position: [x, y, z], color });
 		r.push(Vertex { position: [x + xsd, y + ysd, z], color });
@@ -217,17 +213,17 @@ fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh 
 		r.push(Vertex { position: [x, y + yd, z + zd], color });
 	};
 	// X-Y face
-	push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), color);
+	push_face((x, y, z), (siz, 0.0, siz, 0.0), color);
 	// X-Z face
-	push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), colorh);
+	push_face((x, y, z), (siz, 0.0, 0.0, siz), colorh);
 	// Y-Z face
-	push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), colorh);
+	push_face((x, y, z), (0.0, siz, 0.0, siz), colorh);
 	// X-Y face (z+1)
-	push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), color);
+	push_face((x, y, z + siz), (siz, 0.0, siz, 0.0), color);
 	// X-Z face (y+1)
-	push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), colorh);
+	push_face((x, y + siz, z), (siz, 0.0, 0.0, siz), colorh);
 	// Y-Z face (x+1)
-	push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), colorh);
+	push_face((x + siz, y, z), (0.0, siz, 0.0, siz), colorh);
 }
 
 fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
@@ -238,7 +234,7 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 			for z in 0 .. BLOCKSIZE {
 				let mut push_blk = |color, colorh| {
 						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
-						push_block(&mut r, pos, color, colorh);
+						push_block(&mut r, pos, color, colorh, 1.0);
 				};
 				match *chunk.get_blk(x, y, z) {
 					MapBlock::Air => (),
@@ -253,6 +249,17 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 		}
 	}
 	r
+}
+
+fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
+	const DELTA :f32 = 0.05;
+	const DELTAH :f32 = DELTA / 2.0;
+	let mut vertices = Vec::new();
+
+	push_block(&mut vertices,
+		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
+		[1.0, 0.0, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0], 1.0 + DELTA);
+	vertices
 }
 
 fn clamp(a :f32, min :f32, max :f32) -> f32 {
