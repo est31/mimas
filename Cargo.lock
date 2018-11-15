@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "glium-glyph"
 version = "0.2.2"
-source = "git+https://github.com/est31/glium-glyph#bb7217a957634fbc5e6f013dbd1454a8dab6d59a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glyph_brush 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -476,7 +476,7 @@ version = "0.1.0"
 dependencies = [
  "cgmath 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glium-glyph 0.2.2 (git+https://github.com/est31/glium-glyph)",
+ "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1015,7 +1015,7 @@ dependencies = [
 "checksum gl_generator 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7a795170cbd85b5a7baa58d6d7525cae6a03e486859860c220f7ebbbdd379d0a"
 "checksum gleam 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "962cbec852194e0f5f49ea0ca8407740cb14d760d8d86834b19b1f228cb505dd"
 "checksum glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6ec8f9506ee0379c931299f280a6e06767b0dc6ac0f1890cf1cb6c30d600fca5"
-"checksum glium-glyph 0.2.2 (git+https://github.com/est31/glium-glyph)" = "<none>"
+"checksum glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5d0caa03cef045113238ec9d55c8a1ded92eec32947b8afce7c09567903a598f"
 "checksum glutin 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a70c5fe78efbd5a3b243a804ea1032053c584510f8822819f94cfb29b2100317"
 "checksum glyph_brush 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "83a8e5d17f3711dcf45434148b4c36b89c3f6320af00a6c0daa095dfdada4eea"
 "checksum glyph_brush_layout 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e1c00a04cfe112ff6d3ecf03185653a32447080bc60977df44aa98c98b3bdce2"
