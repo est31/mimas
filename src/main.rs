@@ -345,19 +345,15 @@ impl Camera {
 		const SELECTION_RANGE :f32 = 10.0;
 		let pointing_at_distance = self.pos + self.direction() * SELECTION_RANGE;
 
-		println!("{:?} -> {:?}", self.pos, pointing_at_distance);
 		for (x, y, z) in WalkVoxels::<f32, isize>::new(self.pos.into(),
 				pointing_at_distance.into(), &VoxelOrigin::Center) {
 			let v = Vector3::new(x as isize, y as isize, z as isize);
 			if let Some(blk) = map.get_blk(v.x, v.y, v.z) {
-				print!("({}, {}, {}) {:?} ", x, y, z, blk);
 				if blk.is_pointable() {
-					println!("found. {:?}", blk);
 					return Some(v);
 				}
 			}
 		}
-		println!("nothing found");
 		None
 	}
 }
