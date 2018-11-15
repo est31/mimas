@@ -33,26 +33,26 @@ fn main() {
 	let vertex_shader_src = r#"
 		#version 140
 		in vec3 position;
-		in vec3 normal;
+		in vec4 color;
 
-		out vec3 vnormal;
+		out vec4 vcolor;
 
 		uniform mat4 pmatrix;
 		uniform mat4 vmatrix;
 		void main() {
-			vnormal = normal;
+			vcolor = color;
 			gl_Position = pmatrix * vmatrix * vec4(position, 1.0);
 		}
 	"#;
 
 	let fragment_shader_src = r#"
 		#version 140
-		in vec3 vnormal;
+		in vec4 vcolor;
 
 		out vec4 fcolor;
 
 		void main() {
-			fcolor = vec4(vnormal, 1.0);
+			fcolor = vcolor;
 		}
 	"#;
 
@@ -97,7 +97,7 @@ fn main() {
 
 			push_block(&mut vertices,
 				[selected_pos.x as f32, selected_pos.y as f32, selected_pos.z as f32 + 1.0],
-				[1.0, 0.0, 0.0], [0.5, 0.0, 0.0]);
+				[1.0, 0.0, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0]);
 			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
@@ -199,35 +199,35 @@ fn main() {
 
 #[derive(Copy, Clone)]
 struct Vertex {
-	position: [f32; 3],
-	normal: [f32; 3],
+	position :[f32; 3],
+	color :[f32; 4],
 }
 
-implement_vertex!(Vertex, position, normal);
+implement_vertex!(Vertex, position, color);
 
 #[inline]
-fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], normal :[f32; 3], normalh :[f32; 3]) {
-	let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), normal| {
-		r.push(Vertex { position: [x, y, z], normal });
-		r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-		r.push(Vertex { position: [x, y + yd, z + zd], normal });
+fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4]) {
+	let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), color| {
+		r.push(Vertex { position: [x, y, z], color });
+		r.push(Vertex { position: [x + xsd, y + ysd, z], color });
+		r.push(Vertex { position: [x, y + yd, z + zd], color });
 
-		r.push(Vertex { position: [x + xsd, y + ysd, z], normal });
-		r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], normal });
-		r.push(Vertex { position: [x, y + yd, z + zd], normal });
+		r.push(Vertex { position: [x + xsd, y + ysd, z], color });
+		r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], color });
+		r.push(Vertex { position: [x, y + yd, z + zd], color });
 	};
 	// X-Y face
-	push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), normal);
+	push_face((x, y, z), (1.0, 0.0, 1.0, 0.0), color);
 	// X-Z face
-	push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), normalh);
+	push_face((x, y, z), (1.0, 0.0, 0.0, 1.0), colorh);
 	// Y-Z face
-	push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+	push_face((x, y, z), (0.0, 1.0, 0.0, 1.0), colorh);
 	// X-Y face (z+1)
-	push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), normal);
+	push_face((x, y, z + 1.0), (1.0, 0.0, 1.0, 0.0), color);
 	// X-Z face (y+1)
-	push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), normalh);
+	push_face((x, y + 1.0, z), (1.0, 0.0, 0.0, 1.0), colorh);
 	// Y-Z face (x+1)
-	push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), normalh);
+	push_face((x + 1.0, y, z), (0.0, 1.0, 0.0, 1.0), colorh);
 }
 
 fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
@@ -236,17 +236,17 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
 			for z in 0 .. BLOCKSIZE {
-				let mut push_blk = |normal, normalh| {
+				let mut push_blk = |color, colorh| {
 						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
-						push_block(&mut r, pos, normal, normalh);
+						push_block(&mut r, pos, color, colorh);
 				};
 				match *chunk.get_blk(x, y, z) {
 					MapBlock::Air => (),
 					MapBlock::Ground => {
-						push_blk([0.0, 1.0, 0.0], [0.0, 0.5, 0.0]);
+						push_blk([0.0, 1.0, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]);
 					},
 					MapBlock::Water => {
-						push_blk([0.0, 0.0, 1.0], [0.0, 0.0, 5.0]);
+						push_blk([0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 5.0, 1.0]);
 					},
 				}
 			}
