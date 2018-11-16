@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 use noise::{Perlin, NoiseFn, Seedable};
+use std::collections::HashMap;
 use super::mod_euc;
 
 pub const BLOCKSIZE :isize = 16;
@@ -29,7 +30,7 @@ pub struct MapChunk {
 
 pub struct Map {
 	seed :u32,
-	pub chunks :Vec<(Vector3<isize>, MapChunk)>,
+	pub chunks :HashMap<Vector3<isize>, MapChunk>,
 }
 
 impl MapChunk {
@@ -72,7 +73,7 @@ impl Map {
 	pub fn new(seed :u32) -> Self {
 		Map {
 			seed,
-			chunks : Vec::new(),
+			chunks : HashMap::new(),
 		}
 	}
 	pub fn gen_chunks(&mut self) {
@@ -86,7 +87,7 @@ impl Map {
 						(z * BLOCKSIZE) as isize,
 					);
 					let chunk = gen_chunk(self.seed, pos);
-					self.chunks.push((pos, chunk));
+					self.chunks.insert(pos, chunk);
 				}
 			}
 		}
@@ -98,13 +99,9 @@ impl Map {
 		}
 		let blk_pos = pos.map(r);
 		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
-		for (bpos, blk) in self.chunks.iter() {
-			if &blk_pos != bpos {
-				continue;
-			}
-			return Some(*blk.get_blk(pos_in_block))
-		}
-		None
+
+		self.chunks.get(&blk_pos)
+			.map(|blk| *blk.get_blk(pos_in_block))
 	}
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
 		fn r(x :isize) -> isize {
@@ -113,12 +110,7 @@ impl Map {
 		}
 		let blk_pos = pos.map(r);
 		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
-		for (bpos, blk) in self.chunks.iter_mut() {
-			if &blk_pos != bpos {
-				continue;
-			}
-			return Some(blk.get_blk_mut(pos_in_block))
-		}
-		None
+		self.chunks.get_mut(&blk_pos)
+			.map(|blk| blk.get_blk_mut(pos_in_block))
 	}
 }
