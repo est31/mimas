@@ -61,10 +61,13 @@ fn main() {
 		fragment_shader_src, None).unwrap();
 
 	let gen_vbuffs = |display, map :&Map| {
-		map.chunks.iter()
+		let v = std::time::Instant::now();
+		let ret = map.chunks.iter()
 			.map(|(p, c)| mesh_for_chunk(*p, c))
 			.map(|m| glium::VertexBuffer::new(display, &m).unwrap())
-			.collect::<Vec<_>>()
+			.collect::<Vec<_>>();
+		println!("regen took {:?}", std::time::Instant::now() - v);
+		ret
 	};
 	let mut vbuffs = gen_vbuffs(&display, &map);
 	let mut selbuff = Vec::new();
