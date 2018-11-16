@@ -18,6 +18,7 @@ use glium_glyph::glyph_brush::{
 	rusttype::{self, Font}, Section,
 };
 use line_drawing::{VoxelOrigin, WalkVoxels};
+use std::collections::HashMap;
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -63,11 +64,27 @@ fn main() {
 	let gen_vbuffs = |display, map :&Map| {
 		let v = std::time::Instant::now();
 		let ret = map.chunks.iter()
-			.map(|(p, c)| mesh_for_chunk(*p, c))
-			.map(|m| glium::VertexBuffer::new(display, &m).unwrap())
-			.collect::<Vec<_>>();
-		println!("regen took {:?}", std::time::Instant::now() - v);
+			.map(|(p, c)| (p, mesh_for_chunk(*p, c)))
+			.map(|(p, m)| (*p, glium::VertexBuffer::new(display, &m).unwrap()))
+			.collect::<HashMap<_, _>>();
+		println!("generating the meshes took {:?}",
+			std::time::Instant::now() - v);
 		ret
+	};
+	let vbuffs_update = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&Map, pos :Vector3<isize>| {
+		let v = std::time::Instant::now();
+		fn r(x :isize) -> isize {
+			let x = x as f32 / (BLOCKSIZE as f32);
+			x.floor() as isize * BLOCKSIZE
+		}
+		let blk_pos = pos.map(r);
+		if let Some(vb) = vbuffs.get_mut(&blk_pos) {
+			let chunk = map.chunks.get(&blk_pos).unwrap();
+			let mesh = mesh_for_chunk(blk_pos, chunk);
+			*vb = glium::VertexBuffer::new(display, &mesh).unwrap();
+		}
+		println!("regen took {:?}",
+			std::time::Instant::now() - v);
 	};
 	let mut vbuffs = gen_vbuffs(&display, &map);
 	let mut selbuff = Vec::new();
@@ -133,7 +150,7 @@ fn main() {
 		let mut target = display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
-		for buff in vbuffs.iter().chain(selbuff.iter()) {
+		for buff in vbuffs.values().chain(selbuff.iter()) {
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&program, &uniforms, &params).unwrap();
@@ -186,16 +203,19 @@ fn main() {
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
 						if state == glutin::ElementState::Pressed {
 							if let Some((selected_pos, before_selected)) = selected_pos {
+								let mut pos_to_update = None;
 								if button == glutin::MouseButton::Left {
 									let blk = map.get_blk_mut(selected_pos).unwrap();
 									*blk = MapBlock::Air;
+									pos_to_update = Some(selected_pos);
 								} else if button == glutin::MouseButton::Right {
 									let blk = map.get_blk_mut(before_selected).unwrap();
 									*blk = MapBlock::Wood;
+									pos_to_update = Some(before_selected);
 								}
-								// TODO since the port to nalgebra this is really slow.
-								// only regenerate the chunks where actual changes happened
-								vbuffs = gen_vbuffs(&display, &map);
+								if let Some(pos) = pos_to_update {
+									vbuffs_update(&mut vbuffs, &display, &map, selected_pos);
+								}
 							}
 						}
 					},
