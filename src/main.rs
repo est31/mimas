@@ -73,14 +73,10 @@ fn main() {
 	};
 	let vbuffs_update = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&Map, pos :Vector3<isize>| {
 		let v = std::time::Instant::now();
-		fn r(x :isize) -> isize {
-			let x = x as f32 / (BLOCKSIZE as f32);
-			x.floor() as isize * BLOCKSIZE
-		}
-		let blk_pos = pos.map(r);
-		if let Some(vb) = vbuffs.get_mut(&blk_pos) {
-			let chunk = map.chunks.get(&blk_pos).unwrap();
-			let mesh = mesh_for_chunk(blk_pos, chunk);
+		let chunk_pos = btchn(pos);
+		if let Some(vb) = vbuffs.get_mut(&chunk_pos) {
+			let chunk = map.chunks.get(&chunk_pos).unwrap();
+			let mesh = mesh_for_chunk(chunk_pos, chunk);
 			*vb = glium::VertexBuffer::new(display, &mesh).unwrap();
 		}
 		println!("regen took {:?}",
@@ -328,8 +324,23 @@ fn mod_euc(a :f32, b :f32) -> f32 {
 	((a % b) + b) % b
 }
 
+/// Degrees to radians
 fn dtr(v :f32) -> f32 {
 	v / 180.0 * std::f32::consts::PI
+}
+
+/// Block position to chunk position
+fn btchn(v :Vector3<isize>) -> Vector3<isize> {
+	fn r(x :isize) -> isize {
+		let x = x as f32 / (BLOCKSIZE as f32);
+		x.floor() as isize * BLOCKSIZE
+	}
+	v.map(r)
+}
+
+/// Block position to position inside chunk
+fn btpic(v :Vector3<isize>) -> Vector3<isize> {
+	v.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize)
 }
 
 struct Camera {

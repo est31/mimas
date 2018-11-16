@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use noise::{Perlin, NoiseFn, Seedable};
 use std::collections::HashMap;
-use super::mod_euc;
+use {btchn, btpic};
 
 pub const BLOCKSIZE :isize = 16;
 
@@ -93,24 +93,15 @@ impl Map {
 		}
 	}
 	pub fn get_blk(&self, pos :Vector3<isize>) -> Option<MapBlock> {
-		fn r(x :isize) -> isize {
-			let x = x as f32 / (BLOCKSIZE as f32);
-			x.floor() as isize * BLOCKSIZE
-		}
-		let blk_pos = pos.map(r);
-		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
-
-		self.chunks.get(&blk_pos)
-			.map(|blk| *blk.get_blk(pos_in_block))
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.chunks.get(&chunk_pos)
+			.map(|blk| *blk.get_blk(pos_in_chunk))
 	}
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
-		fn r(x :isize) -> isize {
-			let x = x as f32 / (BLOCKSIZE as f32);
-			x.floor() as isize * BLOCKSIZE
-		}
-		let blk_pos = pos.map(r);
-		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
-		self.chunks.get_mut(&blk_pos)
-			.map(|blk| blk.get_blk_mut(pos_in_block))
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.chunks.get_mut(&chunk_pos)
+			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
 }
