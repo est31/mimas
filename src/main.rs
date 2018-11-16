@@ -27,7 +27,7 @@ fn main() {
 	let context = glutin::ContextBuilder::new().with_depth_buffer(24);
 	let display = glium::Display::new(window, context, &events_loop).unwrap();
 
-	let mut map = Map::new(77);
+	let mut map = Map::new(78);
 	map.gen_chunks_start();
 
 	let mut camera = Camera::new();
@@ -304,6 +304,9 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 					},
 					MapBlock::Wood => {
 						push_blk([0.5, 0.25, 0.0, 1.0], [0.25, 0.125, 0.0, 1.0]);
+					},
+					MapBlock::Stone => {
+						push_blk([0.5, 0.5, 0.5, 1.0], [0.25, 0.25, 0.25, 1.0]);
 					},
 				}
 			}

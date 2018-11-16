@@ -11,6 +11,7 @@ pub enum MapBlock {
 	Water,
 	Ground,
 	Wood,
+	Stone,
 }
 
 impl MapBlock {
@@ -18,7 +19,8 @@ impl MapBlock {
 		match self {
 			MapBlock::Water |
 			MapBlock::Ground |
-			MapBlock::Wood => true,
+			MapBlock::Wood |
+			MapBlock::Stone => true,
 			_ => false
 		}
 	}
@@ -51,17 +53,26 @@ pub fn gen_chunk(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	};
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
-			let f = 0.1356;
+			let f = 0.05356;
 			let p = [(pos.x + x) as f64 * f, (pos.y + y) as f64 * f];
-			let elev = noise.get(p) * 8.0;
-			let elev_blocks = (::clamp(elev as f32, 0.0, elev as f32)) as isize;
+			let elev = noise.get(p) * 8.3;
+			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let el = std::cmp::min(elev_blocks, BLOCKSIZE);
-				if el == 0 {
-					*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
-				}
-				for z in 0 .. el {
-					*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Ground;
+				if pos.z < 0 {
+					for z in 0 .. el {
+						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
+					}
+					for z in  el .. BLOCKSIZE {
+						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Water;
+					}
+				} else {
+					for z in 0 .. el {
+						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Ground;
+					}
+					if pos.z == 0 && el <= 0 {
+						*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
+					}
 				}
 			}
 		}
