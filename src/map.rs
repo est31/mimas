@@ -33,10 +33,10 @@ pub struct Map {
 }
 
 impl MapChunk {
-	pub fn get_blk_mut(&mut self, x :isize, y :isize, z :isize) -> &mut MapBlock {
+	pub fn get_blk_mut(&mut self, Vector3 {x, y, z} :Vector3<isize>) -> &mut MapBlock {
 		&mut self.data[(x * BLOCKSIZE * BLOCKSIZE + y * BLOCKSIZE + z) as usize]
 	}
-	pub fn get_blk(&self, x :isize, y :isize, z :isize) -> &MapBlock {
+	pub fn get_blk(&self, Vector3 {x, y, z} :Vector3<isize>) -> &MapBlock {
 		&self.data[(x * BLOCKSIZE * BLOCKSIZE + y * BLOCKSIZE + z) as usize]
 	}
 }
@@ -55,10 +55,10 @@ pub fn gen_chunk(seed :u32, pos :Vector3<isize>) -> MapChunk {
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let el = std::cmp::min(elev_blocks, BLOCKSIZE);
 				if el == 0 {
-					*res.get_blk_mut(x, y, 0) = MapBlock::Water;
+					*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
 				}
 				for z in 0 .. el {
-					*res.get_blk_mut(x, y, z) = MapBlock::Ground;
+					*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Ground;
 				}
 			}
 		}
@@ -89,35 +89,33 @@ impl Map {
 			}
 		}
 	}
-	pub fn get_blk(&self, x :isize, y :isize, z :isize) -> Option<MapBlock> {
+	pub fn get_blk(&self, pos :Vector3<isize>) -> Option<MapBlock> {
 		fn r(x :isize) -> isize {
 			let x = x as f32 / (BLOCKSIZE as f32);
 			x.floor() as isize * BLOCKSIZE
 		}
-		let blk_pos = Vector3::new(r(x), r(y), r(z));
-		let bsf = BLOCKSIZE as f32;
-		let (pos_x, pos_y, pos_z) = (mod_euc(x as f32, bsf), mod_euc(y as f32, bsf), mod_euc(z as f32, bsf));
+		let blk_pos = pos.map(r);
+		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
 		for (bpos, blk) in self.chunks.iter() {
 			if &blk_pos != bpos {
 				continue;
 			}
-			return Some(*blk.get_blk(pos_x as isize, pos_y as isize, pos_z as isize))
+			return Some(*blk.get_blk(pos_in_block))
 		}
 		None
 	}
-	pub fn get_blk_mut(&mut self, x :isize, y :isize, z :isize) -> Option<&mut MapBlock> {
+	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
 		fn r(x :isize) -> isize {
 			let x = x as f32 / (BLOCKSIZE as f32);
 			x.floor() as isize * BLOCKSIZE
 		}
-		let blk_pos = Vector3::new(r(x), r(y), r(z));
-		let bsf = BLOCKSIZE as f32;
-		let (pos_x, pos_y, pos_z) = (mod_euc(x as f32, bsf), mod_euc(y as f32, bsf), mod_euc(z as f32, bsf));
+		let blk_pos = pos.map(r);
+		let pos_in_block = pos.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize);
 		for (bpos, blk) in self.chunks.iter_mut() {
 			if &blk_pos != bpos {
 				continue;
 			}
-			return Some(blk.get_blk_mut(pos_x as isize, pos_y as isize, pos_z as isize))
+			return Some(blk.get_blk_mut(pos_in_block))
 		}
 		None
 	}

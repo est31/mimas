@@ -91,7 +91,7 @@ fn main() {
 		let mut sel_text = "sel = None".to_string();
 		selbuff.clear();
 		if let Some((selected_pos, _)) = selected_pos {
-			let blk = map.get_blk(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
+			let blk = map.get_blk(selected_pos).unwrap();
 			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
 
 			// TODO: only update if the position actually changed from the prior one
@@ -183,10 +183,10 @@ fn main() {
 						if state == glutin::ElementState::Pressed {
 							if let Some((selected_pos, before_selected)) = selected_pos {
 								if button == glutin::MouseButton::Left {
-									let blk = map.get_blk_mut(selected_pos.x, selected_pos.y, selected_pos.z).unwrap();
+									let blk = map.get_blk_mut(selected_pos).unwrap();
 									*blk = MapBlock::Air;
 								} else if button == glutin::MouseButton::Right {
-									let blk = map.get_blk_mut(before_selected.x, before_selected.y, before_selected.z).unwrap();
+									let blk = map.get_blk_mut(before_selected).unwrap();
 									*blk = MapBlock::Wood;
 								}
 								vbuffs = gen_vbuffs(&display, &map);
@@ -254,7 +254,7 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
 						push_block(&mut r, pos, color, colorh, 1.0);
 				};
-				match *chunk.get_blk(x, y, z) {
+				match *chunk.get_blk(Vector3::new(x, y, z)) {
 					MapBlock::Air => (),
 					MapBlock::Ground => {
 						push_blk([0.0, 1.0, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]);
@@ -371,7 +371,7 @@ impl Camera {
 				pointing_at_distance.into(), &VoxelOrigin::Center).steps() {
 			let vs = Vector3::new(xs as isize, ys as isize, zs as isize);
 			let ve = Vector3::new(xe as isize, ye as isize, ze as isize);
-			if let Some(blk) = map.get_blk(ve.x, ve.y, ve.z) {
+			if let Some(blk) = map.get_blk(ve) {
 				if blk.is_pointable() {
 					return Some((ve, vs));
 				}
