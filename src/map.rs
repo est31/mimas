@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use nalgebra::Vector3;
 use noise::{Perlin, NoiseFn, Seedable};
 use super::mod_euc;
 
@@ -33,10 +33,12 @@ pub struct Map {
 }
 
 impl MapChunk {
-	pub fn get_blk_mut(&mut self, Vector3 {x, y, z} :Vector3<isize>) -> &mut MapBlock {
+	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> &mut MapBlock {
+		let (x, y, z) = (pos.x, pos.y, pos.z);
 		&mut self.data[(x * BLOCKSIZE * BLOCKSIZE + y * BLOCKSIZE + z) as usize]
 	}
-	pub fn get_blk(&self, Vector3 {x, y, z} :Vector3<isize>) -> &MapBlock {
+	pub fn get_blk(&self, pos :Vector3<isize>) -> &MapBlock {
+		let (x, y, z) = (pos.x, pos.y, pos.z);
 		&self.data[(x * BLOCKSIZE * BLOCKSIZE + y * BLOCKSIZE + z) as usize]
 	}
 }
@@ -78,11 +80,11 @@ impl Map {
 		for x in 0 .. square_size {
 			for y in 0 .. square_size {
 				for z in 0 .. 3 {
-					let pos = Vector3 {
-						x : (x * BLOCKSIZE) as isize,
-						y : (y * BLOCKSIZE) as isize,
-						z : (z * BLOCKSIZE) as isize,
-					};
+					let pos = Vector3::new(
+						(x * BLOCKSIZE) as isize,
+						(y * BLOCKSIZE) as isize,
+						(z * BLOCKSIZE) as isize,
+					);
 					let chunk = gen_chunk(self.seed, pos);
 					self.chunks.push((pos, chunk));
 				}

@@ -8,7 +8,8 @@ authors = ["est31 <MTest31@outlook.com>"]
 
 [dependencies]
 noise = "0.5"
-cgmath = "0.16"
+nalgebra = "0.16"
+num-traits = "0.2"
 glium = "0.22"
 winit = "0.16"
 #glium-glyph = { path = "../glium-glyph" }

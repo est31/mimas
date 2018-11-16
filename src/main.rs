@@ -1,17 +1,18 @@
 extern crate noise;
-extern crate cgmath;
+extern crate nalgebra;
 #[macro_use]
 extern crate glium;
 extern crate winit;
 extern crate glium_glyph;
 extern crate line_drawing;
+extern crate num_traits;
 
 mod map;
 
 use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
 use glium::{glutin, Surface};
-use cgmath::{Vector3, Point3, InnerSpace, Matrix3, Matrix4, One, Zero};
-use cgmath::{Deg, Rotation, EuclideanSpace, Matrix};
+use nalgebra::{Vector3, Matrix3, Matrix4, Point3, Rotation3};
+use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	rusttype::{self, Font}, Section,
@@ -189,6 +190,8 @@ fn main() {
 									let blk = map.get_blk_mut(before_selected).unwrap();
 									*blk = MapBlock::Wood;
 								}
+								// TODO since the port to nalgebra this is really slow.
+								// only regenerate the chunks where actual changes happened
 								vbuffs = gen_vbuffs(&display, &map);
 							}
 						}
@@ -302,6 +305,10 @@ fn mod_euc(a :f32, b :f32) -> f32 {
 	((a % b) + b) % b
 }
 
+fn dtr(v :f32) -> f32 {
+	v / 180.0 * std::f32::consts::PI
+}
+
 struct Camera {
 	aspect_ratio :f32,
 	pitch :f32,
@@ -326,16 +333,16 @@ impl Camera {
 		let delta = 2.0;
 		let mut delta_pos = Vector3::zero();
 		match key {
-			glutin::VirtualKeyCode::W => delta_pos += Vector3::unit_x(),
-			glutin::VirtualKeyCode::A => delta_pos += Vector3::unit_y(),
-			glutin::VirtualKeyCode::S => delta_pos -= Vector3::unit_x(),
-			glutin::VirtualKeyCode::D => delta_pos -= Vector3::unit_y(),
-			glutin::VirtualKeyCode::Space => delta_pos += Vector3::unit_z(),
-			glutin::VirtualKeyCode::LShift => delta_pos -= Vector3::unit_z(),
+			glutin::VirtualKeyCode::W => delta_pos += Vector3::x(),
+			glutin::VirtualKeyCode::A => delta_pos += Vector3::y(),
+			glutin::VirtualKeyCode::S => delta_pos -= Vector3::x(),
+			glutin::VirtualKeyCode::D => delta_pos -= Vector3::y(),
+			glutin::VirtualKeyCode::Space => delta_pos += Vector3::z(),
+			glutin::VirtualKeyCode::LShift => delta_pos -= Vector3::z(),
 		_ => (),
 		}
 		delta_pos *= delta;
-		delta_pos = Matrix3::from_angle_z(Deg(-self.yaw)) * delta_pos;
+		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
 		self.pos += delta_pos;
 	}
 	fn handle_mouse_move(&mut self, delta :winit::dpi::LogicalPosition) {
@@ -345,30 +352,32 @@ impl Camera {
 		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
 	}
 
-	fn direction(&self) -> Vector3<f32> {
-		let pitch = -self.pitch / 180.0 * std::f32::consts::PI;
-		let yaw =- self.yaw / 180.0 * std::f32::consts::PI;
-		Vector3::new(pitch.cos() * yaw.cos(), pitch.cos() * yaw.sin(), pitch.sin())
+	fn direction(&self) -> Point3<f32> {
+		let pitch = dtr(-self.pitch);
+		let yaw = dtr(-self.yaw);
+		Point3::new(pitch.cos() * yaw.cos(), pitch.cos() * yaw.sin(), pitch.sin())
 	}
 
 	fn get_matrix(&self) -> [[f32; 4]; 4] {
-		let m = Matrix4::look_at_dir(Point3::origin() + self.pos, self.direction(), Vector3::unit_z());
+		let m = Matrix4::look_at_rh(&(Point3::origin() + self.pos),
+			&(self.direction() + self.pos), &Vector3::z());
 		m.into()
 	}
 
 	pub fn get_perspective(&self) -> [[f32; 4]; 4] {
-		let fov = Deg(90.0);
+		let fov = dtr(90.0);
 		let zfar = 1024.0;
 		let znear = 0.1;
-		cgmath::perspective(fov, self.aspect_ratio, znear, zfar).into()
+		Matrix4::new_perspective(self.aspect_ratio, fov, znear, zfar).into()
 	}
 
 	pub fn get_selected_pos(&self, map :&Map) -> Option<(Vector3<isize>, Vector3<isize>)> {
 		const SELECTION_RANGE :f32 = 10.0;
-		let pointing_at_distance = self.pos + self.direction() * SELECTION_RANGE;
-
-		for ((xs, ys, zs), (xe, ye, ze)) in WalkVoxels::<f32, isize>::new(self.pos.into(),
-				pointing_at_distance.into(), &VoxelOrigin::Center).steps() {
+		let pointing_at_distance = self.pos + self.direction().coords * SELECTION_RANGE;
+		let (dx, dy, dz) = (pointing_at_distance.x, pointing_at_distance.y, pointing_at_distance.z);
+		let (px, py, pz) = (self.pos.x, self.pos.y, self.pos.z);
+		for ((xs, ys, zs), (xe, ye, ze)) in WalkVoxels::<f32, isize>::new((px, py, pz),
+				(dx, dy, dz), &VoxelOrigin::Center).steps() {
 			let vs = Vector3::new(xs as isize, ys as isize, zs as isize);
 			let ve = Vector3::new(xe as isize, ye as isize, ze as isize);
 			if let Some(blk) = map.get_blk(ve) {
