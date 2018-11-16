@@ -28,7 +28,7 @@ fn main() {
 	let display = glium::Display::new(window, context, &events_loop).unwrap();
 
 	let mut map = Map::new(77);
-	map.gen_chunks();
+	map.gen_chunks_start();
 
 	let mut camera = Camera::new();
 
@@ -74,13 +74,29 @@ fn main() {
 	let vbuffs_update = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&Map, pos :Vector3<isize>| {
 		let v = std::time::Instant::now();
 		let chunk_pos = btchn(pos);
-		if let Some(vb) = vbuffs.get_mut(&chunk_pos) {
-			let chunk = map.chunks.get(&chunk_pos).unwrap();
+		if let Some(chunk) = map.chunks.get(&chunk_pos) {
 			let mesh = mesh_for_chunk(chunk_pos, chunk);
-			*vb = glium::VertexBuffer::new(display, &mesh).unwrap();
+			let vb = glium::VertexBuffer::new(display, &mesh).unwrap();
+			vbuffs.insert(chunk_pos, vb);
 		}
 		println!("regen took {:?}",
 			std::time::Instant::now() - v);
+	};
+	let gen_chunks_around = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&mut Map, pos :Vector3<isize>| {
+		let v = std::time::Instant::now();
+		let chunk_pos = btchn(pos);
+		let radius = 2;
+		for x in -radius .. radius {
+			for y in -radius .. radius {
+				for z in -radius .. radius {
+					let cpos = chunk_pos + Vector3::new(x, y, z) * BLOCKSIZE;
+					if map.chunks.get(&cpos).is_none() {
+						map.gen_chunk(cpos);
+						vbuffs_update(vbuffs, display, map, cpos);
+					}
+				}
+			}
+		}
 	};
 	let mut vbuffs = gen_vbuffs(&display, &map);
 	let mut selbuff = Vec::new();
@@ -117,6 +133,8 @@ fn main() {
 			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
+
+		gen_chunks_around(&mut vbuffs, &display, &mut map, camera.pos.map(|v| v as isize));
 
 		let screen_dims = display.get_framebuffer_dimensions();
 		// TODO turn off anti-aliasing of the font

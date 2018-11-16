@@ -76,21 +76,20 @@ impl Map {
 			chunks : HashMap::new(),
 		}
 	}
-	pub fn gen_chunks(&mut self) {
+	pub fn gen_chunks_start(&mut self) {
 		let square_size = 10;
 		for x in 0 .. square_size {
 			for y in 0 .. square_size {
 				for z in 0 .. 3 {
-					let pos = Vector3::new(
-						(x * BLOCKSIZE) as isize,
-						(y * BLOCKSIZE) as isize,
-						(z * BLOCKSIZE) as isize,
-					);
-					let chunk = gen_chunk(self.seed, pos);
-					self.chunks.insert(pos, chunk);
+					let pos = Vector3::new(x, y, z) * BLOCKSIZE;
+					self.gen_chunk(pos);
 				}
 			}
 		}
+	}
+	pub fn gen_chunk(&mut self, pos :Vector3<isize>) {
+		let chunk = gen_chunk(self.seed, pos);
+		self.chunks.insert(pos, chunk);
 	}
 	pub fn get_blk(&self, pos :Vector3<isize>) -> Option<MapBlock> {
 		let chunk_pos = btchn(pos);
