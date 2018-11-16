@@ -154,7 +154,7 @@ fn main() {
 				write : true,
 				.. Default::default()
 			},
-			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullingDisabled,
+			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
 			blend :glium::Blend::alpha_blending(),
 			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
 			.. Default::default()
@@ -261,27 +261,40 @@ implement_vertex!(Vertex, position, color);
 
 #[inline]
 fn push_block(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32) {
-	let mut push_face = |(x, y, z), (xsd, ysd, yd, zd), color| {
-		r.push(Vertex { position: [x, y, z], color });
-		r.push(Vertex { position: [x + xsd, y + ysd, z], color });
-		r.push(Vertex { position: [x, y + yd, z + zd], color });
+	macro_rules! push_face {
+		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
+		r.push(Vertex { position: [$x, $y, $z], color : $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
 
-		r.push(Vertex { position: [x + xsd, y + ysd, z], color });
-		r.push(Vertex { position: [x + xsd, y + yd + ysd, z + zd], color });
-		r.push(Vertex { position: [x, y + yd, z + zd], color });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
+		}
+	};
+	macro_rules! push_face_rev {
+		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
+		r.push(Vertex { position: [$x, $y, $z], color : $color });
+
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
+		}
 	};
 	// X-Y face
-	push_face((x, y, z), (siz, 0.0, siz, 0.0), color);
+	push_face!((x, y, z), (siz, 0.0, siz, 0.0), color);
 	// X-Z face
-	push_face((x, y, z), (siz, 0.0, 0.0, siz), colorh);
+	push_face_rev!((x, y, z), (siz, 0.0, 0.0, siz), colorh);
 	// Y-Z face
-	push_face((x, y, z), (0.0, siz, 0.0, siz), colorh);
+	push_face!((x, y, z), (0.0, siz, 0.0, siz), colorh);
 	// X-Y face (z+1)
-	push_face((x, y, z + siz), (siz, 0.0, siz, 0.0), color);
+	push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), color);
 	// X-Z face (y+1)
-	push_face((x, y + siz, z), (siz, 0.0, 0.0, siz), colorh);
+	push_face!((x, y + siz, z), (siz, 0.0, 0.0, siz), colorh);
 	// Y-Z face (x+1)
-	push_face((x + siz, y, z), (0.0, siz, 0.0, siz), colorh);
+	push_face_rev!((x + siz, y, z), (0.0, siz, 0.0, siz), colorh);
 }
 
 fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
