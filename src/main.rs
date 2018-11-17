@@ -22,6 +22,8 @@ use glium_glyph::glyph_brush::{
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
 use std::time::Instant;
+use std::thread;
+use std::sync::mpsc::{channel, Sender, Receiver};
 use frustum_query::frustum::Frustum;
 
 fn main() {
@@ -30,32 +32,30 @@ fn main() {
 	game.run_loop(&mut events_loop);
 }
 
-fn gen_vbuffs<F :Facade>(display :&F, map :&Map) ->
-		HashMap<Vector3<isize>, VertexBuffer<Vertex>> {
-	let v = Instant::now();
-	let ret = map.chunks.iter()
-		.map(|(p, c)| (p, mesh_for_chunk(*p, c)))
-		.map(|(p, m)| (*p, VertexBuffer::new(display, &m).unwrap()))
-		.collect::<HashMap<_, _>>();
-	println!("generating the meshes took {:?}", Instant::now() - v);
-	ret
+fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+		display :&F, meshres_r :&mut Receiver<(Vector3<isize>, Vec<Vertex>)>) {
+	while let Ok((p, m)) = meshres_r.try_recv() {
+		vbuffs.insert(p, VertexBuffer::new(display, &m).unwrap());
+	}
 }
 
-fn vbuffs_update<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
-		display :&F, map :&Map, pos :Vector3<isize>) {
-	let v = Instant::now();
+fn gen_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunk)>, map :&Map) {
+	for (p, c) in map.chunks.iter() {
+		sender.send((*p, *c)).unwrap();
+	}
+}
+
+fn vbuffs_update(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+		map :&Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
 	if let Some(chunk) = map.chunks.get(&chunk_pos) {
-		let mesh = mesh_for_chunk(chunk_pos, chunk);
-		let vb = VertexBuffer::new(display, &mesh).unwrap();
-		vbuffs.insert(chunk_pos, vb);
+		sender.send((chunk_pos, *chunk)).unwrap();
 	}
-	println!("regen took {:?}", Instant::now() - v);
 }
 
 
-fn gen_chunks_around<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
-		display :&F, map :&mut Map, pos :Vector3<isize>) {
+fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+		map :&mut Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
 	let radius = 2;
 	for x in -radius .. radius {
@@ -64,7 +64,7 @@ fn gen_chunks_around<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffe
 				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
 				if map.chunks.get(&cpos).is_none() {
 					map.gen_chunk(cpos);
-					vbuffs_update(vbuffs, display, map, cpos);
+					vbuffs_update(sender, map, cpos);
 				}
 			}
 		}
@@ -101,6 +101,9 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
 
+	meshgen_s :Sender<(Vector3<isize>, MapChunk)>,
+	meshres_r :Receiver<(Vector3<isize>, Vec<Vertex>)>,
+
 	display :glium::Display,
 	program :glium::Program,
 	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
@@ -134,7 +137,16 @@ impl Game {
 		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
 			FRAGMENT_SHADER_SRC, None).unwrap();
 
-		let vbuffs = gen_vbuffs(&display, &map);
+		let (mut meshgen_s, meshgen_r) = channel();
+		let (meshres_s, meshres_r) = channel();
+		thread::spawn(move || {
+			while let Ok((p, chunk)) = meshgen_r.recv() {
+				let v = Instant::now();
+				let _ = meshres_s.send((p, mesh_for_chunk(p, &chunk)));
+				println!("generating mesh took {:?}", Instant::now() - v);
+			}
+		});
+		gen_vbuffs(&mut meshgen_s, &map);
 
 		let grab_cursor = true;
 
@@ -147,9 +159,12 @@ impl Game {
 		let sheight = 768.0;
 
 		Game {
+			meshgen_s,
+			meshres_r,
+
 			display,
 			program,
-			vbuffs,
+			vbuffs : HashMap::new(),
 
 			selected_pos : None,
 
@@ -189,7 +204,7 @@ impl Game {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
 		loop {
-			gen_chunks_around(&mut self.vbuffs, &self.display, &mut self.map, self.camera.pos.map(|v| v as isize));
+			gen_chunks_around(&mut self.meshgen_s, &mut self.map, self.camera.pos.map(|v| v as isize));
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
@@ -206,6 +221,7 @@ impl Game {
 		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
+		recv_vbuffs(&mut self.vbuffs, &self.display, &mut self.meshres_r);
 		let pmatrix = self.camera.get_perspective();
 		let vmatrix = self.camera.get_matrix();
 		let frustum = Frustum::from_modelview_and_projection_2d(
@@ -337,7 +353,7 @@ impl Game {
 									pos_to_update = Some(before_selected);
 								}
 								if let Some(pos) = pos_to_update {
-									vbuffs_update(&mut self.vbuffs, &self.display,
+									vbuffs_update(&mut self.meshgen_s,
 										&self.map, pos);
 								}
 							}

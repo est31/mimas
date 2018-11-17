@@ -30,6 +30,7 @@ impl MapBlock {
 	}
 }
 
+#[derive(Copy, Clone)]
 pub struct MapChunk {
 	pub data :[MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
 }
