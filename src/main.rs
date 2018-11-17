@@ -19,6 +19,7 @@ use glium_glyph::glyph_brush::{
 };
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
+use std::time::Instant;
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -62,28 +63,26 @@ fn main() {
 		fragment_shader_src, None).unwrap();
 
 	let gen_vbuffs = |display, map :&Map| {
-		let v = std::time::Instant::now();
+		let v = Instant::now();
 		let ret = map.chunks.iter()
 			.map(|(p, c)| (p, mesh_for_chunk(*p, c)))
 			.map(|(p, m)| (*p, glium::VertexBuffer::new(display, &m).unwrap()))
 			.collect::<HashMap<_, _>>();
-		println!("generating the meshes took {:?}",
-			std::time::Instant::now() - v);
+		println!("generating the meshes took {:?}", Instant::now() - v);
 		ret
 	};
 	let vbuffs_update = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&Map, pos :Vector3<isize>| {
-		let v = std::time::Instant::now();
+		let v = Instant::now();
 		let chunk_pos = btchn(pos);
 		if let Some(chunk) = map.chunks.get(&chunk_pos) {
 			let mesh = mesh_for_chunk(chunk_pos, chunk);
 			let vb = glium::VertexBuffer::new(display, &mesh).unwrap();
 			vbuffs.insert(chunk_pos, vb);
 		}
-		println!("regen took {:?}",
-			std::time::Instant::now() - v);
+		println!("regen took {:?}", Instant::now() - v);
 	};
 	let gen_chunks_around = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&mut Map, pos :Vector3<isize>| {
-		let v = std::time::Instant::now();
+		let v = Instant::now();
 		let chunk_pos = btchn(pos);
 		let radius = 2;
 		for x in -radius .. radius {
@@ -113,6 +112,8 @@ fn main() {
 	let mut glyph_brush = GlyphBrush::new(&display, fonts);
 
 	let mut last_pos :Option<winit::dpi::LogicalPosition> = None;
+	let mut last_frame_time = Instant::now();
+	let mut last_fps = 0.0;
 	loop {
 		// building the uniforms
 		let uniforms = uniform! {
@@ -133,6 +134,23 @@ fn main() {
 			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
+		let cur_time = Instant::now();
+		let time_delta = cur_time - last_frame_time;
+		last_frame_time = cur_time;
+		// Soon we can just convert to u128. It's already in FCP.
+		// https://github.com/rust-lang/rust/issues/50202
+		// Very soon...
+		let float_delta = time_delta.as_secs() as f32 + time_delta.subsec_millis() as f32 / 1000.0;
+		const EPS :f32 = 0.1;
+		let fps_cur_term = if float_delta > 0.0 {
+			1.0 / float_delta
+		} else {
+			// At the beginning float_delta can be zero
+			// and 1/0 would fuck up the last_fps value
+			0.0
+		};
+		let fps = last_fps * (1.0 - EPS) + fps_cur_term * EPS;
+		last_fps = fps;
 
 		gen_chunks_around(&mut vbuffs, &display, &mut map, camera.pos.map(|v| v as isize));
 
@@ -140,8 +158,8 @@ fn main() {
 		// TODO turn off anti-aliasing of the font
 		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
 		glyph_brush.queue(Section {
-			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}, {}", camera.pos.x, camera.pos.y,
-				camera.pos.z, camera.pitch, camera.yaw, sel_text),
+			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}, {}, FPS: {:1.2}", camera.pos.x, camera.pos.y,
+				camera.pos.z, camera.pitch, camera.yaw, sel_text, fps as u16),
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
 			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
