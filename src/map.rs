@@ -48,17 +48,20 @@ impl MapChunk {
 
 pub fn gen_chunk(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let noise = Perlin::new().set_seed(seed);
+	let mnoise = Perlin::new().set_seed(seed.wrapping_add(23));
 	let mut res = MapChunk {
 		data :[MapBlock::Air; (BLOCKSIZE * BLOCKSIZE * BLOCKSIZE) as usize],
 	};
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
-			let f = 0.05356;
+			let f = 0.02356;
 			let p = [(pos.x + x) as f64 * f, (pos.y + y) as f64 * f];
-			let elev = noise.get(p) * 8.3;
+			let mf = 0.0018671;
+			let mp = [(pos.x + x) as f64 * mf, (pos.y + y) as f64 * mf];
+			let elev = noise.get(p) * 8.3 + mnoise.get(mp) * 23.27713;
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
-				let el = std::cmp::min(elev_blocks, BLOCKSIZE);
+				let el = std::cmp::max(std::cmp::min(elev_blocks, BLOCKSIZE), 0);
 				if pos.z < 0 {
 					for z in 0 .. el {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
