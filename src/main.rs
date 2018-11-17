@@ -311,6 +311,9 @@ impl Game {
 									let blk = self.map.get_blk_mut(before_selected).unwrap();
 									*blk = MapBlock::Wood;
 									pos_to_update = Some(before_selected);
+								} else if button == glutin::MouseButton::Middle {
+									spawn_tree(&mut self.map, before_selected);
+									pos_to_update = Some(before_selected);
 								}
 								if let Some(pos) = pos_to_update {
 									vbuffs_update(&mut self.vbuffs, &self.display,
@@ -393,8 +396,9 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 	for x in 0 .. BLOCKSIZE {
 		for y in 0 .. BLOCKSIZE {
 			for z in 0 .. BLOCKSIZE {
-				let mut push_blk = |color, colorh| {
+				let mut push_blk = |color :[f32; 4]| {
 						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
+						let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
 						push_block(&mut r, pos, color, colorh, 1.0, |[xo, yo, zo]| {
 							let pos = Vector3::new(x + xo, y + yo, z + zo);
 							let outside = pos.map(|v| v < 0 || v >= BLOCKSIZE);
@@ -410,22 +414,45 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 				match *chunk.get_blk(Vector3::new(x, y, z)) {
 					MapBlock::Air => (),
 					MapBlock::Ground => {
-						push_blk([0.0, 1.0, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]);
+						push_blk([0.0, 1.0, 0.0, 1.0]);
 					},
 					MapBlock::Water => {
-						push_blk([0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.5, 1.0]);
+						push_blk([0.0, 0.0, 1.0, 1.0]);
 					},
 					MapBlock::Wood => {
-						push_blk([0.5, 0.25, 0.0, 1.0], [0.25, 0.125, 0.0, 1.0]);
+						push_blk([0.5, 0.25, 0.0, 1.0]);
 					},
 					MapBlock::Stone => {
-						push_blk([0.5, 0.5, 0.5, 1.0], [0.25, 0.25, 0.25, 1.0]);
+						push_blk([0.5, 0.5, 0.5, 1.0]);
+					},
+					MapBlock::Tree => {
+						push_blk([0.38, 0.25, 0.125, 1.0]);
+					},
+					MapBlock::Leaves => {
+						push_blk([0.0, 0.4, 0.0, 1.0]);
 					},
 				}
 			}
 		}
 	}
 	r
+}
+
+fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
+	let mut sp_nd = |(x, y, z), mb| {
+		let blk = map.get_blk_mut(pos + Vector3::new(x, y, z)).unwrap();
+		*blk = mb;
+	};
+	for x in -1 ..= 1 {
+		for y in -1 ..= 1 {
+			sp_nd((x, y, 3), MapBlock::Leaves);
+			sp_nd((x, y, 4), MapBlock::Leaves);
+			sp_nd((x, y, 5), MapBlock::Leaves);
+		}
+	}
+	for z in 0 .. 4 {
+		sp_nd((0, 0, z), MapBlock::Tree);
+	}
 }
 
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {

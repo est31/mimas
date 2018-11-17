@@ -12,6 +12,8 @@ pub enum MapBlock {
 	Ground,
 	Wood,
 	Stone,
+	Tree,
+	Leaves,
 }
 
 impl MapBlock {
@@ -20,7 +22,9 @@ impl MapBlock {
 			MapBlock::Water |
 			MapBlock::Ground |
 			MapBlock::Wood |
-			MapBlock::Stone => true,
+			MapBlock::Stone |
+			MapBlock::Tree |
+			MapBlock::Leaves => true,
 			_ => false
 		}
 	}
