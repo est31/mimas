@@ -505,7 +505,7 @@ impl Camera {
 		let (dx, dy, dz) = (pointing_at_distance.x, pointing_at_distance.y, pointing_at_distance.z);
 		let (px, py, pz) = (self.pos.x, self.pos.y, self.pos.z);
 		for ((xs, ys, zs), (xe, ye, ze)) in WalkVoxels::<f32, isize>::new((px, py, pz),
-				(dx, dy, dz), &VoxelOrigin::Center).steps() {
+				(dx, dy, dz), &VoxelOrigin::Corner).steps() {
 			let vs = Vector3::new(xs as isize, ys as isize, zs as isize);
 			let ve = Vector3::new(xe as isize, ye as isize, ze as isize);
 			if let Some(blk) = map.get_blk(ve) {
