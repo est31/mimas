@@ -57,7 +57,7 @@ fn vbuffs_update(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 		map :&mut Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
-	let radius = 2;
+	let radius = 4;
 	for x in -radius .. radius {
 		for y in -radius .. radius {
 			for z in -radius .. radius {
