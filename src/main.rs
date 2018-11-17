@@ -12,11 +12,11 @@ mod map;
 use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::backend::Facade;
-use nalgebra::{Vector3, Matrix3, Matrix4, Point3, Rotation3};
+use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
-	rusttype::{self, Font}, Section,
+	rusttype::Font, Section,
 };
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
@@ -54,7 +54,6 @@ fn vbuffs_update<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Ve
 
 fn gen_chunks_around<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
 		display :&F, map :&mut Map, pos :Vector3<isize>) {
-	let v = Instant::now();
 	let chunk_pos = btchn(pos);
 	let radius = 2;
 	for x in -radius .. radius {
@@ -133,7 +132,7 @@ impl Game {
 		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
 			FRAGMENT_SHADER_SRC, None).unwrap();
 
-		let mut vbuffs = gen_vbuffs(&display, &map);
+		let vbuffs = gen_vbuffs(&display, &map);
 
 		let grab_cursor = true;
 
@@ -200,7 +199,7 @@ impl Game {
 				self.display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
-				});
+				}).unwrap();
 			}
 		}
 	}
@@ -315,7 +314,7 @@ impl Game {
 								}
 								if let Some(pos) = pos_to_update {
 									vbuffs_update(&mut self.vbuffs, &self.display,
-										&self.map, selected_pos);
+										&self.map, pos);
 								}
 							}
 						}
