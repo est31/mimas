@@ -257,6 +257,7 @@ fn main() {
 				_ => (),
 			}
 		});
+		camera.tick(float_delta);
 		if close {
 			break;
 		}
@@ -400,6 +401,14 @@ struct Camera {
 	pitch :f32,
 	yaw :f32,
 	pos :Vector3<f32>,
+
+	forward_pressed :bool,
+	left_pressed :bool,
+	right_pressed :bool,
+	backward_pressed :bool,
+
+	up_pressed :bool,
+	down_pressed :bool,
 }
 
 impl Camera {
@@ -409,6 +418,14 @@ impl Camera {
 			pitch : 0.0,
 			yaw : 0.0,
 			pos : Vector3::new(60.0, 40.0, 20.0),
+
+			forward_pressed : false,
+			left_pressed : false,
+			right_pressed : false,
+			backward_pressed : false,
+
+			up_pressed : false,
+			down_pressed : false,
 		}
 	}
 	fn handle_kinput(&mut self, input :glium::glutin::KeyboardInput) {
@@ -416,18 +433,43 @@ impl Camera {
 			Some(key) => key,
 			None => return,
 		};
-		let delta = 2.0;
-		let mut delta_pos = Vector3::zero();
+		let mut b = None;
 		match key {
-			glutin::VirtualKeyCode::W => delta_pos += Vector3::x(),
-			glutin::VirtualKeyCode::A => delta_pos += Vector3::y(),
-			glutin::VirtualKeyCode::S => delta_pos -= Vector3::x(),
-			glutin::VirtualKeyCode::D => delta_pos -= Vector3::y(),
-			glutin::VirtualKeyCode::Space => delta_pos += Vector3::z(),
-			glutin::VirtualKeyCode::LShift => delta_pos -= Vector3::z(),
+			glutin::VirtualKeyCode::W => b = Some(&mut self.forward_pressed),
+			glutin::VirtualKeyCode::A => b = Some(&mut self.left_pressed),
+			glutin::VirtualKeyCode::S => b = Some(&mut self.backward_pressed),
+			glutin::VirtualKeyCode::D => b = Some(&mut self.right_pressed),
+			glutin::VirtualKeyCode::Space => b = Some(&mut self.up_pressed),
+			glutin::VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
 		_ => (),
 		}
-		delta_pos *= delta;
+		if let Some(b) = b {
+			*b = input.state == glutin::ElementState::Pressed;
+		}
+	}
+	fn tick(&mut self, time_delta :f32) {
+		let mut delta_pos = Vector3::zero();
+		if self.forward_pressed {
+			delta_pos += Vector3::x();
+		}
+		if self.backward_pressed {
+			delta_pos -= Vector3::x();
+		}
+		if self.left_pressed {
+			delta_pos += Vector3::y();
+		}
+		if self.right_pressed {
+			delta_pos -= Vector3::y();
+		}
+		if self.up_pressed {
+			delta_pos += Vector3::z()
+		}
+		if self.down_pressed {
+			delta_pos -= Vector3::z();
+		}
+		delta_pos.try_normalize_mut(std::f32::EPSILON);
+		const DELTA :f32 = 20.0;
+		delta_pos *= DELTA * time_delta;
 		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
 		self.pos += delta_pos;
 	}
