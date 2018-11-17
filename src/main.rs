@@ -10,7 +10,7 @@ extern crate frustum_query;
 
 mod map;
 
-use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
+use map::{Map, MapChunk, CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::backend::Facade;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
@@ -61,7 +61,7 @@ fn gen_chunks_around<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffe
 	for x in -radius .. radius {
 		for y in -radius .. radius {
 			for z in -radius .. radius {
-				let cpos = chunk_pos + Vector3::new(x, y, z) * BLOCKSIZE;
+				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
 				if map.chunks.get(&cpos).is_none() {
 					map.gen_chunk(cpos);
 					vbuffs_update(vbuffs, display, map, cpos);
@@ -264,8 +264,8 @@ impl Game {
 					// Frustum culling.
 					// We approximate chunks as spheres here, as the library
 					// has no cube checker.
-					let p = p.map(|v| (v + BLOCKSIZE / 2) as f32);
-					let r = BLOCKSIZE as f32 * 3.0_f32.sqrt();
+					let p = p.map(|v| (v + CHUNKSIZE / 2) as f32);
+					let r = CHUNKSIZE as f32 * 3.0_f32.sqrt();
 					if frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
 						Some(m)
 					} else {
@@ -414,15 +414,15 @@ fn push_block<F :Fn([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3
 fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
-	for x in 0 .. BLOCKSIZE {
-		for y in 0 .. BLOCKSIZE {
-			for z in 0 .. BLOCKSIZE {
+	for x in 0 .. CHUNKSIZE {
+		for y in 0 .. CHUNKSIZE {
+			for z in 0 .. CHUNKSIZE {
 				let mut push_blk = |color :[f32; 4]| {
 						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
 						let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
 						push_block(&mut r, pos, color, colorh, 1.0, |[xo, yo, zo]| {
 							let pos = Vector3::new(x + xo, y + yo, z + zo);
-							let outside = pos.map(|v| v < 0 || v >= BLOCKSIZE);
+							let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 							if outside.x || outside.y || outside.z {
 								return false;
 							}
@@ -514,15 +514,15 @@ fn dtr(v :f32) -> f32 {
 /// Block position to chunk position
 fn btchn(v :Vector3<isize>) -> Vector3<isize> {
 	fn r(x :isize) -> isize {
-		let x = x as f32 / (BLOCKSIZE as f32);
-		x.floor() as isize * BLOCKSIZE
+		let x = x as f32 / (CHUNKSIZE as f32);
+		x.floor() as isize * CHUNKSIZE
 	}
 	v.map(r)
 }
 
 /// Block position to position inside chunk
 fn btpic(v :Vector3<isize>) -> Vector3<isize> {
-	v.map(|v| mod_euc(v as f32, BLOCKSIZE as f32) as isize)
+	v.map(|v| mod_euc(v as f32, CHUNKSIZE as f32) as isize)
 }
 
 struct Camera {
