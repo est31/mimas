@@ -10,7 +10,8 @@ extern crate num_traits;
 mod map;
 
 use map::{Map, MapChunk, BLOCKSIZE, MapBlock};
-use glium::{glutin, Surface};
+use glium::{glutin, Surface, VertexBuffer};
+use glium::backend::Facade;
 use nalgebra::{Vector3, Matrix3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
@@ -23,120 +24,150 @@ use std::time::Instant;
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
-	let window = glutin::WindowBuilder::new()
-		.with_title("Mehlon");
-	let context = glutin::ContextBuilder::new().with_depth_buffer(24);
-	let display = glium::Display::new(window, context, &events_loop).unwrap();
+	let mut game = Game::new(&events_loop);
+	game.run_loop(&mut events_loop);
+}
 
-	let mut map = Map::new(78);
-	map.gen_chunks_start();
+fn gen_vbuffs<F :Facade>(display :&F, map :&Map) ->
+		HashMap<Vector3<isize>, VertexBuffer<Vertex>> {
+	let v = Instant::now();
+	let ret = map.chunks.iter()
+		.map(|(p, c)| (p, mesh_for_chunk(*p, c)))
+		.map(|(p, m)| (*p, VertexBuffer::new(display, &m).unwrap()))
+		.collect::<HashMap<_, _>>();
+	println!("generating the meshes took {:?}", Instant::now() - v);
+	ret
+}
 
-	let mut camera = Camera::new();
+fn vbuffs_update<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+		display :&F, map :&Map, pos :Vector3<isize>) {
+	let v = Instant::now();
+	let chunk_pos = btchn(pos);
+	if let Some(chunk) = map.chunks.get(&chunk_pos) {
+		let mesh = mesh_for_chunk(chunk_pos, chunk);
+		let vb = VertexBuffer::new(display, &mesh).unwrap();
+		vbuffs.insert(chunk_pos, vb);
+	}
+	println!("regen took {:?}", Instant::now() - v);
+}
 
-	let vertex_shader_src = r#"
-		#version 140
-		in vec3 position;
-		in vec4 color;
 
-		out vec4 vcolor;
-
-		uniform mat4 pmatrix;
-		uniform mat4 vmatrix;
-		void main() {
-			vcolor = color;
-			gl_Position = pmatrix * vmatrix * vec4(position, 1.0);
-		}
-	"#;
-
-	let fragment_shader_src = r#"
-		#version 140
-		in vec4 vcolor;
-
-		out vec4 fcolor;
-
-		void main() {
-			fcolor = vcolor;
-		}
-	"#;
-
-	let program = glium::Program::from_source(&display, vertex_shader_src,
-		fragment_shader_src, None).unwrap();
-
-	let gen_vbuffs = |display, map :&Map| {
-		let v = Instant::now();
-		let ret = map.chunks.iter()
-			.map(|(p, c)| (p, mesh_for_chunk(*p, c)))
-			.map(|(p, m)| (*p, glium::VertexBuffer::new(display, &m).unwrap()))
-			.collect::<HashMap<_, _>>();
-		println!("generating the meshes took {:?}", Instant::now() - v);
-		ret
-	};
-	let vbuffs_update = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&Map, pos :Vector3<isize>| {
-		let v = Instant::now();
-		let chunk_pos = btchn(pos);
-		if let Some(chunk) = map.chunks.get(&chunk_pos) {
-			let mesh = mesh_for_chunk(chunk_pos, chunk);
-			let vb = glium::VertexBuffer::new(display, &mesh).unwrap();
-			vbuffs.insert(chunk_pos, vb);
-		}
-		println!("regen took {:?}", Instant::now() - v);
-	};
-	let gen_chunks_around = |vbuffs :&mut HashMap<Vector3<_>, glium::VertexBuffer<_>>, display, map :&mut Map, pos :Vector3<isize>| {
-		let v = Instant::now();
-		let chunk_pos = btchn(pos);
-		let radius = 2;
-		for x in -radius .. radius {
-			for y in -radius .. radius {
-				for z in -radius .. radius {
-					let cpos = chunk_pos + Vector3::new(x, y, z) * BLOCKSIZE;
-					if map.chunks.get(&cpos).is_none() {
-						map.gen_chunk(cpos);
-						vbuffs_update(vbuffs, display, map, cpos);
-					}
+fn gen_chunks_around<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+		display :&F, map :&mut Map, pos :Vector3<isize>) {
+	let v = Instant::now();
+	let chunk_pos = btchn(pos);
+	let radius = 2;
+	for x in -radius .. radius {
+		for y in -radius .. radius {
+			for z in -radius .. radius {
+				let cpos = chunk_pos + Vector3::new(x, y, z) * BLOCKSIZE;
+				if map.chunks.get(&cpos).is_none() {
+					map.gen_chunk(cpos);
+					vbuffs_update(vbuffs, display, map, cpos);
 				}
 			}
 		}
-	};
-	let mut vbuffs = gen_vbuffs(&display, &map);
-	let mut selbuff = Vec::new();
-
-	let grab_cursor = true;
-
-	if grab_cursor {
-		display.gl_window().hide_cursor(true);
-		display.gl_window().grab_cursor(true).unwrap();
 	}
+}
 
-	let kenpixel: &[u8] = include_bytes!("../assets/kenney-pixel.ttf");
-	let fonts = vec![Font::from_bytes(kenpixel).unwrap()];
-	let mut glyph_brush = GlyphBrush::new(&display, fonts);
+const VERTEX_SHADER_SRC :&str = r#"
+	#version 140
+	in vec3 position;
+	in vec4 color;
 
-	let mut last_pos :Option<winit::dpi::LogicalPosition> = None;
-	let mut last_frame_time = Instant::now();
-	let mut last_fps = 0.0;
-	loop {
-		// building the uniforms
-		let uniforms = uniform! {
-			vmatrix : camera.get_matrix(),
-			pmatrix : camera.get_perspective()
-		};
+	out vec4 vcolor;
 
-		let selected_pos = camera.get_selected_pos(&map);
-		let mut sel_text = "sel = None".to_string();
-		selbuff.clear();
-		if let Some((selected_pos, _)) = selected_pos {
-			let blk = map.get_blk(selected_pos).unwrap();
-			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
+	uniform mat4 pmatrix;
+	uniform mat4 vmatrix;
+	void main() {
+		vcolor = color;
+		gl_Position = pmatrix * vmatrix * vec4(position, 1.0);
+	}
+"#;
 
-			// TODO: only update if the position actually changed from the prior one
-			// this spares us needless chatter with the GPU
-			let vertices = selection_mesh(selected_pos);
-			let vbuff = glium::VertexBuffer::new(&display, &vertices).unwrap();
-			selbuff = vec![vbuff];
+const FRAGMENT_SHADER_SRC :&str = r#"
+	#version 140
+	in vec4 vcolor;
+
+	out vec4 fcolor;
+
+	void main() {
+		fcolor = vcolor;
+	}
+"#;
+
+const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
+
+struct Game {
+
+	display :glium::Display,
+	program :glium::Program,
+	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+
+	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
+
+	last_pos :Option<winit::dpi::LogicalPosition>,
+
+	last_frame_time :Instant,
+	last_fps :f32,
+
+	grab_cursor :bool,
+	map :Map,
+	camera :Camera,
+
+	swidth :f64,
+	sheight :f64,
+}
+
+impl Game {
+	pub fn new(events_loop :&glutin::EventsLoop) -> Self {
+		let window = glutin::WindowBuilder::new()
+			.with_title("Mehlon");
+		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
+		let display = glium::Display::new(window, context, events_loop).unwrap();
+
+		let mut map = Map::new(78);
+		map.gen_chunks_start();
+		let camera = Camera::new();
+
+		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
+			FRAGMENT_SHADER_SRC, None).unwrap();
+
+		let mut vbuffs = gen_vbuffs(&display, &map);
+
+		let grab_cursor = true;
+
+		if grab_cursor {
+			display.gl_window().hide_cursor(true);
+			display.gl_window().grab_cursor(true).unwrap();
 		}
+
+		let swidth = 1024.0;
+		let sheight = 768.0;
+
+		Game {
+			display,
+			program,
+			vbuffs,
+
+			selected_pos : None,
+
+			last_pos : None,
+			last_frame_time : Instant::now(),
+			last_fps : 0.0,
+			grab_cursor,
+			map,
+			camera,
+
+			swidth,
+			sheight,
+		}
+	}
+	/// Update the stored fps value and return the delta time
+	fn update_fps(&mut self) -> f32 {
 		let cur_time = Instant::now();
-		let time_delta = cur_time - last_frame_time;
-		last_frame_time = cur_time;
+		let time_delta = cur_time - self.last_frame_time;
+		self.last_frame_time = cur_time;
 		// Soon we can just convert to u128. It's already in FCP.
 		// https://github.com/rust-lang/rust/issues/50202
 		// Very soon...
@@ -149,17 +180,56 @@ fn main() {
 			// and 1/0 would fuck up the last_fps value
 			0.0
 		};
-		let fps = last_fps * (1.0 - EPS) + fps_cur_term * EPS;
-		last_fps = fps;
+		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
+		self.last_fps = fps;
+		float_delta
+	}
+	fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
+		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
+		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
+		loop {
+			gen_chunks_around(&mut self.vbuffs, &self.display, &mut self.map, self.camera.pos.map(|v| v as isize));
+			self.render(&mut glyph_brush);
+			let float_delta = self.update_fps();
+			let close = self.handle_events(events_loop);
+			self.camera.tick(float_delta);
+			if close {
+				break;
+			}
+			if self.grab_cursor {
+				self.display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
+					x : self.swidth / 2.0,
+					y : self.sheight / 2.0,
+				});
+			}
+		}
+	}
+	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
+		// building the uniforms
+		let uniforms = uniform! {
+			vmatrix : self.camera.get_matrix(),
+			pmatrix : self.camera.get_perspective()
+		};
+		self.selected_pos = self.camera.get_selected_pos(&self.map);
+		let mut sel_text = "sel = None".to_string();
+		let mut selbuff = Vec::new();
+		if let Some((selected_pos, _)) = self.selected_pos {
+			let blk = self.map.get_blk(selected_pos).unwrap();
+			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
 
-		gen_chunks_around(&mut vbuffs, &display, &mut map, camera.pos.map(|v| v as isize));
-
-		let screen_dims = display.get_framebuffer_dimensions();
+			// TODO: only update if the position actually changed from the prior one
+			// this spares us needless chatter with the GPU
+			let vertices = selection_mesh(selected_pos);
+			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
+			selbuff = vec![vbuff];
+		}
+		let screen_dims = self.display.get_framebuffer_dimensions();
 		// TODO turn off anti-aliasing of the font
 		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
 		glyph_brush.queue(Section {
-			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}, {}, FPS: {:1.2}", camera.pos.x, camera.pos.y,
-				camera.pos.z, camera.pitch, camera.yaw, sel_text, fps as u16),
+			text : &format!("pos = ({}, {}, {}) pi = {}, yw = {}, {}, FPS: {:1.2}", self.camera.pos.x, self.camera.pos.y,
+				self.camera.pos.z, self.camera.pitch,
+				self.camera.yaw, sel_text, self.last_fps as u16),
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
 			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
@@ -179,21 +249,19 @@ fn main() {
 		};
 
 		// drawing a frame
-		let mut target = display.draw();
+		let mut target = self.display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
-		for buff in vbuffs.values().chain(selbuff.iter()) {
+		for buff in self.vbuffs.values().chain(selbuff.iter()) {
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-				&program, &uniforms, &params).unwrap();
+				&self.program, &uniforms, &params).unwrap();
 		}
-		glyph_brush.draw_queued(&display, &mut target);
+		glyph_brush.draw_queued(&self.display, &mut target);
 
 		target.finish().unwrap();
-
-		let mut swidth = 1024.0;
-		let mut sheight = 768.0;
-
+	}
+	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
 		let mut close = false;
 		events_loop.poll_events(|event| {
 			match event {
@@ -202,9 +270,9 @@ fn main() {
 					glutin::WindowEvent::CloseRequested => close = true,
 
 					glutin::WindowEvent::Resized(glium::glutin::dpi::LogicalSize {width, height}) => {
-						swidth = width;
-						sheight = height;
-						camera.aspect_ratio = (width / height) as f32;
+						self.swidth = width;
+						self.sheight = height;
+						self.camera.aspect_ratio = (width / height) as f32;
 					},
 					glutin::WindowEvent::KeyboardInput { input, .. } => {
 						match input.virtual_keycode {
@@ -213,40 +281,41 @@ fn main() {
 							}
 							_ => (),
 						}
-						camera.handle_kinput(input);
+						self.camera.handle_kinput(input);
 
 					},
 					glutin::WindowEvent::CursorMoved { position, .. } => {
-						if grab_cursor {
-							last_pos = Some(winit::dpi::LogicalPosition {
-								x : swidth / 2.0,
-								y : sheight / 2.0,
+						if self.grab_cursor {
+							self.last_pos = Some(winit::dpi::LogicalPosition {
+								x : self.swidth / 2.0,
+								y : self.sheight / 2.0,
 							});
 						}
-						if let Some(last) = last_pos {
+						if let Some(last) = self.last_pos {
 							let delta = winit::dpi::LogicalPosition {
 								x : position.x - last.x,
 								y : position.y - last.y,
 							};
-							camera.handle_mouse_move(delta);
+							self.camera.handle_mouse_move(delta);
 						}
-						last_pos = Some(position);
+						self.last_pos = Some(position);
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
 						if state == glutin::ElementState::Pressed {
-							if let Some((selected_pos, before_selected)) = selected_pos {
+							if let Some((selected_pos, before_selected)) = self.selected_pos {
 								let mut pos_to_update = None;
 								if button == glutin::MouseButton::Left {
-									let blk = map.get_blk_mut(selected_pos).unwrap();
+									let blk = self.map.get_blk_mut(selected_pos).unwrap();
 									*blk = MapBlock::Air;
 									pos_to_update = Some(selected_pos);
 								} else if button == glutin::MouseButton::Right {
-									let blk = map.get_blk_mut(before_selected).unwrap();
+									let blk = self.map.get_blk_mut(before_selected).unwrap();
 									*blk = MapBlock::Wood;
 									pos_to_update = Some(before_selected);
 								}
 								if let Some(pos) = pos_to_update {
-									vbuffs_update(&mut vbuffs, &display, &map, selected_pos);
+									vbuffs_update(&mut self.vbuffs, &self.display,
+										&self.map, selected_pos);
 								}
 							}
 						}
@@ -257,16 +326,7 @@ fn main() {
 				_ => (),
 			}
 		});
-		camera.tick(float_delta);
-		if close {
-			break;
-		}
-		if grab_cursor {
-			display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
-				x : swidth / 2.0,
-				y : sheight / 2.0,
-			});
-		}
+		close
 	}
 }
 
