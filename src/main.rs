@@ -6,6 +6,7 @@ extern crate winit;
 extern crate glium_glyph;
 extern crate line_drawing;
 extern crate num_traits;
+extern crate frustum_query;
 
 mod map;
 
@@ -21,6 +22,7 @@ use glium_glyph::glyph_brush::{
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
 use std::time::Instant;
+use frustum_query::frustum::Frustum;
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -204,10 +206,16 @@ impl Game {
 		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
+		let pmatrix = self.camera.get_perspective();
+		let vmatrix = self.camera.get_matrix();
+		let frustum = Frustum::from_modelview_and_projection_2d(
+			&vmatrix,
+			&pmatrix,
+		);
 		// building the uniforms
 		let uniforms = uniform! {
-			vmatrix : self.camera.get_matrix(),
-			pmatrix : self.camera.get_perspective()
+			vmatrix : vmatrix,
+			pmatrix : pmatrix
 		};
 		self.selected_pos = self.camera.get_selected_pos(&self.map);
 		let mut sel_text = "sel = None".to_string();
@@ -251,7 +259,20 @@ impl Game {
 		let mut target = self.display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
-		for buff in self.vbuffs.values().chain(selbuff.iter()) {
+		for buff in self.vbuffs.iter()
+				.filter_map(|(p, m)| {
+					// Frustum culling.
+					// We approximate chunks as spheres here, as the library
+					// has no cube checker.
+					let p = p.map(|v| (v + BLOCKSIZE / 2) as f32);
+					let r = BLOCKSIZE as f32 * 3.0_f32.sqrt();
+					if frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
+						Some(m)
+					} else {
+						None
+					}
+				})
+				.chain(selbuff.iter()) {
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&self.program, &uniforms, &params).unwrap();

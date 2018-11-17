@@ -260,6 +260,11 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "frustum_query"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "fuchsia-zircon"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,6 +496,7 @@ dependencies = [
 name = "mehlon"
 version = "0.1.0"
 dependencies = [
+ "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1059,6 +1065,7 @@ dependencies = [
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum foreign-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 "checksum foreign-types-shared 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
+"checksum frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e1771c26abed26b2527d888742fffd27dab86d205bf4846748abf29c06ef5a05"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"
 "checksum fuchsia-zircon-sys 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 "checksum generic-array 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8107dafa78c80c848b71b60133954b4a58609a3a1a5f9af037ecc7f67280f369"

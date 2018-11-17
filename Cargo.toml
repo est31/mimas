@@ -10,6 +10,7 @@ authors = ["est31 <MTest31@outlook.com>"]
 noise = "0.5"
 nalgebra = "0.16"
 num-traits = "0.2"
+frustum_query = "0.1"
 glium = "0.22"
 winit = "0.16"
 #glium-glyph = { path = "../glium-glyph" }
