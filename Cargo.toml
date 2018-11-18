@@ -9,6 +9,7 @@ authors = ["est31 <MTest31@outlook.com>"]
 [dependencies]
 noise = "0.5"
 nalgebra = "0.16"
+ncollide3d = "0.17.2"
 num-traits = "0.2"
 frustum_query = "0.1"
 glium = "0.22"

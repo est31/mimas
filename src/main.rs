@@ -1,5 +1,6 @@
 extern crate noise;
 extern crate nalgebra;
+extern crate ncollide3d;
 #[macro_use]
 extern crate glium;
 extern crate winit;
@@ -15,7 +16,7 @@ mod map;
 use map::{Map, MapChunkData, spawn_tree, CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::backend::Facade;
-use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
+use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
@@ -27,6 +28,8 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use frustum_query::frustum::Frustum;
+use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
+use ncollide3d::query;
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -34,10 +37,10 @@ fn main() {
 	game.run_loop(&mut events_loop);
 }
 
-fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
-		display :&F, meshres_r :&mut Receiver<(Vector3<isize>, Vec<Vertex>)>) {
-	while let Ok((p, m)) = meshres_r.try_recv() {
-		vbuffs.insert(p, VertexBuffer::new(display, &m).unwrap());
+fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, (Compound<f32>, VertexBuffer<Vertex>)>,
+		display :&F, meshres_r :&mut Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>) {
+	while let Ok((p, c, m)) = meshres_r.try_recv() {
+		vbuffs.insert(p, (c, VertexBuffer::new(display, &m).unwrap()));
 	}
 }
 
@@ -107,11 +110,11 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 struct Game {
 
 	meshgen_s :Sender<(Vector3<isize>, MapChunkData)>,
-	meshres_r :Receiver<(Vector3<isize>, Vec<Vertex>)>,
+	meshres_r :Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>,
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+	vbuffs :HashMap<Vector3<isize>, (Compound<f32>, VertexBuffer<Vertex>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 
@@ -147,7 +150,14 @@ impl Game {
 		thread::spawn(move || {
 			while let Ok((p, chunk)) = meshgen_r.recv() {
 				let v = Instant::now();
-				let _ = meshres_s.send((p, mesh_for_chunk(p, &chunk)));
+				let mut shapes = Vec::new();
+				let mesh = mesh_for_chunk(p, &chunk, |p :Vector3<isize>| {
+					let iso = Isometry3::new(p.map(|v| v as f32).into(), nalgebra::zero());
+					let cuboid = ShapeHandle::new(Cuboid::new(Vector3::new(0.5, 0.5, 0.5)));
+					shapes.push((iso, cuboid));
+				});
+				let compound = Compound::new(shapes);
+				let _ = meshres_s.send((p, compound, mesh));
 				println!("generating mesh took {:?}", Instant::now() - v);
 			}
 		});
@@ -208,7 +218,9 @@ impl Game {
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
-			self.camera.tick(float_delta);
+			let chunk_pos = btchn(self.camera.pos.map(|v| v as isize));
+			let col = self.vbuffs.get(&chunk_pos).map(|v| &v.0);
+			self.camera.tick(float_delta, col);
 			if close {
 				break;
 			}
@@ -276,7 +288,7 @@ impl Game {
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
 		for buff in self.vbuffs.iter()
-				.filter_map(|(p, m)| {
+				.filter_map(|(p, (_c, m))| {
 					// Frustum culling.
 					// We approximate chunks as spheres here, as the library
 					// has no cube checker.
@@ -391,7 +403,7 @@ struct Vertex {
 implement_vertex!(Vertex, position, color);
 
 #[inline]
-fn push_block<F :Fn([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32, blocked :F) {
+fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32, mut blocked :F) {
 	macro_rules! push_face {
 		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
 		r.push(Vertex { position: [$x, $y, $z], color : $color });
@@ -440,26 +452,37 @@ fn push_block<F :Fn([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3
 	}
 }
 
-fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) ->
+fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChunkData, mut f :F) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
 			for z in 0 .. CHUNKSIZE {
 				let mut push_blk = |color :[f32; 4]| {
-						let pos = [offs.x as f32 + x as f32, offs.y as f32 + y as f32, offs.z as f32 + z as f32];
+						let pos = offs + Vector3::new(x, y, z);
+						let fpos = [pos.x as f32, pos.y as f32, pos.z as f32];
 						let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
-						push_block(&mut r, pos, color, colorh, 1.0, |[xo, yo, zo]| {
+						let mut any_non_blocked = false;
+						push_block(&mut r, fpos, color, colorh, 1.0, |[xo, yo, zo]| {
 							let pos = Vector3::new(x + xo, y + yo, z + zo);
 							let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 							if outside.x || outside.y || outside.z {
+								any_non_blocked = true;
 								return false;
 							}
 							match *chunk.get_blk(pos) {
-								MapBlock::Air => false,
+								MapBlock::Air => {
+									any_non_blocked = true;
+									false
+								},
 								_ => true,
 							}
 						});
+						// If any of the faces is unblocked, this block
+						// will be reported
+						if any_non_blocked {
+							f(pos);
+						}
 				};
 				match *chunk.get_blk(Vector3::new(x, y, z)) {
 					MapBlock::Air => (),
@@ -604,7 +627,7 @@ impl Camera {
 			*b = input.state == glutin::ElementState::Pressed;
 		}
 	}
-	fn tick(&mut self, time_delta :f32) {
+	fn tick(&mut self, time_delta :f32, collider :Option<&Compound<f32>>) {
 		let mut delta_pos = Vector3::zero();
 		if self.forward_pressed {
 			delta_pos += Vector3::x();
@@ -625,6 +648,32 @@ impl Camera {
 			delta_pos -= Vector3::z();
 		}
 		delta_pos.try_normalize_mut(std::f32::EPSILON);
+		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
+		// Rudimentary collision detection.
+		// TODO: Support detecting collisions from the neighbouring mapchunk.
+		//       For that we need to load them
+		// TODO: Support colliding with multiple faces the same time.
+		//       Right now we only get one face which gives us issues if we do collide
+		//       with multiple things.
+		if let Some(col) = collider {
+			const PRED :f32 = 0.1;
+			let player_collisionbox = Cuboid::new(Vector3::new(1.0, 1.0, 1.8));
+			let player_pos = Isometry3::new(self.pos, nalgebra::zero());
+			let collision = query::contact(&Isometry3::identity(), col,
+				&player_pos, &player_collisionbox,
+				PRED);
+			if let Some(collision) = collision {
+				let normal = collision.normal.as_ref();
+				delta_pos.try_normalize_mut(std::f32::EPSILON);
+				let d = delta_pos.dot(normal);
+				/*if delta_pos.norm() != 0.0 {
+					println!("contact {}", d);
+				}*/
+				if d < 0.0 {
+					delta_pos -= d * normal;
+				}
+			}
+		}
 		if self.fast_mode {
 			const DELTA :f32 = 40.0;
 			delta_pos *= DELTA * time_delta;
@@ -632,7 +681,6 @@ impl Camera {
 			const FAST_DELTA :f32 = 10.0;
 			delta_pos *= FAST_DELTA * time_delta;
 		}
-		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
 		self.pos += delta_pos;
 	}
 	fn handle_mouse_move(&mut self, delta :winit::dpi::LogicalPosition) {
