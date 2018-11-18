@@ -39,12 +39,6 @@ fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vert
 	}
 }
 
-fn gen_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunk)>, map :&Map) {
-	for (p, c) in map.chunks.iter() {
-		sender.send((*p, *c)).unwrap();
-	}
-}
-
 fn vbuffs_update(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 		map :&Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
@@ -53,14 +47,12 @@ fn vbuffs_update(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 	}
 }
 
-
 fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
-		map :&mut Map, pos :Vector3<isize>) {
+		map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
-	let radius = 4;
-	for x in -radius .. radius {
-		for y in -radius .. radius {
-			for z in -radius .. radius {
+	for x in -xyradius ..= xyradius {
+		for y in -xyradius ..= xyradius {
+			for z in -zradius ..= zradius {
 				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
 				if map.chunks.get(&cpos).is_none() {
 					map.gen_chunk(cpos);
@@ -131,7 +123,6 @@ impl Game {
 		let display = glium::Display::new(window, context, events_loop).unwrap();
 
 		let mut map = Map::new(78);
-		map.gen_chunks_start();
 		let camera = Camera::new();
 
 		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
@@ -146,7 +137,10 @@ impl Game {
 				println!("generating mesh took {:?}", Instant::now() - v);
 			}
 		});
-		gen_vbuffs(&mut meshgen_s, &map);
+
+		// This ensures that the mesh generation thread puts higher priority onto positions
+		// close to the player at the beginning.
+		gen_chunks_around(&mut meshgen_s, &mut map, camera.pos.map(|v| v as isize), 1, 1);
 
 		let grab_cursor = true;
 
@@ -204,7 +198,7 @@ impl Game {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
 		loop {
-			gen_chunks_around(&mut self.meshgen_s, &mut self.map, self.camera.pos.map(|v| v as isize));
+			gen_chunks_around(&mut self.meshgen_s, &mut self.map, self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
