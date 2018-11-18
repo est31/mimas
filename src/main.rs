@@ -39,11 +39,27 @@ fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vert
 	}
 }
 
-fn vbuffs_update(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+fn update_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 		map :&Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
 	if let Some(chunk) = map.chunks.get(&chunk_pos) {
 		sender.send((chunk_pos, *chunk)).unwrap();
+	}
+}
+
+fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+		map :&Map, pos_min :Vector3<isize>, pos_max :Vector3<isize>) {
+	let chunk_pos_min = btchn(pos_min);
+	let chunk_pos_max = btchn(pos_max);
+	for x in chunk_pos_min.x ..= chunk_pos_max.x {
+		for y in chunk_pos_min.y ..= chunk_pos_max.y {
+			for z in chunk_pos_min.z ..= chunk_pos_max.z {
+				let chunk_pos = Vector3::new(x, y, z);
+				if let Some(chunk) = map.chunks.get(&chunk_pos) {
+					sender.send((chunk_pos, *chunk)).unwrap();
+				}
+			}
+		}
 	}
 }
 
@@ -56,7 +72,7 @@ fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
 				if map.chunks.get(&cpos).is_none() {
 					map.gen_chunk(cpos);
-					vbuffs_update(sender, map, cpos);
+					update_vbuffs(sender, map, cpos);
 				}
 			}
 		}
@@ -344,10 +360,12 @@ impl Game {
 									pos_to_update = Some(before_selected);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
-									pos_to_update = Some(before_selected);
+									let p = before_selected;
+									update_vbuffs_in_cube(&mut self.meshgen_s,
+										&self.map, p - Vector3::new(1, 1, 0), p + Vector3::new(1, 1, 10));
 								}
 								if let Some(pos) = pos_to_update {
-									vbuffs_update(&mut self.meshgen_s,
+									update_vbuffs(&mut self.meshgen_s,
 										&self.map, pos);
 								}
 							}
