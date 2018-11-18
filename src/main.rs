@@ -555,6 +555,8 @@ struct Camera {
 	right_pressed :bool,
 	backward_pressed :bool,
 
+	fast_mode :bool,
+
 	up_pressed :bool,
 	down_pressed :bool,
 }
@@ -571,6 +573,8 @@ impl Camera {
 			left_pressed : false,
 			right_pressed : false,
 			backward_pressed : false,
+
+			fast_mode : false,
 
 			up_pressed : false,
 			down_pressed : false,
@@ -590,6 +594,11 @@ impl Camera {
 			glutin::VirtualKeyCode::Space => b = Some(&mut self.up_pressed),
 			glutin::VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
 		_ => (),
+		}
+		if key == glutin::VirtualKeyCode::J {
+			if input.state == glutin::ElementState::Pressed {
+				self.fast_mode = !self.fast_mode;
+			}
 		}
 		if let Some(b) = b {
 			*b = input.state == glutin::ElementState::Pressed;
@@ -616,8 +625,13 @@ impl Camera {
 			delta_pos -= Vector3::z();
 		}
 		delta_pos.try_normalize_mut(std::f32::EPSILON);
-		const DELTA :f32 = 20.0;
-		delta_pos *= DELTA * time_delta;
+		if self.fast_mode {
+			const DELTA :f32 = 40.0;
+			delta_pos *= DELTA * time_delta;
+		} else {
+			const FAST_DELTA :f32 = 10.0;
+			delta_pos *= FAST_DELTA * time_delta;
+		}
 		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
 		self.pos += delta_pos;
 	}
