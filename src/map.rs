@@ -180,15 +180,72 @@ impl Map {
 				}
 			}
 		}
-		let s = 1;
-		for x in -s ..= s {
-			for y in -s ..= s {
-				for z in -s ..= s {
+		let t = 1;
+		for x in -t ..= t {
+			for y in -t ..= t {
+				for z in -t ..= t {
 					self.gen_chunk_phase_two(pos + Vector3::new(x, y, z) * CHUNKSIZE);
 				}
 			}
 		}
 		self.chunks.get_mut(&pos).unwrap().generation_phase = GenerationPhase::Done;
+	}
+	pub fn gen_chunks_in_area<F :Fn(Vector3<isize>, &MapChunk)>(&mut self,
+			pos_min :Vector3<isize>, pos_max :Vector3<isize>, f :F) {
+		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
+		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
+
+		let mut sth_to_generate = false;
+		'o :for x in pos_min.x ..= pos_max.x {
+			for y in pos_min.y ..= pos_max.y {
+				for z in pos_min.z ..= pos_max.z {
+					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
+					if let Some(c) = self.chunks.get(&pos) {
+						if c.generation_phase != GenerationPhase::Done {
+							sth_to_generate = true;
+							break 'o;
+						}
+					} else {
+						sth_to_generate = true;
+						break 'o;
+					}
+				}
+			}
+		}
+		if !sth_to_generate {
+			return;
+		}
+
+		let s = 2;
+		for x in pos_min.x - s ..= pos_max.x + s {
+			for y in pos_min.y - s ..= pos_max.y + s {
+				for z in pos_min.z - s ..= pos_max.z + s {
+					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
+					self.gen_chunk_phase_one(pos);
+				}
+			}
+		}
+		let t = 1;
+		for x in pos_min.x - t ..= pos_max.x + t {
+			for y in pos_min.y - t ..= pos_max.y + t {
+				for z in pos_min.z - t ..= pos_max.z + t {
+					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
+					self.gen_chunk_phase_two(pos);
+				}
+			}
+		}
+		for x in pos_min.x ..= pos_max.x {
+			for y in pos_min.y ..= pos_max.y {
+				for z in pos_min.z ..= pos_max.z {
+					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
+					let chk = self.chunks.get_mut(&pos).unwrap();
+					if chk.generation_phase != GenerationPhase::Done {
+						chk.generation_phase = GenerationPhase::Done;
+						f(pos, chk);
+					}
+				}
+			}
+		}
 	}
 	fn gen_chunk_phase_one(&mut self, pos :Vector3<isize>) {
 		if let Entry::Vacant(v) = self.chunks.entry(pos) {

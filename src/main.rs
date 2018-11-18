@@ -68,17 +68,12 @@ fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 		map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
-	for x in -xyradius ..= xyradius {
-		for y in -xyradius ..= xyradius {
-			for z in -zradius ..= zradius {
-				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
-				if map.get_chunk(cpos).is_none() {
-					map.gen_chunk(cpos);
-					update_vbuffs(sender, map, cpos);
-				}
-			}
-		}
-	}
+	let radius = Vector3::new(xyradius, xyradius, zradius) * CHUNKSIZE;
+	let chunk_pos_min = btchn(chunk_pos - radius);
+	let chunk_pos_max = btchn(chunk_pos + radius);
+	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max, |chunk_pos, chunk| {
+		sender.send((chunk_pos, chunk.data)).unwrap();
+	});
 }
 
 const VERTEX_SHADER_SRC :&str = r#"
@@ -216,7 +211,8 @@ impl Game {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
 		loop {
-			gen_chunks_around(&mut self.meshgen_s, &mut self.map, self.camera.pos.map(|v| v as isize), 4, 2);
+			gen_chunks_around(&mut self.meshgen_s, &mut self.map,
+				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
