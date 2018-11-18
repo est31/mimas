@@ -7,10 +7,12 @@ extern crate glium_glyph;
 extern crate line_drawing;
 extern crate num_traits;
 extern crate frustum_query;
+extern crate rand_pcg;
+extern crate rand;
 
 mod map;
 
-use map::{Map, MapChunk, CHUNKSIZE, MapBlock};
+use map::{Map, MapChunkData, spawn_tree, CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::backend::Facade;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
@@ -39,15 +41,15 @@ fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, VertexBuffer<Vert
 	}
 }
 
-fn update_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+fn update_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 		map :&Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
-	if let Some(chunk) = map.chunks.get(&chunk_pos) {
-		sender.send((chunk_pos, *chunk)).unwrap();
+	if let Some(chunk) = map.get_chunk(chunk_pos) {
+		sender.send((chunk_pos, chunk.data)).unwrap();
 	}
 }
 
-fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 		map :&Map, pos_min :Vector3<isize>, pos_max :Vector3<isize>) {
 	let chunk_pos_min = btchn(pos_min);
 	let chunk_pos_max = btchn(pos_max);
@@ -55,22 +57,22 @@ fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
 		for y in chunk_pos_min.y ..= chunk_pos_max.y {
 			for z in chunk_pos_min.z ..= chunk_pos_max.z {
 				let chunk_pos = Vector3::new(x, y, z);
-				if let Some(chunk) = map.chunks.get(&chunk_pos) {
-					sender.send((chunk_pos, *chunk)).unwrap();
+				if let Some(chunk) = map.get_chunk(chunk_pos) {
+					sender.send((chunk_pos, chunk.data)).unwrap();
 				}
 			}
 		}
 	}
 }
 
-fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunk)>,
+fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 		map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
 	for x in -xyradius ..= xyradius {
 		for y in -xyradius ..= xyradius {
 			for z in -zradius ..= zradius {
 				let cpos = chunk_pos + Vector3::new(x, y, z) * CHUNKSIZE;
-				if map.chunks.get(&cpos).is_none() {
+				if map.get_chunk(cpos).is_none() {
 					map.gen_chunk(cpos);
 					update_vbuffs(sender, map, cpos);
 				}
@@ -109,7 +111,7 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
 
-	meshgen_s :Sender<(Vector3<isize>, MapChunk)>,
+	meshgen_s :Sender<(Vector3<isize>, MapChunkData)>,
 	meshres_r :Receiver<(Vector3<isize>, Vec<Vertex>)>,
 
 	display :glium::Display,
@@ -439,7 +441,7 @@ fn push_block<F :Fn([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3
 	}
 }
 
-fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
+fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. CHUNKSIZE {
@@ -485,23 +487,6 @@ fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunk) ->
 		}
 	}
 	r
-}
-
-fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
-	let mut sp_nd = |(x, y, z), mb| {
-		let blk = map.get_blk_mut(pos + Vector3::new(x, y, z)).unwrap();
-		*blk = mb;
-	};
-	for x in -1 ..= 1 {
-		for y in -1 ..= 1 {
-			sp_nd((x, y, 3), MapBlock::Leaves);
-			sp_nd((x, y, 4), MapBlock::Leaves);
-			sp_nd((x, y, 5), MapBlock::Leaves);
-		}
-	}
-	for z in 0 .. 4 {
-		sp_nd((0, 0, z), MapBlock::Tree);
-	}
 }
 
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {

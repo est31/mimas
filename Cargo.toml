@@ -17,6 +17,8 @@ winit = "0.16"
 #glium-glyph = { git = "https://github.com/est31/glium-glyph" }
 glium-glyph = "0.2"
 line_drawing = "0.7"
+rand_pcg = "0.1.1"
+rand = "0.6.0"
 
 # This allows us to optimize dependencies
 [profile.dev.overrides."*"]

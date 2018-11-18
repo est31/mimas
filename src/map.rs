@@ -1,7 +1,10 @@
 use nalgebra::Vector3;
 use noise::{Perlin, NoiseFn, Seedable};
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Entry};
+use std::mem::replace;
 use {btchn, btpic};
+use rand_pcg::Pcg32;
+use rand::Rng;
 
 pub const CHUNKSIZE :isize = 16;
 
@@ -30,32 +33,62 @@ impl MapBlock {
 	}
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum GenerationPhase {
+	/// Basic noise, elevation etc
+	PhaseOne,
+	/// Higher level features done
+	PhaseTwo,
+	/// The block and all of its neighbours are at least in phase two.
+	Done,
+}
+
 #[derive(Copy, Clone)]
+pub struct MapChunkData([MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]);
+
+#[derive(Clone)]
 pub struct MapChunk {
-	pub data :[MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
+	pub data :MapChunkData,
+	generation_phase :GenerationPhase,
+	tree_spawn_points :Vec<Vector3<isize>>,
 }
 
 pub struct Map {
 	seed :u32,
-	pub chunks :HashMap<Vector3<isize>, MapChunk>,
+	chunks :HashMap<Vector3<isize>, MapChunk>,
 }
 
 impl MapChunk {
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> &mut MapBlock {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
-		&mut self.data[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
+		&mut self.data.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
 	}
 	pub fn get_blk(&self, pos :Vector3<isize>) -> &MapBlock {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
-		&self.data[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
+		&self.data.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
 	}
 }
 
-pub fn gen_chunk(seed :u32, pos :Vector3<isize>) -> MapChunk {
+impl MapChunkData {
+	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> &mut MapBlock {
+		let (x, y, z) = (pos.x, pos.y, pos.z);
+		&mut self.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
+	}
+	pub fn get_blk(&self, pos :Vector3<isize>) -> &MapBlock {
+		let (x, y, z) = (pos.x, pos.y, pos.z);
+		&self.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
+	}
+}
+
+fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let noise = Perlin::new().set_seed(seed);
 	let mnoise = Perlin::new().set_seed(seed.wrapping_add(23));
+	let tnoise = Perlin::new().set_seed(seed.wrapping_add(99));
+	let mut tpcg = Pcg32::new(seed.wrapping_add(53) as u64, seed.wrapping_add(47) as u64);
 	let mut res = MapChunk {
-		data :[MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
+		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
+		generation_phase : GenerationPhase::PhaseOne,
+		tree_spawn_points : Vec::new(),
 	};
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
@@ -81,11 +114,42 @@ pub fn gen_chunk(seed :u32, pos :Vector3<isize>) -> MapChunk {
 					if pos.z == 0 && el <= 0 {
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
 					}
+					if el > 0 && el < CHUNKSIZE {
+						// Tree spawning
+						let tf = 0.018971;
+						let tp = [(pos.x + x) as f64 * tf, (pos.y + y) as f64 * tf];
+						let tree_density = 0.3;
+						let local_density = tnoise.get(tp);
+						if local_density > 1.0 - tree_density {
+							// Generate a forest here
+							if tpcg.gen::<f64>() > 0.9 {
+								res.tree_spawn_points.push(pos + Vector3::new(x, y, el));
+							}
+						}
+					}
 				}
 			}
 		}
 	}
 	res
+}
+
+
+pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
+	let mut sp_nd = |(x, y, z), mb| {
+		let blk = map.get_blk_p1_mut(pos + Vector3::new(x, y, z)).unwrap();
+		*blk = mb;
+	};
+	for x in -1 ..= 1 {
+		for y in -1 ..= 1 {
+			sp_nd((x, y, 3), MapBlock::Leaves);
+			sp_nd((x, y, 4), MapBlock::Leaves);
+			sp_nd((x, y, 5), MapBlock::Leaves);
+		}
+	}
+	for z in 0 .. 4 {
+		sp_nd((0, 0, z), MapBlock::Tree);
+	}
 }
 
 impl Map {
@@ -95,20 +159,78 @@ impl Map {
 			chunks : HashMap::new(),
 		}
 	}
+	pub fn get_chunk(&self, pos :Vector3<isize>) -> Option<&MapChunk> {
+		self.chunks.get(&pos).filter(|c| c.generation_phase == GenerationPhase::Done)
+	}
+	pub fn get_chunk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapChunk> {
+		self.chunks.get_mut(&pos).filter(|c| c.generation_phase == GenerationPhase::Done)
+	}
+	pub fn get_chunk_p1(&self, pos :Vector3<isize>) -> Option<&MapChunk> {
+		self.chunks.get(&pos)
+	}
+	pub fn get_chunk_p1_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapChunk> {
+		self.chunks.get_mut(&pos)
+	}
 	pub fn gen_chunk(&mut self, pos :Vector3<isize>) {
-		let chunk = gen_chunk(self.seed, pos);
-		self.chunks.insert(pos, chunk);
+		let s = 2;
+		for x in -s ..= s {
+			for y in -s ..= s {
+				for z in -s ..= s {
+					self.gen_chunk_phase_one(pos + Vector3::new(x, y, z) * CHUNKSIZE);
+				}
+			}
+		}
+		let s = 1;
+		for x in -s ..= s {
+			for y in -s ..= s {
+				for z in -s ..= s {
+					self.gen_chunk_phase_two(pos + Vector3::new(x, y, z) * CHUNKSIZE);
+				}
+			}
+		}
+		self.chunks.get_mut(&pos).unwrap().generation_phase = GenerationPhase::Done;
+	}
+	fn gen_chunk_phase_one(&mut self, pos :Vector3<isize>) {
+		if let Entry::Vacant(v) = self.chunks.entry(pos) {
+			v.insert(gen_chunk_phase_one(self.seed, pos));
+		}
+	}
+	fn gen_chunk_phase_two(&mut self, pos :Vector3<isize>) {
+		let tree_spawn_points = {
+			let chnk = self.chunks.get_mut(&pos).unwrap();
+			if chnk.generation_phase >= GenerationPhase::PhaseTwo {
+				return;
+			}
+			chnk.generation_phase = GenerationPhase::PhaseTwo;
+			replace(&mut chnk.tree_spawn_points, Vec::new())
+		};
+		for p in tree_spawn_points {
+			spawn_tree(self, p);
+		}
 	}
 	pub fn get_blk(&self, pos :Vector3<isize>) -> Option<MapBlock> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
-		self.chunks.get(&chunk_pos)
+		self.get_chunk(chunk_pos)
 			.map(|blk| *blk.get_blk(pos_in_chunk))
 	}
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
-		self.chunks.get_mut(&chunk_pos)
+		self.get_chunk_mut(chunk_pos)
+			.map(|blk| blk.get_blk_mut(pos_in_chunk))
+	}
+
+	pub fn get_blk_p1(&self, pos :Vector3<isize>) -> Option<MapBlock> {
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.get_chunk_p1(chunk_pos)
+			.map(|blk| *blk.get_blk(pos_in_chunk))
+	}
+	pub fn get_blk_p1_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.get_chunk_p1_mut(chunk_pos)
 			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
 }
