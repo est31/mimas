@@ -23,7 +23,7 @@ use glium_glyph::glyph_brush::{
 };
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use frustum_query::frustum::Frustum;
@@ -184,12 +184,9 @@ impl Game {
 	/// Update the stored fps value and return the delta time
 	fn update_fps(&mut self) -> f32 {
 		let cur_time = Instant::now();
-		let time_delta = cur_time - self.last_frame_time;
+		let float_delta = durtofl(cur_time - self.last_frame_time);
 		self.last_frame_time = cur_time;
-		// Soon we can just convert to u128. It's already in FCP.
-		// https://github.com/rust-lang/rust/issues/50202
-		// Very soon...
-		let float_delta = time_delta.as_secs() as f32 + time_delta.subsec_millis() as f32 / 1000.0;
+
 		const EPS :f32 = 0.1;
 		let fps_cur_term = if float_delta > 0.0 {
 			1.0 / float_delta
@@ -310,7 +307,7 @@ impl Game {
 						self.has_focus = focus;
 						if self.grab_cursor {
 							self.display.gl_window().hide_cursor(focus);
-							self.display.gl_window().grab_cursor(focus).unwrap();
+							let _  = self.display.gl_window().grab_cursor(focus);
 						}
 					},
 
@@ -501,6 +498,13 @@ fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
 		COLOR, COLOR, 1.0 + DELTA, |_| false);
 	vertices
+}
+
+fn durtofl(d :Duration) -> f32 {
+	// Soon we can just convert to u128. It's already in FCP.
+	// https://github.com/rust-lang/rust/issues/50202
+	// Very soon...
+	d.as_secs() as f32 + d.subsec_millis() as f32 / 1000.0
 }
 
 fn clamp(a :f32, min :f32, max :f32) -> f32 {
