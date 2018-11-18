@@ -121,6 +121,7 @@ struct Game {
 	last_fps :f32,
 
 	grab_cursor :bool,
+	has_focus :bool,
 	map :Map,
 	camera :Camera,
 
@@ -155,13 +156,6 @@ impl Game {
 		// close to the player at the beginning.
 		gen_chunks_around(&mut meshgen_s, &mut map, camera.pos.map(|v| v as isize), 1, 1);
 
-		let grab_cursor = true;
-
-		if grab_cursor {
-			display.gl_window().hide_cursor(true);
-			display.gl_window().grab_cursor(true).unwrap();
-		}
-
 		let swidth = 1024.0;
 		let sheight = 768.0;
 
@@ -178,7 +172,8 @@ impl Game {
 			last_pos : None,
 			last_frame_time : Instant::now(),
 			last_fps : 0.0,
-			grab_cursor,
+			grab_cursor : true,
+			has_focus : false,
 			map,
 			camera,
 
@@ -220,7 +215,7 @@ impl Game {
 			if close {
 				break;
 			}
-			if self.grab_cursor {
+			if self.grab_cursor && self.has_focus {
 				self.display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
@@ -311,6 +306,14 @@ impl Game {
 			match event {
 				glutin::Event::WindowEvent { event, .. } => match event {
 
+					glutin::WindowEvent::Focused(focus) => {
+						self.has_focus = focus;
+						if self.grab_cursor {
+							self.display.gl_window().hide_cursor(focus);
+							self.display.gl_window().grab_cursor(focus).unwrap();
+						}
+					},
+
 					glutin::WindowEvent::CloseRequested => close = true,
 
 					glutin::WindowEvent::Resized(glium::glutin::dpi::LogicalSize {width, height}) => {
@@ -329,20 +332,23 @@ impl Game {
 
 					},
 					glutin::WindowEvent::CursorMoved { position, .. } => {
-						if self.grab_cursor {
-							self.last_pos = Some(winit::dpi::LogicalPosition {
-								x : self.swidth / 2.0,
-								y : self.sheight / 2.0,
-							});
+						if self.has_focus {
+							if self.grab_cursor {
+								self.last_pos = Some(winit::dpi::LogicalPosition {
+									x : self.swidth / 2.0,
+									y : self.sheight / 2.0,
+								});
+							}
+
+							if let Some(last) = self.last_pos {
+								let delta = winit::dpi::LogicalPosition {
+									x : position.x - last.x,
+									y : position.y - last.y,
+								};
+								self.camera.handle_mouse_move(delta);
+							}
+							self.last_pos = Some(position);
 						}
-						if let Some(last) = self.last_pos {
-							let delta = winit::dpi::LogicalPosition {
-								x : position.x - last.x,
-								y : position.y - last.y,
-							};
-							self.camera.handle_mouse_move(delta);
-						}
-						self.last_pos = Some(position);
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
 						if state == glutin::ElementState::Pressed {
