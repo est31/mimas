@@ -286,7 +286,10 @@ impl Game {
 					v.try_normalize_mut(std::f32::EPSILON);
 					b.set_linear_velocity(v);
 					b.apply_force(&Force3::linear(delta_pos));*/
-					self.camera.pos = pos + Vector3::new(0.0, 0.0, 1.6);
+					// The idea is that the eyes are in the middle of the collision box
+					// The collision box is 0.7 in all directions.
+					let xyh = 0.35;
+					self.camera.pos = pos + Vector3::new(xyh, xyh, 1.6);
 				},
 				_ => panic!("Player is expected to be a RigidBody!"),
 			};
