@@ -365,7 +365,11 @@ impl Game {
 				self.physics_world.add_collider(0.1, hdl,
 					BodyHandle::ground(), nalgebra::one(), material)
 			});
-			self.vbuffs.insert(p, (collider, VertexBuffer::new(&self.display, &m).unwrap()));
+			let vbuff = VertexBuffer::new(&self.display, &m).unwrap();
+			let old_opt = self.vbuffs.insert(p, (collider, vbuff));
+			if let Some((Some(coll), _)) = old_opt {
+				self.physics_world.remove_colliders(&[coll]);
+			}
 		}
 	}
 
