@@ -30,6 +30,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use frustum_query::frustum::Frustum;
 use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide3d::math::Isometry;
+use nphysics3d::math::Inertia;
 use nphysics3d::volumetric::Volumetric;
 use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
@@ -181,7 +182,8 @@ impl Game {
 		let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
 		let player_handle = physics_world.add_rigid_body(
 			Isometry::new(Vector3::new(60.0, 40.0, 20.0), nalgebra::zero()),
-			player_collisionbox.inertia(1.0), player_collisionbox.center_of_mass());
+			Inertia::new(1.0, nalgebra::zero()),
+			player_collisionbox.center_of_mass());
 		let material = Material::new(1.0, 1.0);
 		let player_shape = ShapeHandle::new(player_collisionbox);
 		let player_collider = physics_world.add_collider(0.1,
