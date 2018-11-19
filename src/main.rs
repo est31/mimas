@@ -657,7 +657,7 @@ impl Camera {
 		//       with multiple things.
 		if let Some(col) = collider {
 			const PRED :f32 = 0.1;
-			let player_collisionbox = Cuboid::new(Vector3::new(1.0, 1.0, 1.8));
+			let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
 			let player_pos = Isometry3::new(self.pos, nalgebra::zero());
 			let collision = query::contact(&Isometry3::identity(), col,
 				&player_pos, &player_collisionbox,
