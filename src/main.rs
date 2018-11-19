@@ -266,20 +266,31 @@ impl Game {
 			const FAST_DELTA :f32 = 10.0;
 			delta_pos *= FAST_DELTA;
 		}
-		let player_body = self.physics_world.body_mut(self.player_handle);
-		match player_body {
-			BodyMut::RigidBody(b) => {
-				let pos = b.position().translation.vector;
-				b.set_linear_velocity(delta_pos);
-				/*let mut v = b.velocity().linear;
-				v.try_normalize_mut(std::f32::EPSILON);
-				b.set_linear_velocity(v);
-				b.apply_force(&Force3::linear(delta_pos));*/
-				self.camera.pos = pos + Vector3::new(0.0, 0.0, 1.6);
-			},
-			_ => panic!("Player is expected to be a RigidBody!"),
-		};
-		//self.camera.pos += delta_pos * time_delta;
+		if self.camera.noclip_mode {
+			self.camera.pos += delta_pos * time_delta;
+			let player_body = self.physics_world.body_mut(self.player_handle);
+			match player_body {
+				BodyMut::RigidBody(b) => {
+					let pos = self.camera.pos - Vector3::new(0.0, 0.0, 1.6);
+					b.set_position(Isometry3::new(pos, nalgebra::zero()))
+				},
+				_ => panic!("Player is expected to be a RigidBody!"),
+			}
+		} else {
+			let player_body = self.physics_world.body_mut(self.player_handle);
+			match player_body {
+				BodyMut::RigidBody(b) => {
+					let pos = b.position().translation.vector;
+					b.set_linear_velocity(delta_pos);
+					/*let mut v = b.velocity().linear;
+					v.try_normalize_mut(std::f32::EPSILON);
+					b.set_linear_velocity(v);
+					b.apply_force(&Force3::linear(delta_pos));*/
+					self.camera.pos = pos + Vector3::new(0.0, 0.0, 1.6);
+				},
+				_ => panic!("Player is expected to be a RigidBody!"),
+			};
+		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
 		self.recv_vbuffs();
@@ -645,6 +656,7 @@ struct Camera {
 	backward_pressed :bool,
 
 	fast_mode :bool,
+	noclip_mode :bool,
 
 	up_pressed :bool,
 	down_pressed :bool,
@@ -664,6 +676,7 @@ impl Camera {
 			backward_pressed : false,
 
 			fast_mode : false,
+			noclip_mode : false,
 
 			up_pressed : false,
 			down_pressed : false,
@@ -687,6 +700,11 @@ impl Camera {
 		if key == glutin::VirtualKeyCode::J {
 			if input.state == glutin::ElementState::Pressed {
 				self.fast_mode = !self.fast_mode;
+			}
+		}
+		if key == glutin::VirtualKeyCode::H {
+			if input.state == glutin::ElementState::Pressed {
+				self.noclip_mode = !self.noclip_mode;
 			}
 		}
 		if let Some(b) = b {
