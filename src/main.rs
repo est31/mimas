@@ -1,6 +1,7 @@
 extern crate noise;
 extern crate nalgebra;
 extern crate ncollide3d;
+extern crate nphysics3d;
 #[macro_use]
 extern crate glium;
 extern crate winit;
@@ -28,7 +29,10 @@ use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use frustum_query::frustum::Frustum;
 use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
-use ncollide3d::query;
+use ncollide3d::math::Isometry;
+use nphysics3d::volumetric::Volumetric;
+use nphysics3d::world::World;
+use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -37,7 +41,7 @@ fn main() {
 }
 
 type MeshGenSender = Sender<(Vector3<isize>, MapChunkData)>;
-type MeshResReceiver = Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>;
+type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
 fn update_vbuffs(meshgen_s :&mut MeshGenSender,
 		map :&Map, pos :Vector3<isize>) {
@@ -104,12 +108,16 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
 
+	physics_world :World<f32>,
+	player_handle :BodyHandle,
+	player_collider :ColliderHandle,
+
 	meshgen_s :MeshGenSender,
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, (Compound<f32>, VertexBuffer<Vertex>)>,
+	vbuffs :HashMap<Vector3<isize>, (Option<ColliderHandle>, VertexBuffer<Vertex>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 
@@ -151,7 +159,11 @@ impl Game {
 					let cuboid = ShapeHandle::new(Cuboid::new(Vector3::new(0.5, 0.5, 0.5)));
 					shapes.push((iso, cuboid));
 				});
-				let compound = Compound::new(shapes);
+				let compound = if shapes.len() > 0 {
+					Some(Compound::new(shapes))
+				} else {
+					None
+				};
 				let _ = meshres_s.send((p, compound, mesh));
 				println!("generating mesh took {:?}", Instant::now() - v);
 			}
@@ -164,7 +176,22 @@ impl Game {
 		let swidth = 1024.0;
 		let sheight = 768.0;
 
+		let mut physics_world = World::new();
+
+		let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
+		let player_handle = physics_world.add_rigid_body(
+			Isometry::new(Vector3::new(60.0, 40.0, 20.0), nalgebra::zero()),
+			player_collisionbox.inertia(1.0), player_collisionbox.center_of_mass());
+		let material = Material::new(1.0, 1.0);
+		let player_shape = ShapeHandle::new(player_collisionbox);
+		let player_collider = physics_world.add_collider(0.1,
+			player_shape, player_handle, nalgebra::one(), material);
+
 		Game {
+			physics_world,
+			player_handle,
+			player_collider,
+
 			meshgen_s,
 			meshres_r,
 
@@ -212,10 +239,12 @@ impl Game {
 				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
+			self.physics_world.set_timestep(float_delta);
+			self.physics_world.step();
 			let close = self.handle_events(events_loop);
-			let chunk_pos = btchn(self.camera.pos.map(|v| v as isize));
-			let col = self.vbuffs.get(&chunk_pos).map(|v| &v.0);
-			self.camera.tick(float_delta, col);
+			let delta_pos = self.camera.delta_pos();
+			self.movement(float_delta, delta_pos);
+
 			if close {
 				break;
 			}
@@ -226,6 +255,29 @@ impl Game {
 				}).unwrap();
 			}
 		}
+	}
+	fn movement(&mut self, time_delta :f32, mut delta_pos :Vector3<f32>) {
+		if self.camera.fast_mode {
+			const DELTA :f32 = 40.0;
+			delta_pos *= DELTA;
+		} else {
+			const FAST_DELTA :f32 = 10.0;
+			delta_pos *= FAST_DELTA;
+		}
+		let player_body = self.physics_world.body_mut(self.player_handle);
+		match player_body {
+			BodyMut::RigidBody(b) => {
+				let pos = b.position().translation.vector;
+				b.set_linear_velocity(delta_pos);
+				/*let mut v = b.velocity().linear;
+				v.try_normalize_mut(std::f32::EPSILON);
+				b.set_linear_velocity(v);
+				b.apply_force(&Force3::linear(delta_pos));*/
+				self.camera.pos = pos + Vector3::new(0.0, 0.0, 1.6);
+			},
+			_ => panic!("Player is expected to be a RigidBody!"),
+		};
+		//self.camera.pos += delta_pos * time_delta;
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
 		self.recv_vbuffs();
@@ -307,7 +359,13 @@ impl Game {
 
 	fn recv_vbuffs(&mut self) {
 		while let Ok((p, c, m)) = self.meshres_r.try_recv() {
-			self.vbuffs.insert(p, (c, VertexBuffer::new(&self.display, &m).unwrap()));
+			let material = Material::new(0.0, 0.0);
+			let collider = c.map(|c| {
+				let hdl = ShapeHandle::new(c);
+				self.physics_world.add_collider(0.1, hdl,
+					BodyHandle::ground(), nalgebra::one(), material)
+			});
+			self.vbuffs.insert(p, (collider, VertexBuffer::new(&self.display, &m).unwrap()));
 		}
 	}
 
@@ -629,7 +687,7 @@ impl Camera {
 			*b = input.state == glutin::ElementState::Pressed;
 		}
 	}
-	fn tick(&mut self, time_delta :f32, collider :Option<&Compound<f32>>) {
+	fn delta_pos(&mut self) -> Vector3<f32> {
 		let mut delta_pos = Vector3::zero();
 		if self.forward_pressed {
 			delta_pos += Vector3::x();
@@ -651,39 +709,8 @@ impl Camera {
 		}
 		delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
-		// Rudimentary collision detection.
-		// TODO: Support detecting collisions from the neighbouring mapchunk.
-		//       For that we need to load them
-		// TODO: Support colliding with multiple faces the same time.
-		//       Right now we only get one face which gives us issues if we do collide
-		//       with multiple things.
-		if let Some(col) = collider {
-			const PRED :f32 = 0.1;
-			let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
-			let player_pos = Isometry3::new(self.pos, nalgebra::zero());
-			let collision = query::contact(&Isometry3::identity(), col,
-				&player_pos, &player_collisionbox,
-				PRED);
-			if let Some(collision) = collision {
-				let normal = collision.normal.as_ref();
-				delta_pos.try_normalize_mut(std::f32::EPSILON);
-				let d = delta_pos.dot(normal);
-				/*if delta_pos.norm() != 0.0 {
-					println!("contact {}", d);
-				}*/
-				if d < 0.0 {
-					delta_pos -= d * normal;
-				}
-			}
-		}
-		if self.fast_mode {
-			const DELTA :f32 = 40.0;
-			delta_pos *= DELTA * time_delta;
-		} else {
-			const FAST_DELTA :f32 = 10.0;
-			delta_pos *= FAST_DELTA * time_delta;
-		}
-		self.pos += delta_pos;
+
+		delta_pos
 	}
 	fn handle_mouse_move(&mut self, delta :winit::dpi::LogicalPosition) {
 		let factor = 0.7;
