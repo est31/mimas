@@ -244,8 +244,7 @@ impl Game {
 			self.physics_world.set_timestep(float_delta);
 			self.physics_world.step();
 			let close = self.handle_events(events_loop);
-			let delta_pos = self.camera.delta_pos();
-			self.movement(float_delta, delta_pos);
+			self.movement(float_delta);
 
 			if close {
 				break;
@@ -258,7 +257,8 @@ impl Game {
 			}
 		}
 	}
-	fn movement(&mut self, time_delta :f32, mut delta_pos :Vector3<f32>) {
+	fn movement(&mut self, time_delta :f32) {
+		let mut delta_pos = self.camera.delta_pos();
 		if self.camera.fast_mode {
 			const DELTA :f32 = 40.0;
 			delta_pos *= DELTA;
