@@ -15,7 +15,6 @@ mod map;
 
 use map::{Map, MapChunkData, spawn_tree, CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
-use glium::backend::Facade;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
@@ -37,22 +36,18 @@ fn main() {
 	game.run_loop(&mut events_loop);
 }
 
-fn recv_vbuffs<F :Facade>(vbuffs :&mut HashMap<Vector3<isize>, (Compound<f32>, VertexBuffer<Vertex>)>,
-		display :&F, meshres_r :&mut Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>) {
-	while let Ok((p, c, m)) = meshres_r.try_recv() {
-		vbuffs.insert(p, (c, VertexBuffer::new(display, &m).unwrap()));
-	}
-}
+type MeshGenSender = Sender<(Vector3<isize>, MapChunkData)>;
+type MeshResReceiver = Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>;
 
-fn update_vbuffs(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
+fn update_vbuffs(meshgen_s :&mut MeshGenSender,
 		map :&Map, pos :Vector3<isize>) {
 	let chunk_pos = btchn(pos);
 	if let Some(chunk) = map.get_chunk(chunk_pos) {
-		sender.send((chunk_pos, chunk.data)).unwrap();
+		meshgen_s.send((chunk_pos, chunk.data)).unwrap();
 	}
 }
 
-fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
+fn update_vbuffs_in_cube(meshgen_s :&mut MeshGenSender,
 		map :&Map, pos_min :Vector3<isize>, pos_max :Vector3<isize>) {
 	let chunk_pos_min = btchn(pos_min);
 	let chunk_pos_max = btchn(pos_max);
@@ -61,21 +56,21 @@ fn update_vbuffs_in_cube(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
 			for z in chunk_pos_min.z ..= chunk_pos_max.z {
 				let chunk_pos = Vector3::new(x, y, z);
 				if let Some(chunk) = map.get_chunk(chunk_pos) {
-					sender.send((chunk_pos, chunk.data)).unwrap();
+					meshgen_s.send((chunk_pos, chunk.data)).unwrap();
 				}
 			}
 		}
 	}
 }
 
-fn gen_chunks_around(sender :&mut Sender<(Vector3<isize>, MapChunkData)>,
+fn gen_chunks_around(meshgen_s :&mut MeshGenSender,
 		map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
 	let radius = Vector3::new(xyradius, xyradius, zradius) * CHUNKSIZE;
 	let chunk_pos_min = btchn(chunk_pos - radius);
 	let chunk_pos_max = btchn(chunk_pos + radius);
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max, |chunk_pos, chunk| {
-		sender.send((chunk_pos, chunk.data)).unwrap();
+		meshgen_s.send((chunk_pos, chunk.data)).unwrap();
 	});
 }
 
@@ -109,8 +104,8 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
 
-	meshgen_s :Sender<(Vector3<isize>, MapChunkData)>,
-	meshres_r :Receiver<(Vector3<isize>, Compound<f32>, Vec<Vertex>)>,
+	meshgen_s :MeshGenSender,
+	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
 	program :glium::Program,
@@ -233,7 +228,7 @@ impl Game {
 		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
-		recv_vbuffs(&mut self.vbuffs, &self.display, &mut self.meshres_r);
+		self.recv_vbuffs();
 		let pmatrix = self.camera.get_perspective();
 		let vmatrix = self.camera.get_matrix();
 		let frustum = Frustum::from_modelview_and_projection_2d(
@@ -309,6 +304,13 @@ impl Game {
 
 		target.finish().unwrap();
 	}
+
+	fn recv_vbuffs(&mut self) {
+		while let Ok((p, c, m)) = self.meshres_r.try_recv() {
+			self.vbuffs.insert(p, (c, VertexBuffer::new(&self.display, &m).unwrap()));
+		}
+	}
+
 	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
 		let mut close = false;
 		events_loop.poll_events(|event| {
