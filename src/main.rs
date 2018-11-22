@@ -186,7 +186,7 @@ impl Game {
 			player_collisionbox.center_of_mass());
 		let material = Material::new(1.0, 1.0);
 		let player_shape = ShapeHandle::new(player_collisionbox);
-		let player_collider = physics_world.add_collider(0.1,
+		let player_collider = physics_world.add_collider(0.01,
 			player_shape, player_handle, nalgebra::one(), material);
 
 		Game {
@@ -378,7 +378,7 @@ impl Game {
 			let material = Material::new(0.0, 0.0);
 			let collider = c.map(|c| {
 				let hdl = ShapeHandle::new(c);
-				self.physics_world.add_collider(0.1, hdl,
+				self.physics_world.add_collider(0.01, hdl,
 					BodyHandle::ground(), nalgebra::one(), material)
 			});
 			let vbuff = VertexBuffer::new(&self.display, &m).unwrap();
