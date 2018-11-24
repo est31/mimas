@@ -20,7 +20,7 @@ use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
-	rusttype::Font, Section,
+	rusttype::Font, Section, Layout, HorizontalAlign,
 };
 use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
@@ -128,7 +128,10 @@ struct Game {
 	last_fps :f32,
 
 	grab_cursor :bool,
+	grabbing_cursor :bool,
 	has_focus :bool,
+	menu_enabled :bool,
+
 	map :Map,
 	camera :Camera,
 
@@ -207,7 +210,9 @@ impl Game {
 			last_frame_time : Instant::now(),
 			last_fps : 0.0,
 			grab_cursor : true,
+			grabbing_cursor : false,
 			has_focus : false,
+			menu_enabled : false,
 			map,
 			camera,
 
@@ -244,12 +249,14 @@ impl Game {
 			self.physics_world.set_timestep(float_delta);
 			self.physics_world.step();
 			let close = self.handle_events(events_loop);
-			self.movement(float_delta);
+			if !self.menu_enabled {
+				self.movement(float_delta);
+			}
 
 			if close {
 				break;
 			}
-			if self.grab_cursor && self.has_focus {
+			if self.grabbing_cursor {
 				self.display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
@@ -369,8 +376,51 @@ impl Game {
 				&self.program, &uniforms, &params).unwrap();
 		}
 		glyph_brush.draw_queued(&self.display, &mut target);
+		if self.menu_enabled {
+			self.render_menu(glyph_brush, &mut target);
+		}
 
 		target.finish().unwrap();
+	}
+	fn render_menu<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+		let screen_dims = self.display.get_framebuffer_dimensions();
+		const IDENTITY :[[f32; 4]; 4] = [
+			[1.0, 0.0, 0.0, 0.0f32],
+			[0.0, 1.0, 0.0, 0.0],
+			[0.0, 0.0, 1.0, 0.0],
+			[0.0, 0.0, 0.0, 1.0],
+		];
+		let uniforms = uniform! {
+			vmatrix : IDENTITY,
+			pmatrix : IDENTITY
+		};
+		let params = glium::draw_parameters::DrawParameters {
+			/*depth : glium::Depth {
+				test : glium::draw_parameters::DepthTest::IfLess,
+				write : true,
+				.. Default::default()
+			},
+			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
+			blend :glium::Blend::alpha_blending(),
+			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
+			.. Default::default()
+		};
+		let vertices = square_mesh();
+		let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
+		target.draw(&vbuff,
+				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+				&self.program, &uniforms, &params).unwrap();
+		let f = (1.0 / 2.0 - 0.02);
+		glyph_brush.queue(Section {
+			text : "Menu\nPress esc to continue Game",
+			bounds : (screen_dims.0 as f32 * 0.14, screen_dims.1 as f32),
+			screen_position : (screen_dims.0 as f32 * f, screen_dims.1 as f32 * f),
+			layout : Layout::default()
+				.h_align(HorizontalAlign::Center),
+			color : [0.9, 0.9, 0.9, 1.0],
+			.. Section::default()
+		});
+		glyph_brush.draw_queued(&self.display, target);
 	}
 
 	fn recv_vbuffs(&mut self) {
@@ -389,6 +439,16 @@ impl Game {
 		}
 	}
 
+	fn check_grab_change(&mut self) {
+		let grabbing_cursor = self.has_focus &&
+			!self.menu_enabled && self.grab_cursor;
+		if self.grabbing_cursor != grabbing_cursor {
+			self.display.gl_window().hide_cursor(grabbing_cursor);
+			let _  = self.display.gl_window().grab_cursor(grabbing_cursor);
+			self.grabbing_cursor = grabbing_cursor;
+		}
+	}
+
 	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
 		let mut close = false;
 		events_loop.poll_events(|event| {
@@ -397,10 +457,7 @@ impl Game {
 
 					glutin::WindowEvent::Focused(focus) => {
 						self.has_focus = focus;
-						if self.grab_cursor {
-							self.display.gl_window().hide_cursor(focus);
-							let _  = self.display.gl_window().grab_cursor(focus);
-						}
+						self.check_grab_change();
 					},
 
 					glutin::WindowEvent::CloseRequested => close = true,
@@ -413,7 +470,10 @@ impl Game {
 					glutin::WindowEvent::KeyboardInput { input, .. } => {
 						match input.virtual_keycode {
 							Some(glutin::VirtualKeyCode::Escape) => {
-								close = true;
+								if input.state == glutin::ElementState::Pressed {
+									self.menu_enabled = !self.menu_enabled;
+									self.check_grab_change();
+								}
 							}
 							_ => (),
 						}
@@ -421,7 +481,7 @@ impl Game {
 
 					},
 					glutin::WindowEvent::CursorMoved { position, .. } => {
-						if self.has_focus {
+						if self.has_focus && !self.menu_enabled {
 							if self.grab_cursor {
 								self.last_pos = Some(winit::dpi::LogicalPosition {
 									x : self.swidth / 2.0,
@@ -440,7 +500,7 @@ impl Game {
 						}
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
-						if state == glutin::ElementState::Pressed {
+						if state == glutin::ElementState::Pressed && !self.menu_enabled {
 							if let Some((selected_pos, before_selected)) = self.selected_pos {
 								let mut pos_to_update = None;
 								if button == glutin::MouseButton::Left {
@@ -589,6 +649,44 @@ fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChu
 		}
 	}
 	r
+}
+
+fn square_mesh() -> Vec<Vertex> {
+	const COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
+	let mut vertices = Vec::new();
+
+	let size = 0.15;
+	let x_min = -size;
+	let y_min = -size;
+	let x_max = size;
+	let y_max = size;
+	let z = 0.2;
+
+	vertices.push(Vertex {
+		position : [x_min, x_min, z],
+		color : COLOR,
+	});
+	vertices.push(Vertex {
+		position : [x_max, y_min, z],
+		color : COLOR,
+	});
+	vertices.push(Vertex {
+		position : [x_max, y_max, z],
+		color : COLOR,
+	});
+	vertices.push(Vertex {
+		position : [x_max, y_max, z],
+		color : COLOR,
+	});
+	vertices.push(Vertex {
+		position : [x_min, y_max, z],
+		color : COLOR,
+	});
+	vertices.push(Vertex {
+		position : [x_min, x_min, z],
+		color : COLOR,
+	});
+	vertices
 }
 
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
