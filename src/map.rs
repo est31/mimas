@@ -53,8 +53,8 @@ pub struct MapChunk {
 	tree_spawn_points :Vec<Vector3<isize>>,
 }
 
-pub struct Map {
-	seed :u32,
+pub struct Map<B :MapBackend = SeededBackend> {
+	backend :B,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
 }
 
@@ -152,10 +152,20 @@ pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
 	}
 }
 
-impl Map {
+pub trait MapBackend {
+}
+
+pub struct SeededBackend {
+	seed :u32,
+}
+
+impl MapBackend for SeededBackend {
+}
+
+impl Map<SeededBackend> {
 	pub fn new(seed :u32) -> Self {
 		Map {
-			seed,
+			backend : SeededBackend { seed },
 			chunks : HashMap::new(),
 		}
 	}
@@ -249,7 +259,7 @@ impl Map {
 	}
 	fn gen_chunk_phase_one(&mut self, pos :Vector3<isize>) {
 		if let Entry::Vacant(v) = self.chunks.entry(pos) {
-			v.insert(gen_chunk_phase_one(self.seed, pos));
+			v.insert(gen_chunk_phase_one(self.backend.seed, pos));
 		}
 	}
 	fn gen_chunk_phase_two(&mut self, pos :Vector3<isize>) {
