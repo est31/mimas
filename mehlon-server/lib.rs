@@ -14,7 +14,7 @@ extern crate rand;
 #[macro_use]
 extern crate lazy_static;
 
-mod map;
+pub mod map;
 
 use map::{Map, MapChunkData, spawn_tree, CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
