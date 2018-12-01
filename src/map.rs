@@ -137,10 +137,22 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 
 struct Schematic {
 	items :Vec<(Vector3<isize>, MapBlock)>,
+	aabb_min :Vector3<isize>,
+	aabb_max :Vector3<isize>,
 }
 
 lazy_static! {
     static ref TREE_SCHEMATIC :Schematic = tree_schematic();
+}
+
+fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector3<isize>) {
+	let min_x = items.iter().map(|(pos, _)| pos.x).min().unwrap();
+	let min_y = items.iter().map(|(pos, _)| pos.y).min().unwrap();
+	let min_z = items.iter().map(|(pos, _)| pos.z).min().unwrap();
+	let max_x = items.iter().map(|(pos, _)| pos.x).max().unwrap();
+	let max_y = items.iter().map(|(pos, _)| pos.y).max().unwrap();
+	let max_z = items.iter().map(|(pos, _)| pos.z).max().unwrap();
+	(Vector3::new(min_x, min_y, min_z), Vector3::new(max_x, max_y, max_z))
 }
 
 fn tree_schematic() -> Schematic {
@@ -155,15 +167,30 @@ fn tree_schematic() -> Schematic {
 	for z in 0 .. 4 {
 		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
 	}
+	let (aabb_min, aabb_max) = aabb_min_max(&items);
 	Schematic {
-		items
+		items,
+		aabb_min,
+		aabb_max,
 	}
 }
 
 fn spawn_schematic(map :&mut Map, pos :Vector3<isize>, schematic :&Schematic) {
 	for (bpos, mb) in schematic.items.iter() {
-		let mut blk = map.get_blk_mut(pos + bpos).unwrap();
-		blk.set(*mb);
+		let mut blk = map.get_blk_mut_no_upd(pos + bpos).unwrap();
+		*blk = *mb;
+	}
+	let pos_min = btchn(pos + schematic.aabb_min);
+	let pos_max = btchn(pos + schematic.aabb_max);
+	for x in pos_min.x ..= pos_max.x {
+		for y in pos_min.y ..= pos_max.y {
+			for z in pos_min.z ..= pos_max.z {
+				let p = Vector3::new(x, y, z);
+				if let Some(chn) = map.get_chunk(p) {
+					(map.on_change)(p, &chn);
+				}
+			}
+		}
 	}
 }
 
@@ -329,6 +356,12 @@ impl Map<SeededBackend> {
 		let pos_in_chunk = btpic(pos);
 		self.get_chunk(chunk_pos)
 			.map(|blk| *blk.get_blk(pos_in_chunk))
+	}
+	pub fn get_blk_mut_no_upd(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.get_chunk_mut(chunk_pos)
+			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
 	pub fn get_blk_mut<'s>(&'s mut self, pos :Vector3<isize>) -> Option<MapBlockHandle<'s>> {
 		let chunk_pos = btchn(pos);
