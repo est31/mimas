@@ -147,7 +147,7 @@ impl Game {
 		});
 
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
-			meshgen_s.send((chunk_pos, chunk.data)).unwrap();
+			meshgen_s.send((chunk_pos, *chunk)).unwrap();
 		}));
 
 		// This ensures that the mesh generation thread puts higher priority onto positions
