@@ -152,6 +152,16 @@ pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
 	}
 }
 
+pub struct MapBlockHandle<'a> {
+	hdl :&'a mut MapBlock,
+}
+
+impl<'a> MapBlockHandle<'a> {
+	pub fn set(&mut self, b :MapBlock) {
+		*self.hdl = b;
+	}
+}
+
 pub trait MapBackend {
 }
 
@@ -281,20 +291,20 @@ impl Map<SeededBackend> {
 		self.get_chunk(chunk_pos)
 			.map(|blk| *blk.get_blk(pos_in_chunk))
 	}
-	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
+	pub fn get_blk_mut<'s>(&'s mut self, pos :Vector3<isize>) -> Option<MapBlockHandle<'s>> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
 		self.get_chunk_mut(chunk_pos)
-			.map(|blk| blk.get_blk_mut(pos_in_chunk))
+			.map(|blk| MapBlockHandle { hdl : blk.get_blk_mut(pos_in_chunk)})
 	}
 
-	pub fn get_blk_p1(&self, pos :Vector3<isize>) -> Option<MapBlock> {
+	fn get_blk_p1(&self, pos :Vector3<isize>) -> Option<MapBlock> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
 		self.get_chunk_p1(chunk_pos)
 			.map(|blk| *blk.get_blk(pos_in_chunk))
 	}
-	pub fn get_blk_p1_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
+	fn get_blk_p1_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapBlock> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
 		self.get_chunk_p1_mut(chunk_pos)

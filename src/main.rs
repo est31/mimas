@@ -504,12 +504,12 @@ impl Game {
 							if let Some((selected_pos, before_selected)) = self.selected_pos {
 								let mut pos_to_update = None;
 								if button == glutin::MouseButton::Left {
-									let blk = self.map.get_blk_mut(selected_pos).unwrap();
-									*blk = MapBlock::Air;
+									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
+									blk.set(MapBlock::Air);
 									pos_to_update = Some(selected_pos);
 								} else if button == glutin::MouseButton::Right {
-									let blk = self.map.get_blk_mut(before_selected).unwrap();
-									*blk = MapBlock::Wood;
+									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
+									blk.set(MapBlock::Air);
 									pos_to_update = Some(before_selected);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
