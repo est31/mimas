@@ -44,39 +44,12 @@ fn main() {
 type MeshGenSender = Sender<(Vector3<isize>, MapChunkData)>;
 type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
-fn update_vbuffs(meshgen_s :&mut MeshGenSender,
-		map :&Map, pos :Vector3<isize>) {
-	let chunk_pos = btchn(pos);
-	if let Some(chunk) = map.get_chunk(chunk_pos) {
-		meshgen_s.send((chunk_pos, chunk.data)).unwrap();
-	}
-}
-
-fn update_vbuffs_in_cube(meshgen_s :&mut MeshGenSender,
-		map :&Map, pos_min :Vector3<isize>, pos_max :Vector3<isize>) {
-	let chunk_pos_min = btchn(pos_min);
-	let chunk_pos_max = btchn(pos_max);
-	for x in chunk_pos_min.x ..= chunk_pos_max.x {
-		for y in chunk_pos_min.y ..= chunk_pos_max.y {
-			for z in chunk_pos_min.z ..= chunk_pos_max.z {
-				let chunk_pos = Vector3::new(x, y, z);
-				if let Some(chunk) = map.get_chunk(chunk_pos) {
-					meshgen_s.send((chunk_pos, chunk.data)).unwrap();
-				}
-			}
-		}
-	}
-}
-
-fn gen_chunks_around(meshgen_s :&mut MeshGenSender,
-		map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
+fn gen_chunks_around(map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
 	let radius = Vector3::new(xyradius, xyradius, zradius) * CHUNKSIZE;
 	let chunk_pos_min = btchn(chunk_pos - radius);
 	let chunk_pos_max = btchn(chunk_pos + radius);
-	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max, |chunk_pos, chunk| {
-		meshgen_s.send((chunk_pos, chunk.data)).unwrap();
-	});
+	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
 const VERTEX_SHADER_SRC :&str = r#"
@@ -113,7 +86,6 @@ struct Game {
 	player_handle :BodyHandle,
 	player_collider :ColliderHandle,
 
-	meshgen_s :MeshGenSender,
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
@@ -173,9 +145,13 @@ impl Game {
 			}
 		});
 
+		map.register_on_change(Box::new(move |chunk_pos, chunk| {
+			meshgen_s.send((chunk_pos, chunk.data)).unwrap();
+		}));
+
 		// This ensures that the mesh generation thread puts higher priority onto positions
 		// close to the player at the beginning.
-		gen_chunks_around(&mut meshgen_s, &mut map, camera.pos.map(|v| v as isize), 1, 1);
+		gen_chunks_around(&mut map, camera.pos.map(|v| v as isize), 1, 1);
 
 		let swidth = 1024.0;
 		let sheight = 768.0;
@@ -197,7 +173,6 @@ impl Game {
 			player_handle,
 			player_collider,
 
-			meshgen_s,
 			meshres_r,
 
 			display,
@@ -242,7 +217,7 @@ impl Game {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
 		loop {
-			gen_chunks_around(&mut self.meshgen_s, &mut self.map,
+			gen_chunks_around(&mut self.map,
 				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
@@ -502,24 +477,15 @@ impl Game {
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
 						if state == glutin::ElementState::Pressed && !self.menu_enabled {
 							if let Some((selected_pos, before_selected)) = self.selected_pos {
-								let mut pos_to_update = None;
 								if button == glutin::MouseButton::Left {
 									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 									blk.set(MapBlock::Air);
-									pos_to_update = Some(selected_pos);
 								} else if button == glutin::MouseButton::Right {
 									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-									blk.set(MapBlock::Air);
-									pos_to_update = Some(before_selected);
+									blk.set(MapBlock::Wood);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
 									let p = before_selected;
-									update_vbuffs_in_cube(&mut self.meshgen_s,
-										&self.map, p - Vector3::new(1, 1, 0), p + Vector3::new(1, 1, 10));
-								}
-								if let Some(pos) = pos_to_update {
-									update_vbuffs(&mut self.meshgen_s,
-										&self.map, pos);
 								}
 							}
 						}

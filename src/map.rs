@@ -56,6 +56,7 @@ pub struct MapChunk {
 pub struct Map<B :MapBackend = SeededBackend> {
 	backend :B,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
+	on_change :Box<dyn Fn(Vector3<isize>, &MapChunk)>,
 }
 
 impl MapChunk {
@@ -137,6 +138,23 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 
 pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
 	let mut sp_nd = |(x, y, z), mb| {
+		let mut blk = map.get_blk_mut(pos + Vector3::new(x, y, z)).unwrap();
+		blk.set(mb);
+	};
+	for x in -1 ..= 1 {
+		for y in -1 ..= 1 {
+			sp_nd((x, y, 3), MapBlock::Leaves);
+			sp_nd((x, y, 4), MapBlock::Leaves);
+			sp_nd((x, y, 5), MapBlock::Leaves);
+		}
+	}
+	for z in 0 .. 4 {
+		sp_nd((0, 0, z), MapBlock::Tree);
+	}
+}
+
+fn spawn_tree_mapgen(map :&mut Map, pos :Vector3<isize>) {
+	let mut sp_nd = |(x, y, z), mb| {
 		let blk = map.get_blk_p1_mut(pos + Vector3::new(x, y, z)).unwrap();
 		*blk = mb;
 	};
@@ -153,12 +171,17 @@ pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
 }
 
 pub struct MapBlockHandle<'a> {
-	hdl :&'a mut MapBlock,
+	pos :Vector3<isize>,
+	chk :&'a mut MapChunk,
+	on_change :&'a Box<dyn Fn(Vector3<isize>, &MapChunk)>,
 }
 
 impl<'a> MapBlockHandle<'a> {
 	pub fn set(&mut self, b :MapBlock) {
-		*self.hdl = b;
+		let chunk_pos = btchn(self.pos);
+		let pos_in_chunk = btpic(self.pos);
+		*self.chk.get_blk_mut(pos_in_chunk) = b;
+		(*self.on_change)(chunk_pos, &self.chk);
 	}
 }
 
@@ -177,12 +200,16 @@ impl Map<SeededBackend> {
 		Map {
 			backend : SeededBackend { seed },
 			chunks : HashMap::new(),
+			on_change : Box::new(|_, _| {}),
 		}
+	}
+	pub fn register_on_change(&mut self, f :Box<dyn Fn(Vector3<isize>, &MapChunk)>) {
+		self.on_change = f;
 	}
 	pub fn get_chunk(&self, pos :Vector3<isize>) -> Option<&MapChunk> {
 		self.chunks.get(&pos).filter(|c| c.generation_phase == GenerationPhase::Done)
 	}
-	pub fn get_chunk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapChunk> {
+	fn get_chunk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapChunk> {
 		self.chunks.get_mut(&pos).filter(|c| c.generation_phase == GenerationPhase::Done)
 	}
 	pub fn get_chunk_p1(&self, pos :Vector3<isize>) -> Option<&MapChunk> {
@@ -210,8 +237,8 @@ impl Map<SeededBackend> {
 		}
 		self.chunks.get_mut(&pos).unwrap().generation_phase = GenerationPhase::Done;
 	}
-	pub fn gen_chunks_in_area<F :Fn(Vector3<isize>, &MapChunk)>(&mut self,
-			pos_min :Vector3<isize>, pos_max :Vector3<isize>, f :F) {
+	pub fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
+			pos_max :Vector3<isize>) {
 		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
 		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
 
@@ -261,7 +288,7 @@ impl Map<SeededBackend> {
 					let chk = self.chunks.get_mut(&pos).unwrap();
 					if chk.generation_phase != GenerationPhase::Done {
 						chk.generation_phase = GenerationPhase::Done;
-						f(pos, chk);
+						(self.on_change)(pos, chk);
 					}
 				}
 			}
@@ -282,7 +309,7 @@ impl Map<SeededBackend> {
 			replace(&mut chnk.tree_spawn_points, Vec::new())
 		};
 		for p in tree_spawn_points {
-			spawn_tree(self, p);
+			spawn_tree_mapgen(self, p);
 		}
 	}
 	pub fn get_blk(&self, pos :Vector3<isize>) -> Option<MapBlock> {
@@ -293,9 +320,13 @@ impl Map<SeededBackend> {
 	}
 	pub fn get_blk_mut<'s>(&'s mut self, pos :Vector3<isize>) -> Option<MapBlockHandle<'s>> {
 		let chunk_pos = btchn(pos);
-		let pos_in_chunk = btpic(pos);
-		self.get_chunk_mut(chunk_pos)
-			.map(|blk| MapBlockHandle { hdl : blk.get_blk_mut(pos_in_chunk)})
+		let on_change = &self.on_change;
+		self.chunks.get_mut(&chunk_pos).filter(|c| c.generation_phase == GenerationPhase::Done)
+			.map(|chk| MapBlockHandle {
+				pos,
+				chk,
+				on_change,
+			})
 	}
 
 	fn get_blk_p1(&self, pos :Vector3<isize>) -> Option<MapBlock> {
