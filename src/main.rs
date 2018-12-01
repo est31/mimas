@@ -26,7 +26,7 @@ use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
 use std::time::{Instant, Duration};
 use std::thread;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Receiver};
 use frustum_query::frustum::Frustum;
 use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide3d::math::Isometry;
@@ -41,7 +41,6 @@ fn main() {
 	game.run_loop(&mut events_loop);
 }
 
-type MeshGenSender = Sender<(Vector3<isize>, MapChunkData)>;
 type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
 fn gen_chunks_around(map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
@@ -124,7 +123,7 @@ impl Game {
 		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
 			FRAGMENT_SHADER_SRC, None).unwrap();
 
-		let (mut meshgen_s, meshgen_r) = channel();
+		let (meshgen_s, meshgen_r) = channel();
 		let (meshres_s, meshres_r) = channel();
 		thread::spawn(move || {
 			while let Ok((p, chunk)) = meshgen_r.recv() {
@@ -385,7 +384,7 @@ impl Game {
 		target.draw(&vbuff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&self.program, &uniforms, &params).unwrap();
-		let f = (1.0 / 2.0 - 0.02);
+		let f = 1.0 / 2.0 - 0.02;
 		glyph_brush.queue(Section {
 			text : "Menu\nPress esc to continue Game",
 			bounds : (screen_dims.0 as f32 * 0.14, screen_dims.1 as f32),
@@ -488,7 +487,6 @@ impl Game {
 									blk.set(MapBlock::Wood);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
-									let p = before_selected;
 								}
 							}
 						}
