@@ -11,6 +11,8 @@ extern crate num_traits;
 extern crate frustum_query;
 extern crate rand_pcg;
 extern crate rand;
+#[macro_use]
+extern crate lazy_static;
 
 mod map;
 

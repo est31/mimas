@@ -135,39 +135,51 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	res
 }
 
+struct Schematic {
+	items :Vec<(Vector3<isize>, MapBlock)>,
+}
 
-pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
-	let mut sp_nd = |(x, y, z), mb| {
-		let mut blk = map.get_blk_mut(pos + Vector3::new(x, y, z)).unwrap();
-		blk.set(mb);
-	};
+lazy_static! {
+    static ref TREE_SCHEMATIC :Schematic = tree_schematic();
+}
+
+fn tree_schematic() -> Schematic {
+	let mut items = Vec::new();
 	for x in -1 ..= 1 {
 		for y in -1 ..= 1 {
-			sp_nd((x, y, 3), MapBlock::Leaves);
-			sp_nd((x, y, 4), MapBlock::Leaves);
-			sp_nd((x, y, 5), MapBlock::Leaves);
+			items.push((Vector3::new(x, y, 3), MapBlock::Leaves));
+			items.push((Vector3::new(x, y, 4), MapBlock::Leaves));
+			items.push((Vector3::new(x, y, 5), MapBlock::Leaves));
 		}
 	}
 	for z in 0 .. 4 {
-		sp_nd((0, 0, z), MapBlock::Tree);
+		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
+	}
+	Schematic {
+		items
 	}
 }
 
+fn spawn_schematic(map :&mut Map, pos :Vector3<isize>, schematic :&Schematic) {
+	for (bpos, mb) in schematic.items.iter() {
+		let mut blk = map.get_blk_mut(pos + bpos).unwrap();
+		blk.set(*mb);
+	}
+}
+
+fn spawn_schematic_mapgen(map :&mut Map, pos :Vector3<isize>, schematic :&Schematic) {
+	for (bpos, mb) in schematic.items.iter() {
+		let blk = map.get_blk_p1_mut(pos + bpos).unwrap();
+		*blk = *mb;
+	}
+}
+
+pub fn spawn_tree(map :&mut Map, pos :Vector3<isize>) {
+	spawn_schematic(map, pos, &TREE_SCHEMATIC);
+}
+
 fn spawn_tree_mapgen(map :&mut Map, pos :Vector3<isize>) {
-	let mut sp_nd = |(x, y, z), mb| {
-		let blk = map.get_blk_p1_mut(pos + Vector3::new(x, y, z)).unwrap();
-		*blk = mb;
-	};
-	for x in -1 ..= 1 {
-		for y in -1 ..= 1 {
-			sp_nd((x, y, 3), MapBlock::Leaves);
-			sp_nd((x, y, 4), MapBlock::Leaves);
-			sp_nd((x, y, 5), MapBlock::Leaves);
-		}
-	}
-	for z in 0 .. 4 {
-		sp_nd((0, 0, z), MapBlock::Tree);
-	}
+	spawn_schematic_mapgen(map, pos, &TREE_SCHEMATIC);
 }
 
 pub struct MapBlockHandle<'a> {

@@ -519,6 +519,7 @@ dependencies = [
  "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ncollide3d 0.17.2 (registry+https://github.com/rust-lang/crates.io-index)",
