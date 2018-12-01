@@ -85,7 +85,6 @@ struct Game {
 
 	physics_world :World<f32>,
 	player_handle :BodyHandle,
-	player_collider :ColliderHandle,
 
 	meshres_r :MeshResReceiver,
 
@@ -166,13 +165,12 @@ impl Game {
 			player_collisionbox.center_of_mass());
 		let material = Material::new(1.0, 1.0);
 		let player_shape = ShapeHandle::new(player_collisionbox);
-		let player_collider = physics_world.add_collider(0.01,
+		let _player_collider = physics_world.add_collider(0.01,
 			player_shape, player_handle, nalgebra::one(), material);
 
 		Game {
 			physics_world,
 			player_handle,
-			player_collider,
 
 			meshres_r,
 
