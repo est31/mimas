@@ -449,7 +449,10 @@ impl Game {
 									self.menu_enabled = !self.menu_enabled;
 									self.check_grab_change();
 								}
-							}
+							},
+							Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
+								close = true;
+							},
 							_ => (),
 						}
 						self.camera.handle_kinput(input);
