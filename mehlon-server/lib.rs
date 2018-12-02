@@ -1,8 +1,5 @@
 extern crate noise;
 extern crate nalgebra;
-extern crate ncollide3d;
-extern crate nphysics3d;
-extern crate num_traits;
 extern crate rand_pcg;
 extern crate rand;
 #[macro_use]

@@ -8,7 +8,6 @@ name = "mehlon"
 path = "main.rs"
 
 [dependencies]
-noise = "0.5"
 nalgebra = "0.16"
 ncollide3d = "0.17.2"
 nphysics3d = "0.9.0"
