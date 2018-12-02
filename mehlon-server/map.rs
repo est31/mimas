@@ -60,7 +60,7 @@ pub struct Map<B :MapBackend> {
 }
 
 pub type ServerMap = Map<MapgenMap>;
-pub type ClientMap = Map<MapgenMap>;
+pub type ClientMap = Map<ClientBackend>;
 
 pub struct MapgenMap {
 	seed :u32,
@@ -232,6 +232,16 @@ impl<'a> MapBlockHandle<'a> {
 	}
 }
 
+
+pub struct ClientBackend;
+
+impl MapBackend for ClientBackend {
+	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, pos_min :Vector3<isize>,
+			pos_max :Vector3<isize>, f :&mut F) {
+		// Do nothing. The server just pushes any chunks.
+	}
+}
+
 impl MapBackend for MapgenMap {
 	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, pos_min :Vector3<isize>,
 			pos_max :Vector3<isize>, f :&mut F) {
@@ -349,6 +359,12 @@ impl Map<MapgenMap> {
 	}
 }
 
+impl Map<ClientBackend> {
+	pub fn new() -> Self {
+		Map::from_backend(ClientBackend)
+	}
+}
+
 impl<B :MapBackend> Map<B> {
 	pub fn from_backend(backend :B) -> Self {
 		Map {
@@ -365,6 +381,10 @@ impl<B :MapBackend> Map<B> {
 	}
 	fn get_chunk_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MapChunkData> {
 		self.chunks.get_mut(&pos)
+	}
+	pub fn set_chunk(&mut self, pos :Vector3<isize>, data :MapChunkData) {
+		self.chunks.insert(pos, data);
+		(self.on_change)(pos, &data);
 	}
 	pub fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
 			pos_max :Vector3<isize>) {

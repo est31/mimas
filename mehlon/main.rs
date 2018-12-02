@@ -37,7 +37,7 @@ use nphysics3d::volumetric::Volumetric;
 use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
-use mehlon_server::{ServerConnection, Server};
+use mehlon_server::{ServerConnection, Server, ServerToClientMsg, ClientToServerMsg};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -126,7 +126,7 @@ impl Game {
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
 		let display = glium::Display::new(window, context, events_loop).unwrap();
 
-		let mut map = Map::new(78);
+		let mut map = ClientMap::new();
 		let camera = Camera::new();
 
 		let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC,
@@ -235,6 +235,16 @@ impl Game {
 			let close = self.handle_events(events_loop);
 			if !self.menu_enabled {
 				self.movement(float_delta);
+				let msg = ClientToServerMsg::SetPos(self.camera.pos);
+				self.srv_conn.cts_s.send(msg).unwrap();
+
+			}
+			while let Ok(msg) = self.srv_conn.stc_r.try_recv() {
+				match msg {
+					ServerToClientMsg::ChunkUpdated(p, c) => {
+						self.map.set_chunk(p, c);
+					},
+				}
 			}
 
 			if close {
@@ -492,11 +502,17 @@ impl Game {
 								if button == glutin::MouseButton::Left {
 									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 									blk.set(MapBlock::Air);
+									let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
+									self.srv_conn.cts_s.send(msg).unwrap();
 								} else if button == glutin::MouseButton::Right {
 									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 									blk.set(MapBlock::Wood);
+									let msg = ClientToServerMsg::SetBlock(before_selected, MapBlock::Wood);
+									self.srv_conn.cts_s.send(msg).unwrap();
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
+									let msg = ClientToServerMsg::PlaceTree(before_selected);
+									self.srv_conn.cts_s.send(msg).unwrap();
 								}
 							}
 						}

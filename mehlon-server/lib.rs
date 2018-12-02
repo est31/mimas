@@ -31,6 +31,7 @@ use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
 pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
+	PlaceTree(Vector3<isize>),
 	SetPos(Vector3<f32>),
 }
 
@@ -101,7 +102,7 @@ impl Server {
 		let stc_sc = stc_s.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			meshgen_s.send((chunk_pos, *chunk)).unwrap();
-			stc_sc.send(ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk));
+			let _ = stc_sc.send(ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk));
 		}));
 
 		// This ensures that the mesh generation thread puts higher priority onto positions
@@ -175,12 +176,19 @@ impl Server {
 				use ClientToServerMsg::*;
 				match msg {
 					SetBlock(p, b) => {
+						if let Some(mut hdl) = self.map.get_blk_mut(p) {
+							hdl.set(b);
+						} else {
+							// TODO log something about an attempted action in an unloaded chunk
+						}
+					},
+					PlaceTree(p) => {
 					},
 					SetPos(p) => {
+						self.camera.pos = p;
 					},
 				}
 			}
-			//self.movement(float_delta);
 
 			if exit {
 				break;
