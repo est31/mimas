@@ -120,6 +120,7 @@ impl Server {
 						}
 					},
 					PlaceTree(p) => {
+						map::spawn_tree(&mut self.map, p);
 					},
 					SetPos(p) => {
 						self.player_pos = p;
