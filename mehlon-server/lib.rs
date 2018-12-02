@@ -6,11 +6,12 @@ extern crate rand;
 extern crate lazy_static;
 
 pub mod map;
+pub mod generic_net;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use generic_net::{MpscServerSocket, NetworkServerSocket, ServerConnection};
 
 pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
@@ -31,9 +32,7 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 }
 
 pub struct Server {
-
-	stc_s :Sender<ServerToClientMsg>,
-	cts_r :Receiver<ClientToServerMsg>,
+	srv_socket :MpscServerSocket,
 
 	last_frame_time :Instant,
 	last_fps :f32,
@@ -42,20 +41,13 @@ pub struct Server {
 	player_pos :Vector3<f32>,
 }
 
-pub struct ServerConnection {
-	pub stc_r :Receiver<ServerToClientMsg>,
-	pub cts_s :Sender<ClientToServerMsg>,
-}
-
 impl Server {
 	pub fn new() -> (Self, ServerConnection) {
+		let (srv_socket, conn) = MpscServerSocket::new();
 		let mut map = ServerMap::new(78);
 		let player_pos = Vector3::new(60.0, 40.0, 20.0);
 
-		let (stc_s, stc_r) = channel();
-		let (cts_s, cts_r) = channel();
-
-		let stc_sc = stc_s.clone();
+		let stc_sc = srv_socket.stc_s.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			let _ = stc_sc.send(ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk));
 		}));
@@ -65,17 +57,12 @@ impl Server {
 		gen_chunks_around(&mut map, player_pos.map(|v| v as isize), 1, 1);
 
 		let srv = Server {
-			stc_s,
-			cts_r,
+			srv_socket,
 
 			last_frame_time : Instant::now(),
 			last_fps : 0.0,
 			map,
 			player_pos,
-		};
-		let conn = ServerConnection {
-			stc_r,
-			cts_s,
 		};
 		(srv, conn)
 	}
@@ -103,7 +90,7 @@ impl Server {
 				self.player_pos.map(|v| v as isize), 4, 2);
 			let _float_delta = self.update_fps();
 			let exit = false;
-			while let Ok(msg) = self.cts_r.try_recv() {
+			while let Some(msg) = self.srv_socket.try_recv() {
 				use ClientToServerMsg::*;
 				match msg {
 					SetBlock(p, b) => {
