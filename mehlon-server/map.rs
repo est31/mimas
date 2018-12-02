@@ -236,8 +236,8 @@ impl<'a> MapBlockHandle<'a> {
 pub struct ClientBackend;
 
 impl MapBackend for ClientBackend {
-	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, pos_min :Vector3<isize>,
-			pos_max :Vector3<isize>, f :&mut F) {
+	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, _pos_min :Vector3<isize>,
+			_pos_max :Vector3<isize>, _f :&mut F) {
 		// Do nothing. The server just pushes any chunks.
 	}
 }

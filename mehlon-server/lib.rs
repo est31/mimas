@@ -14,7 +14,6 @@ use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use ncollide3d::shape::{Compound};
 
 pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
@@ -25,8 +24,6 @@ pub enum ClientToServerMsg {
 pub enum ServerToClientMsg {
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 }
-
-type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>)>;
 
 fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
@@ -107,7 +104,7 @@ impl Server {
 		loop {
 			gen_chunks_around(&mut self.map,
 				self.player_pos.map(|v| v as isize), 4, 2);
-			let float_delta = self.update_fps();
+			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Ok(msg) = self.cts_r.try_recv() {
 				use ClientToServerMsg::*;
@@ -142,27 +139,10 @@ fn durtofl(d :Duration) -> f32 {
 	d.as_secs() as f32 + d.subsec_millis() as f32 / 1000.0
 }
 
-fn clamp(a :f32, min :f32, max :f32) -> f32 {
-	if a > min {
-		if a < max {
-			a
-		} else {
-			max
-		}
-	} else {
-		min
-	}
-}
-
 // TODO: once euclidean division stabilizes,
 // use it: https://github.com/rust-lang/rust/issues/49048
 fn mod_euc(a :f32, b :f32) -> f32 {
 	((a % b) + b) % b
-}
-
-/// Degrees to radians
-fn dtr(v :f32) -> f32 {
-	v / 180.0 * std::f32::consts::PI
 }
 
 /// Block position to chunk position
