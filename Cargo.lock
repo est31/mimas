@@ -519,7 +519,6 @@ dependencies = [
  "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mehlon-server 0.1.0",
  "nalgebra 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -536,11 +535,7 @@ dependencies = [
 name = "mehlon-server"
 version = "0.1.0"
 dependencies = [
- "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ncollide3d 0.17.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -548,7 +543,6 @@ dependencies = [
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_pcg 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "winit 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

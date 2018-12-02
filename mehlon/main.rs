@@ -11,13 +11,12 @@ extern crate num_traits;
 extern crate frustum_query;
 extern crate rand_pcg;
 extern crate rand;
-#[macro_use]
-extern crate lazy_static;
 extern crate mehlon_server;
 
 mod map;
 
-use map::{Map, MapChunkData, spawn_tree, CHUNKSIZE, MapBlock};
+use map::{Map, MapBackend, ClientMap, MapChunkData, spawn_tree,
+	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};
 use num_traits::identities::Zero;
@@ -38,15 +37,21 @@ use nphysics3d::volumetric::Volumetric;
 use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
+use mehlon_server::{ServerConnection, Server};
+
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
-	let mut game = Game::new(&events_loop);
+	let (mut server, conn) = Server::new();
+	let mut game = Game::new(&events_loop, conn);
+	thread::spawn(move || {
+		server.run_loop();
+	});
 	game.run_loop(&mut events_loop);
 }
 
 type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
-fn gen_chunks_around(map :&mut Map, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
+fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
 	let radius = Vector3::new(xyradius, xyradius, zradius) * CHUNKSIZE;
 	let chunk_pos_min = btchn(chunk_pos - radius);
@@ -83,6 +88,7 @@ const FRAGMENT_SHADER_SRC :&str = r#"
 const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
+	srv_conn :ServerConnection,
 
 	physics_world :World<f32>,
 	player_handle :BodyHandle,
@@ -105,7 +111,7 @@ struct Game {
 	has_focus :bool,
 	menu_enabled :bool,
 
-	map :Map,
+	map :ClientMap,
 	camera :Camera,
 
 	swidth :f64,
@@ -113,7 +119,8 @@ struct Game {
 }
 
 impl Game {
-	pub fn new(events_loop :&glutin::EventsLoop) -> Self {
+	pub fn new(events_loop :&glutin::EventsLoop,
+			srv_conn :ServerConnection) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_title("Mehlon");
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
@@ -170,6 +177,8 @@ impl Game {
 			player_shape, player_handle, nalgebra::one(), material);
 
 		Game {
+			srv_conn,
+
 			physics_world,
 			player_handle,
 
@@ -831,7 +840,7 @@ impl Camera {
 		Matrix4::new_perspective(self.aspect_ratio, fov, znear, zfar).into()
 	}
 
-	pub fn get_selected_pos(&self, map :&Map) -> Option<(Vector3<isize>, Vector3<isize>)> {
+	pub fn get_selected_pos<B :MapBackend>(&self, map :&Map<B>) -> Option<(Vector3<isize>, Vector3<isize>)> {
 		const SELECTION_RANGE :f32 = 10.0;
 		let pointing_at_distance = self.pos + self.direction().coords * SELECTION_RANGE;
 		let (dx, dy, dz) = (pointing_at_distance.x, pointing_at_distance.y, pointing_at_distance.z);

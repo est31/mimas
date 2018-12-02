@@ -22,5 +22,4 @@ glium-glyph = "0.2"
 line_drawing = "0.7"
 rand_pcg = "0.1.1"
 rand = "0.6.0"
-lazy_static = "1.0"
 mehlon-server = { path = "../mehlon-server" }
