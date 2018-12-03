@@ -11,7 +11,7 @@ pub mod generic_net;
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
-use generic_net::{MpscServerSocket, NetworkServerSocket, ServerConnection};
+use generic_net::{MpscServerSocket, NetworkServerSocket, MpscClientSocket};
 
 pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
@@ -42,7 +42,7 @@ pub struct Server {
 }
 
 impl Server {
-	pub fn new() -> (Self, ServerConnection) {
+	pub fn new() -> (Self, MpscClientSocket) {
 		let (srv_socket, conn) = MpscServerSocket::new();
 		let mut map = ServerMap::new(78);
 		let player_pos = Vector3::new(60.0, 40.0, 20.0);

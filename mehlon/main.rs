@@ -37,7 +37,7 @@ use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
 use mehlon_server::{Server, ServerToClientMsg, ClientToServerMsg};
-use mehlon_server::generic_net::{ServerConnection, NetworkClientSocket};
+use mehlon_server::generic_net::{MpscClientSocket, NetworkClientSocket};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
@@ -88,7 +88,7 @@ const FRAGMENT_SHADER_SRC :&str = r#"
 const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
-	srv_conn :ServerConnection,
+	srv_conn :MpscClientSocket,
 
 	physics_world :World<f32>,
 	player_handle :BodyHandle,
@@ -120,7 +120,7 @@ struct Game {
 
 impl Game {
 	pub fn new(events_loop :&glutin::EventsLoop,
-			srv_conn :ServerConnection) -> Self {
+			srv_conn :MpscClientSocket) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_title("Mehlon");
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);

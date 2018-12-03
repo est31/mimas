@@ -17,7 +17,7 @@ pub struct MpscServerSocket {
 	pub(crate) cts_r :Receiver<ClientToServerMsg>,
 }
 
-pub struct ServerConnection {
+pub struct MpscClientSocket {
 	pub(crate) stc_r :Receiver<ServerToClientMsg>,
 	pub(crate) cts_s :Sender<ClientToServerMsg>,
 }
@@ -31,7 +31,7 @@ impl NetworkServerSocket for MpscServerSocket {
 	}
 }
 
-impl NetworkClientSocket for ServerConnection {
+impl NetworkClientSocket for MpscClientSocket {
 	fn try_recv(&self) -> Option<ServerToClientMsg> {
 		self.stc_r.try_recv().ok()
 	}
@@ -41,14 +41,14 @@ impl NetworkClientSocket for ServerConnection {
 }
 
 impl MpscServerSocket {
-	pub fn new() -> (Self, ServerConnection) {
+	pub fn new() -> (Self, MpscClientSocket) {
 		let (stc_s, stc_r) = channel();
 		let (cts_s, cts_r) = channel();
 		let mpsc_socket = MpscServerSocket {
 			stc_s,
 			cts_r,
 		};
-		let srv_conn = ServerConnection {
+		let srv_conn = MpscClientSocket {
 			stc_r,
 			cts_s,
 		};
