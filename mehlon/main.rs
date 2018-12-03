@@ -139,10 +139,8 @@ impl Game {
 		let (meshres_s, meshres_r) = channel();
 		thread::spawn(move || {
 			while let Ok((p, chunk)) = meshgen_r.recv() {
-				let v = Instant::now();
 				let (mesh, compound) = mesh_compound_for_chunk(p, &chunk);
 				let _ = meshres_s.send((p, compound, mesh));
-				println!("generating mesh took {:?}", Instant::now() - v);
 			}
 		});
 
