@@ -1,15 +1,7 @@
 extern crate nalgebra;
 extern crate ncollide3d;
-extern crate nphysics3d;
 #[macro_use]
 extern crate glium;
-extern crate winit;
-extern crate glium_glyph;
-extern crate line_drawing;
-extern crate num_traits;
-extern crate frustum_query;
-extern crate rand_pcg;
-extern crate rand;
 extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
