@@ -1,11 +1,11 @@
 [package]
-name = "mehlon"
+name = "mehlon-meshgen"
 version = "0.1.0"
 authors = ["est31 <MTest31@outlook.com>"]
 
-[[bin]]
-name = "mehlon"
-path = "main.rs"
+[lib]
+name = "mehlon_meshgen"
+path = "lib.rs"
 
 [dependencies]
 nalgebra = "0.16"
@@ -22,4 +22,3 @@ line_drawing = "0.7"
 rand_pcg = "0.1.1"
 rand = "0.6.0"
 mehlon-server = { path = "../mehlon-server" }
-mehlon-meshgen = { path = "../mehlon-meshgen" }

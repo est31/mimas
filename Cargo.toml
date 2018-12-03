@@ -3,9 +3,14 @@
 cargo-features = ["profile-overrides"]
 
 [workspace]
-members = ["mehlon", "mehlon-server"]
+members = ["mehlon", "mehlon-server", "mehlon-meshgen"]
 
 # This allows us to optimize dependencies
 # If you aren't on nightly, you can just comment this out.
 [profile.dev.overrides."*"]
+opt-level = 3
+
+# Also optimize mehlon-meshgen
+# Per default, workspace members are not included by "*".
+[profile.dev.overrides.mehlon-meshgen]
 opt-level = 3
