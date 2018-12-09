@@ -2,27 +2,27 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
 use {ClientToServerMsg, ServerToClientMsg};
 
-pub trait NetworkServerSocket {
+pub trait NetworkServerConn {
 	fn try_recv(&self) -> Option<ClientToServerMsg>;
 	fn send(&self, msg :ServerToClientMsg);
 }
 
-pub trait NetworkClientSocket {
+pub trait NetworkClientConn {
 	fn try_recv(&self) -> Option<ServerToClientMsg>;
 	fn send(&self, msg :ClientToServerMsg);
 }
 
-pub struct MpscServerSocket {
+pub struct MpscServerConn {
 	pub(crate) stc_s :Sender<ServerToClientMsg>,
 	pub(crate) cts_r :Receiver<ClientToServerMsg>,
 }
 
-pub struct MpscClientSocket {
+pub struct MpscClientConn {
 	pub(crate) stc_r :Receiver<ServerToClientMsg>,
 	pub(crate) cts_s :Sender<ClientToServerMsg>,
 }
 
-impl NetworkServerSocket for MpscServerSocket {
+impl NetworkServerConn for MpscServerConn {
 	fn try_recv(&self) -> Option<ClientToServerMsg> {
 		self.cts_r.try_recv().ok()
 	}
@@ -31,7 +31,7 @@ impl NetworkServerSocket for MpscServerSocket {
 	}
 }
 
-impl NetworkClientSocket for MpscClientSocket {
+impl NetworkClientConn for MpscClientConn {
 	fn try_recv(&self) -> Option<ServerToClientMsg> {
 		self.stc_r.try_recv().ok()
 	}
@@ -40,15 +40,15 @@ impl NetworkClientSocket for MpscClientSocket {
 	}
 }
 
-impl MpscServerSocket {
-	pub fn new() -> (Self, MpscClientSocket) {
+impl MpscServerConn {
+	pub fn new() -> (Self, MpscClientConn) {
 		let (stc_s, stc_r) = channel();
 		let (cts_s, cts_r) = channel();
-		let mpsc_socket = MpscServerSocket {
+		let mpsc_socket = MpscServerConn {
 			stc_s,
 			cts_r,
 		};
-		let srv_conn = MpscClientSocket {
+		let srv_conn = MpscClientConn {
 			stc_r,
 			cts_s,
 		};

@@ -11,7 +11,7 @@ pub mod generic_net;
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
-use generic_net::{MpscServerSocket, NetworkServerSocket, MpscClientSocket};
+use generic_net::{MpscServerConn, NetworkServerConn, MpscClientConn};
 
 pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
@@ -32,7 +32,7 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 }
 
 pub struct Server {
-	srv_socket :MpscServerSocket,
+	srv_socket :MpscServerConn,
 
 	last_frame_time :Instant,
 	last_fps :f32,
@@ -42,8 +42,8 @@ pub struct Server {
 }
 
 impl Server {
-	pub fn new() -> (Self, MpscClientSocket) {
-		let (srv_socket, conn) = MpscServerSocket::new();
+	pub fn new() -> (Self, MpscClientConn) {
+		let (srv_socket, conn) = MpscServerConn::new();
 		let mut map = ServerMap::new(78);
 		let player_pos = Vector3::new(60.0, 40.0, 20.0);
 
