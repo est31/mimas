@@ -107,24 +107,28 @@ impl Server {
 			while let Some(conn) = self.srv_socket.try_open_conn() {
 				self.srv_conns.borrow_mut().push(conn);
 			}
+			let mut msgs = Vec::new();
 			for conn in self.srv_conns.borrow_mut().iter_mut() {
 				while let Some(msg) = conn.try_recv() {
-					use ClientToServerMsg::*;
-					match msg {
-						SetBlock(p, b) => {
-							if let Some(mut hdl) = self.map.get_blk_mut(p) {
-								hdl.set(b);
-							} else {
-								// TODO log something about an attempted action in an unloaded chunk
-							}
-						},
-						PlaceTree(p) => {
-							map::spawn_tree(&mut self.map, p);
-						},
-						SetPos(p) => {
-							self.player_pos = p;
-						},
-					}
+					msgs.push(msg);
+				}
+			}
+			for msg in msgs {
+				use ClientToServerMsg::*;
+				match msg {
+					SetBlock(p, b) => {
+						if let Some(mut hdl) = self.map.get_blk_mut(p) {
+							hdl.set(b);
+						} else {
+							// TODO log something about an attempted action in an unloaded chunk
+						}
+					},
+					PlaceTree(p) => {
+						map::spawn_tree(&mut self.map, p);
+					},
+					SetPos(p) => {
+						self.player_pos = p;
+					},
 				}
 			}
 
