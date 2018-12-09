@@ -3,6 +3,10 @@ name = "mehlon-server"
 version = "0.1.0"
 authors = ["est31 <MTest31@outlook.com>"]
 
+[[bin]]
+name = "mehlon-server"
+path = "main.rs"
+
 [lib]
 name = "mehlon_server"
 path = "lib.rs"

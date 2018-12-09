@@ -44,13 +44,14 @@ use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
-	let server_socket = TcpServerSocket::new();
 	let client_conn = TcpClientConn::from_socket_addr("127.0.0.1:7700");
 	let mut game = Game::new(&events_loop, client_conn);
+
+	/*let server_socket = TcpServerSocket::new();
 	thread::spawn(move || {
 		let mut server = Server::new(server_socket);
 		server.run_loop();
-	});
+	});*/
 	game.run_loop(&mut events_loop);
 }
 

@@ -4,6 +4,7 @@ cargo-features = ["profile-overrides"]
 
 [workspace]
 members = ["mehlon", "mehlon-server", "mehlon-meshgen"]
+default-members = ["mehlon"]
 
 # Default opt level
 #[profile.dev]
