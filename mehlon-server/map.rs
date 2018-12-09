@@ -8,7 +8,7 @@ use rand::Rng;
 
 pub const CHUNKSIZE :isize = 16;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MapBlock {
 	Air,
 	Water,
@@ -17,6 +17,12 @@ pub enum MapBlock {
 	Stone,
 	Tree,
 	Leaves,
+}
+
+impl Default for MapBlock {
+	fn default() -> Self {
+		MapBlock::Air
+	}
 }
 
 impl MapBlock {
@@ -43,8 +49,15 @@ enum GenerationPhase {
 	Done,
 }
 
-#[derive(Copy, Clone)]
-pub struct MapChunkData([MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]);
+big_array! { BigArray; }
+
+#[derive(Serialize, Deserialize, Copy, Clone)]
+pub struct MapChunkData(
+	#[serde(with = "BigArray")]
+	[MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]
+);
+
+
 
 #[derive(Clone)]
 pub struct MapChunk {
@@ -56,7 +69,7 @@ pub struct MapChunk {
 pub struct Map<B :MapBackend> {
 	backend :B,
 	chunks :HashMap<Vector3<isize>, MapChunkData>,
-	on_change :Box<dyn Fn(Vector3<isize>, &MapChunkData) + Send>,
+	on_change :Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
 }
 
 pub type ServerMap = Map<MapgenMap>;
@@ -220,7 +233,7 @@ fn spawn_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 pub struct MapBlockHandle<'a> {
 	pos :Vector3<isize>,
 	chk :&'a mut MapChunkData,
-	on_change :&'a Box<dyn Fn(Vector3<isize>, &MapChunkData) + Send>,
+	on_change :&'a Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
 }
 
 impl<'a> MapBlockHandle<'a> {
@@ -373,7 +386,7 @@ impl<B :MapBackend> Map<B> {
 			on_change : Box::new(|_, _| {}),
 		}
 	}
-	pub fn register_on_change(&mut self, f :Box<dyn Fn(Vector3<isize>, &MapChunkData) + Send>) {
+	pub fn register_on_change(&mut self, f :Box<dyn Fn(Vector3<isize>, &MapChunkData)>) {
 		self.on_change = f;
 	}
 	pub fn get_chunk(&self, pos :Vector3<isize>) -> Option<&MapChunkData> {

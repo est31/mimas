@@ -38,15 +38,17 @@ use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
 use mehlon_server::{Server, ServerToClientMsg, ClientToServerMsg};
-use mehlon_server::generic_net::{MpscClientConn, NetworkClientConn};
+use mehlon_server::generic_net::{TcpClientConn, TcpServerSocket, NetworkClientConn};
 
 use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
 
 fn main() {
 	let mut events_loop = glutin::EventsLoop::new();
-	let (mut server, conn) = Server::new();
-	let mut game = Game::new(&events_loop, conn);
+	let server_socket = TcpServerSocket::new();
+	let client_conn = TcpClientConn::from_socket_addr("127.0.0.1:7700");
+	let mut game = Game::new(&events_loop, client_conn);
 	thread::spawn(move || {
+		let mut server = Server::new(server_socket);
 		server.run_loop();
 	});
 	game.run_loop(&mut events_loop);
@@ -91,7 +93,7 @@ const FRAGMENT_SHADER_SRC :&str = r#"
 const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 struct Game {
-	srv_conn :MpscClientConn,
+	srv_conn :TcpClientConn,
 
 	physics_world :World<f32>,
 	player_handle :BodyHandle,
@@ -123,7 +125,7 @@ struct Game {
 
 impl Game {
 	pub fn new(events_loop :&glutin::EventsLoop,
-			srv_conn :MpscClientConn) -> Self {
+			srv_conn :TcpClientConn) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_title("Mehlon");
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
