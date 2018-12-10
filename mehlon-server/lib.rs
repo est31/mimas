@@ -20,7 +20,7 @@ use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
 use std::cell::RefCell;
 use std::rc::Rc;
-use generic_net::{TcpServerConn, TcpServerSocket, NetworkServerConn};
+use generic_net::{TcpServerConn, TcpServerSocket, NetworkServerConn, NetErr};
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -61,10 +61,16 @@ impl Server {
 		let srv_conns = Rc::new(RefCell::new(Vec::<TcpServerConn>::new()));
 		let conns = srv_conns.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
+			let mut conns = conns.borrow_mut();
 			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk);
-			for conn in conns.borrow().iter() {
-				let _ = conn.send(msg.clone());
+			let mut conns_to_close = Vec::new();
+			for (idx, conn) in conns.iter().enumerate() {
+				match conn.send(msg.clone()) {
+					Ok(_) => (),
+					Err(_) => conns_to_close.push(idx),
+				}
 			}
+			close_connections(&conns_to_close, &mut *conns);
 		}));
 
 		// This ensures that the mesh generation thread puts higher priority onto positions
@@ -100,6 +106,34 @@ impl Server {
 		self.last_fps = fps;
 		float_delta
 	}
+	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
+		let mut msgs = Vec::new();
+		let mut conns = self.srv_conns.borrow_mut();
+		let mut conns_to_close = Vec::new();
+		for (idx, conn) in conns.iter_mut().enumerate() {
+			loop {
+				let msg = conn.try_recv();
+				match msg {
+					Ok(Some(msg)) => {
+						msgs.push(msg);
+					},
+					Ok(None) => break,
+					Err(NetErr::ConnectionClosed) => {
+						println!("Client connection closed.");
+						conns_to_close.push(idx);
+						break;
+					},
+					Err(_) => {
+						println!("Client connection error.");
+						conns_to_close.push(idx);
+						break;
+					},
+				}
+			}
+		}
+		close_connections(&conns_to_close, &mut *conns);
+		msgs
+	}
 	pub fn run_loop(&mut self) {
 		loop {
 			gen_chunks_around(&mut self.map,
@@ -109,12 +143,8 @@ impl Server {
 			while let Some(conn) = self.srv_socket.try_open_conn() {
 				self.srv_conns.borrow_mut().push(conn);
 			}
-			let mut msgs = Vec::new();
-			for conn in self.srv_conns.borrow_mut().iter_mut() {
-				while let Ok(Some(msg)) = conn.try_recv() {
-					msgs.push(msg);
-				}
-			}
+			let msgs = self.get_msgs();
+
 			for msg in msgs {
 				use ClientToServerMsg::*;
 				match msg {
@@ -138,6 +168,13 @@ impl Server {
 				break;
 			}
 		}
+	}
+}
+
+fn close_connections(conns_to_close :&[usize], connections :&mut Vec<impl NetworkServerConn>) {
+	for (skew, idx) in conns_to_close.iter().enumerate() {
+		println!("closing connection");
+		connections.remove(idx - skew);
 	}
 }
 
