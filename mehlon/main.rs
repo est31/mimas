@@ -10,6 +10,8 @@ extern crate num_traits;
 extern crate frustum_query;
 extern crate rand_pcg;
 extern crate rand;
+extern crate structopt;
+
 extern crate mehlon_server;
 extern crate mehlon_meshgen;
 
@@ -19,17 +21,31 @@ mod client;
 use glium::glutin;
 use client::Game;
 
+use structopt::StructOpt;
+
 use std::thread;
 use mehlon_server::Server;
 use mehlon_server::generic_net::{TcpClientConn, TcpServerSocket};
 
+/// Mehlon client
+#[derive(StructOpt, Debug)]
+#[structopt(name = "mehlon")]
+struct Options {
+	/// Connect to the given server
+	#[structopt(long = "connect")]
+	connect :Option<String>,
+}
+
 fn main() {
+
+	let options = Options::from_args();
+
 	let mut events_loop = glutin::EventsLoop::new();
-	let client_conn = TcpClientConn::from_socket_addr("127.0.0.1:7700");
+	let addr = options.connect.clone().unwrap_or_else(||"127.0.0.1:7700".to_string());
+	let client_conn = TcpClientConn::from_socket_addr(addr);
 	let mut game = Game::new(&events_loop, client_conn);
 
-	let start_server = false;
-	if start_server {
+	if options.connect.is_none() {
 		let server_socket = TcpServerSocket::new();
 		thread::spawn(move || {
 			let mut server = Server::new(server_socket);
