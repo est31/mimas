@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 extern crate mehlon_server;
 
 use mehlon_server::{Server, ServerToClientMsg, ClientToServerMsg};

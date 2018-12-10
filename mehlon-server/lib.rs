@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 extern crate noise;
 extern crate nalgebra;
 extern crate rand_pcg;

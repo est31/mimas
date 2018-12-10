@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 extern crate nalgebra;
 extern crate ncollide3d;
 #[macro_use]
