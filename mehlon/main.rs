@@ -42,11 +42,6 @@ fn main() {
 
 	let options = Options::from_args();
 
-	let mut events_loop = glutin::EventsLoop::new();
-	let addr = options.connect.clone().unwrap_or_else(||"127.0.0.1:7700".to_string());
-	let client_conn = TcpClientConn::from_socket_addr(addr);
-	let mut game = Game::new(&events_loop, client_conn);
-
 	if options.connect.is_none() {
 		let server_socket = TcpServerSocket::new();
 		thread::spawn(move || {
@@ -54,5 +49,11 @@ fn main() {
 			server.run_loop();
 		});
 	}
+
+	let mut events_loop = glutin::EventsLoop::new();
+	let addr = options.connect.clone().unwrap_or_else(||"127.0.0.1:7700".to_string());
+	let client_conn = TcpClientConn::from_socket_addr(addr);
+	let mut game = Game::new(&events_loop, client_conn);
+
 	game.run_loop(&mut events_loop);
 }
