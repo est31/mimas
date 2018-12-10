@@ -1,19 +1,19 @@
 
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::net::{TcpStream, TcpListener, SocketAddr, ToSocketAddrs};
-use std::io::{Read, Write};
+use std::io::{Read, Write, Error as IoError, ErrorKind};
 use std::mem::replace;
 use {ClientToServerMsg, ServerToClientMsg};
 use bincode::{serialize, deserialize};
 
 pub trait NetworkServerConn {
-	fn try_recv(&mut self) -> Option<ClientToServerMsg>;
-	fn send(&self, msg :ServerToClientMsg);
+	fn try_recv(&mut self) -> Result<Option<ClientToServerMsg>, NetErr>;
+	fn send(&self, msg :ServerToClientMsg) -> Result<(), NetErr>;
 }
 
 pub trait NetworkClientConn {
-	fn try_recv(&mut self) -> Option<ServerToClientMsg>;
-	fn send(&self, msg :ClientToServerMsg);
+	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr>;
+	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr>;
 }
 
 pub struct MpscServerConn {
@@ -27,20 +27,22 @@ pub struct MpscClientConn {
 }
 
 impl NetworkServerConn for MpscServerConn {
-	fn try_recv(&mut self) -> Option<ClientToServerMsg> {
-		self.cts_r.try_recv().ok()
+	fn try_recv(&mut self) -> Result<Option<ClientToServerMsg>, NetErr> {
+		Ok(self.cts_r.try_recv().ok())
 	}
-	fn send(&self, msg :ServerToClientMsg) {
+	fn send(&self, msg :ServerToClientMsg) -> Result<(), NetErr> {
 		let _ = self.stc_s.send(msg);
+		Ok(())
 	}
 }
 
 impl NetworkClientConn for MpscClientConn {
-	fn try_recv(&mut self) -> Option<ServerToClientMsg> {
-		self.stc_r.try_recv().ok()
+	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr> {
+		Ok(self.stc_r.try_recv().ok())
 	}
-	fn send(&self, msg :ClientToServerMsg) {
+	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr> {
 		let _ = self.cts_s.send(msg);
+		Ok(())
 	}
 }
 
@@ -78,32 +80,55 @@ struct TcpMsgStream {
 }
 
 impl NetworkServerConn for TcpServerConn {
-	fn try_recv(&mut self) -> Option<ClientToServerMsg> {
+	fn try_recv(&mut self) -> Result<Option<ClientToServerMsg>, NetErr> {
 		let msg = self.stream.try_recv_msg()?;
-		//println!("server recv: {} {:?}", msg.len(), &msg[..4]);
-		Some(deserialize(&msg).unwrap())
+		if let Some(msg) = msg {
+			//println!("server recv: {} {:?}", msg.len(), &msg[..4]);
+			Ok(Some(deserialize(&msg).unwrap()))
+		} else {
+			Ok(None)
+		}
 	}
-	fn send(&self, msg :ServerToClientMsg) {
+	fn send(&self, msg :ServerToClientMsg) -> Result<(), NetErr> {
 		//self.stream.send_msg(&serialize(&msg).unwrap());
 		let buf = &serialize(&msg).unwrap();
 		println!("server send: {} {:?}", buf.len(), &buf[..4]);
 		let _ :ServerToClientMsg = deserialize(&buf).unwrap();
-		self.stream.send_msg(buf);
+		self.stream.send_msg(buf)
 	}
 }
 
 impl NetworkClientConn for TcpClientConn {
-	fn try_recv(&mut self) -> Option<ServerToClientMsg> {
+	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr> {
 		let msg = self.stream.try_recv_msg()?;
-		println!("client recv: {} {:?}", msg.len(), &msg[..4]);
-		Some(deserialize(&msg).unwrap())
+		if let Some(msg) = msg {
+			println!("client recv: {} {:?}", msg.len(), &msg[..4]);
+			Ok(Some(deserialize(&msg).unwrap()))
+		} else {
+			Ok(None)
+		}
 	}
-	fn send(&self, msg :ClientToServerMsg) {
+	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr> {
 		//self.stream.send_msg(&serialize(&msg).unwrap());
 		let buf = &serialize(&msg).unwrap();
 		//println!("client send: {} {:?}", buf.len(), &buf[..4]);
 		let _ :ClientToServerMsg = deserialize(&buf).unwrap();
-		self.stream.send_msg(buf);
+		self.stream.send_msg(buf)
+	}
+}
+
+#[derive(Clone, Debug)]
+pub enum NetErr {
+	ConnectionClosed,
+	Other,
+}
+
+impl From<IoError> for NetErr {
+	fn from(io_err :IoError) -> Self {
+		match io_err.kind() {
+			ErrorKind::ConnectionReset => NetErr::ConnectionClosed,
+			_ => NetErr::Other,
+		}
 	}
 }
 
@@ -117,21 +142,23 @@ impl TcpMsgStream {
 			tcp_stream,
 		}
 	}
-	fn send_msg(&self, buf :&[u8]) {
+	fn send_msg(&self, buf :&[u8]) -> Result<(), NetErr> {
 		// Set it to blocking mode for the duration of the write
 		// We don't support partial writing yet.
-		self.tcp_stream.set_nonblocking(false);
-		(&self.tcp_stream).write_all(&(buf.len() as u64).to_be_bytes()).unwrap();
-		(&self.tcp_stream).write_all(buf).unwrap();
-		(&self.tcp_stream).flush().unwrap();
+		self.tcp_stream.set_nonblocking(false)?;
+		(&self.tcp_stream).write_all(&(buf.len() as u64).to_be_bytes())?;
+		(&self.tcp_stream).write_all(buf)?;
+		(&self.tcp_stream).flush()?;
+		Ok(())
 	}
-	fn try_recv_msg(&mut self) -> Option<Vec<u8>> {
+	fn try_recv_msg(&mut self) -> Result<Option<Vec<u8>>, NetErr> {
 		// Set it to nonblocking mode because we do support partial receiving of data.
-		self.tcp_stream.set_nonblocking(true);
+		self.tcp_stream.set_nonblocking(true)?;
 		if self.len_read < LEN_BYTES {
 			match (&self.tcp_stream).read(&mut self.len_arr[self.len_read..]) {
 				Ok(amount) => self.len_read += amount,
-				Err(_) => return None,
+				Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(None),
+				Err(e) => return Err(NetErr::from(e)),
 			}
 		}
 		if self.len_read == LEN_BYTES {
@@ -141,16 +168,17 @@ impl TcpMsgStream {
 			}
 			match (&self.tcp_stream).read(&mut self.cached[self.cached_count..]) {
 				Ok(amount) => self.cached_count += amount,
-				Err(_) => return None,
+				Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(None),
+				Err(e) => return Err(NetErr::from(e)),
 			}
 			if self.cached_count == self.cached.len() {
 				let ret = replace(&mut self.cached, Vec::new());
 				self.cached_count = 0;
 				self.len_read = 0;
-				return Some(ret);
+				return Ok(Some(ret));
 			}
 		}
-		None
+		Ok(None)
 	}
 }
 

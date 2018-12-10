@@ -203,7 +203,7 @@ impl Game {
 				self.srv_conn.send(msg);
 
 			}
-			while let Some(msg) = self.srv_conn.try_recv() {
+			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
 				match msg {
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);

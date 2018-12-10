@@ -111,7 +111,7 @@ impl Server {
 			}
 			let mut msgs = Vec::new();
 			for conn in self.srv_conns.borrow_mut().iter_mut() {
-				while let Some(msg) = conn.try_recv() {
+				while let Ok(Some(msg)) = conn.try_recv() {
 					msgs.push(msg);
 				}
 			}
