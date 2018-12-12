@@ -42,45 +42,56 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
+struct Player {
+	conn :TcpServerConn,
+	pos :Vector3<f32>,
+}
+
+impl Player {
+	pub fn from_conn(conn :TcpServerConn) -> Self {
+		Player {
+			conn,
+			pos : Vector3::new(0.0, 0.0, 0.0),
+		}
+	}
+}
+
 pub struct Server {
 	srv_socket :TcpServerSocket,
-	srv_conns :Rc<RefCell<Vec<TcpServerConn>>>,
+	players :Rc<RefCell<Vec<Player>>>,
 
 	last_frame_time :Instant,
 	last_fps :f32,
 
 	map :ServerMap,
-	player_pos :Vector3<f32>,
 }
 
 impl Server {
 	pub fn new(srv_socket :TcpServerSocket) -> Self {
 		let mut map = ServerMap::new(78);
-		let player_pos = Vector3::new(60.0, 40.0, 20.0);
 
-		let srv_conns = Rc::new(RefCell::new(Vec::<TcpServerConn>::new()));
-		let conns = srv_conns.clone();
+		let players = Rc::new(RefCell::new(Vec::<Player>::new()));
+		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
-			let mut conns = conns.borrow_mut();
+			let mut players = playersc.borrow_mut();
 			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk);
 			let mut conns_to_close = Vec::new();
-			for (idx, conn) in conns.iter().enumerate() {
-				match conn.send(msg.clone()) {
+			for (idx, player) in players.iter().enumerate() {
+				match player.conn.send(msg.clone()) {
 					Ok(_) => (),
 					Err(_) => conns_to_close.push(idx),
 				}
 			}
-			close_connections(&conns_to_close, &mut *conns);
+			close_connections(&conns_to_close, &mut *players);
 		}));
 
 		let srv = Server {
 			srv_socket,
-			srv_conns : srv_conns,
+			players,
 
 			last_frame_time : Instant::now(),
 			last_fps : 0.0,
 			map,
-			player_pos,
 		};
 		srv
 	}
@@ -104,12 +115,15 @@ impl Server {
 	}
 	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
 		let mut msgs = Vec::new();
-		let mut conns = self.srv_conns.borrow_mut();
+		let mut players = self.players.borrow_mut();
 		let mut conns_to_close = Vec::new();
-		for (idx, conn) in conns.iter_mut().enumerate() {
+		for (idx, player) in players.iter_mut().enumerate() {
 			loop {
-				let msg = conn.try_recv();
+				let msg = player.conn.try_recv();
 				match msg {
+					Ok(Some(ClientToServerMsg::SetPos(p))) => {
+						player.pos = p;
+					},
 					Ok(Some(msg)) => {
 						msgs.push(msg);
 					},
@@ -127,17 +141,21 @@ impl Server {
 				}
 			}
 		}
-		close_connections(&conns_to_close, &mut *conns);
+		close_connections(&conns_to_close, &mut *players);
 		msgs
 	}
 	pub fn run_loop(&mut self) {
 		loop {
-			gen_chunks_around(&mut self.map,
-				self.player_pos.map(|v| v as isize), 4, 2);
+			let positions = self.players.borrow().iter()
+				.map(|player| player.pos).collect::<Vec<_>>();
+			for pos in positions {
+				gen_chunks_around(&mut self.map,
+					pos.map(|v| v as isize), 4, 2);
+			}
 			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Some(conn) = self.srv_socket.try_open_conn() {
-				self.srv_conns.borrow_mut().push(conn);
+				self.players.borrow_mut().push(Player::from_conn(conn));
 			}
 			let msgs = self.get_msgs();
 
@@ -154,9 +172,7 @@ impl Server {
 					PlaceTree(p) => {
 						map::spawn_tree(&mut self.map, p);
 					},
-					SetPos(p) => {
-						self.player_pos = p;
-					},
+					SetPos(_p) => unreachable!(),
 				}
 			}
 
@@ -167,7 +183,7 @@ impl Server {
 	}
 }
 
-fn close_connections(conns_to_close :&[usize], connections :&mut Vec<impl NetworkServerConn>) {
+fn close_connections(conns_to_close :&[usize], connections :&mut Vec<impl Sized>) {
 	for (skew, idx) in conns_to_close.iter().enumerate() {
 		println!("closing connection");
 		connections.remove(idx - skew);
