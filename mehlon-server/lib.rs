@@ -73,10 +73,6 @@ impl Server {
 			close_connections(&conns_to_close, &mut *conns);
 		}));
 
-		// This ensures that the mesh generation thread puts higher priority onto positions
-		// close to the player at the beginning.
-		gen_chunks_around(&mut map, player_pos.map(|v| v as isize), 1, 1);
-
 		let srv = Server {
 			srv_socket,
 			srv_conns : srv_conns,
