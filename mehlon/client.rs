@@ -1,4 +1,4 @@
-use map::{Map, MapBackend, ClientMap, spawn_tree,
+use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};

@@ -17,7 +17,6 @@ extern crate structopt;
 extern crate mehlon_server;
 extern crate mehlon_meshgen;
 
-mod map;
 mod client;
 
 use glium::glutin;
