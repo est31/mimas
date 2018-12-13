@@ -19,6 +19,7 @@ use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
 use generic_net::{TcpServerConn, TcpServerSocket, NetworkServerConn, NetErr};
 
@@ -34,17 +35,24 @@ pub enum ServerToClientMsg {
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 }
 
-fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
+fn chunk_positions_around(pos :Vector3<isize>, xyradius :isize, zradius :isize) -> (Vector3<isize>, Vector3<isize>) {
 	let chunk_pos = btchn(pos);
 	let radius = Vector3::new(xyradius, xyradius, zradius) * CHUNKSIZE;
 	let chunk_pos_min = btchn(chunk_pos - radius);
 	let chunk_pos_max = btchn(chunk_pos + radius);
+	(chunk_pos_min, chunk_pos_max)
+}
+
+fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
+	let (chunk_pos_min, chunk_pos_max) = chunk_positions_around(pos, xyradius, zradius);
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
 struct Player {
 	conn :TcpServerConn,
 	pos :Vector3<f32>,
+	sent_chunks :HashSet<Vector3<isize>>,
+	last_chunk_pos :Vector3<isize>,
 }
 
 impl Player {
@@ -52,6 +60,8 @@ impl Player {
 		Player {
 			conn,
 			pos : Vector3::new(0.0, 0.0, 0.0),
+			sent_chunks : HashSet::new(),
+			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
 	}
 }
@@ -76,7 +86,8 @@ impl Server {
 			let mut players = playersc.borrow_mut();
 			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk);
 			let mut conns_to_close = Vec::new();
-			for (idx, player) in players.iter().enumerate() {
+			for (idx, player) in players.iter_mut().enumerate() {
+				player.sent_chunks.insert(chunk_pos);
 				match player.conn.send(msg.clone()) {
 					Ok(_) => (),
 					Err(_) => conns_to_close.push(idx),
@@ -144,8 +155,41 @@ impl Server {
 		close_connections(&conns_to_close, &mut *players);
 		msgs
 	}
+	fn send_chunks_to_player(&mut self, player :&mut Player) {
+		let isize_pos = player.pos.map(|v| v as isize);
+		let (pmin, pmax) = chunk_positions_around(isize_pos, 4, 2);
+		let pmin = pmin / CHUNKSIZE;
+		let pmax = pmax / CHUNKSIZE;
+		for x in pmin.x .. pmax.x {
+			for y in pmin.y .. pmax.y {
+				for z in pmin.z .. pmax.z {
+					let p = Vector3::new(x, y, z) * CHUNKSIZE;
+					if let Some(c) = self.map.get_chunk(p) {
+						if !player.sent_chunks.contains(&p) {
+							let msg = ServerToClientMsg::ChunkUpdated(p, *c);
+							player.conn.send(msg);
+							player.sent_chunks.insert(p);
+						}
+					}
+				}
+			}
+		}
+	}
+	fn send_chunks_to_players(&mut self) {
+		let players = self.players.clone();
+		for player in players.borrow_mut().iter_mut() {
+			let isize_pos = player.pos.map(|v| v as isize);
+			let player_pos_chn = btchn(isize_pos);
+			if player.last_chunk_pos == player_pos_chn {
+				continue;
+			}
+			player.last_chunk_pos = player_pos_chn;
+			self.send_chunks_to_player(player);
+		}
+	}
 	pub fn run_loop(&mut self) {
 		loop {
+			self.send_chunks_to_players();
 			let positions = self.players.borrow().iter()
 				.map(|player| player.pos).collect::<Vec<_>>();
 			for pos in positions {
