@@ -85,9 +85,9 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 					}
 					if el > 0 && el < CHUNKSIZE {
 						// Tree spawning
-						let tf = 0.018971;
+						let tf = 0.0058971;
 						let tp = [(pos.x + x) as f64 * tf, (pos.y + y) as f64 * tf];
-						let tree_density = 0.3;
+						let tree_density = 0.4;
 						let local_density = tnoise.get(tp);
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
