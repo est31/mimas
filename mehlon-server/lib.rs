@@ -13,6 +13,7 @@ extern crate serde_big_array;
 extern crate bincode;
 
 pub mod map;
+pub mod mapgen;
 pub mod generic_net;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
