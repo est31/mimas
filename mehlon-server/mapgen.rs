@@ -42,10 +42,16 @@ impl MapChunk {
 }
 
 fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
-	let noise = Perlin::new().set_seed(seed);
-	let mnoise = Perlin::new().set_seed(seed.wrapping_add(23));
-	let tnoise = Perlin::new().set_seed(seed.wrapping_add(99));
-	let mut tpcg = Pcg32::new(seed.wrapping_add(53) as u64, seed.wrapping_add(47) as u64);
+	let mut seeder = Pcg32::new(seed.wrapping_add(24) as u64, seed.wrapping_add(400) as u64);
+	// Basic chunk noise
+	let noise = Perlin::new().set_seed(seeder.gen::<u32>());
+	// Macro noise
+	let mnoise = Perlin::new().set_seed(seeder.gen::<u32>());
+	// Super macro noise
+	let smnoise = Perlin::new().set_seed(seeder.gen::<u32>());
+	// Tree noise
+	let tnoise = Perlin::new().set_seed(seeder.gen::<u32>());
+	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), seeder.gen::<u64>());
 	let mut res = MapChunk {
 		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
 		generation_phase : GenerationPhase::PhaseOne,
@@ -56,8 +62,10 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 			let f = 0.02356;
 			let p = [(pos.x + x) as f64 * f, (pos.y + y) as f64 * f];
 			let mf = 0.0018671;
+			let smf = 0.00043571;
 			let mp = [(pos.x + x) as f64 * mf, (pos.y + y) as f64 * mf];
-			let elev = noise.get(p) * 8.3 + mnoise.get(mp) * 23.27713;
+			let smp = [(pos.x + x) as f64 * smf, (pos.y + y) as f64 * smf];
+			let elev = noise.get(p) * 8.3 + mnoise.get(mp) * 23.27713 + smnoise.get(smp) * 137.479131;
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let el = std::cmp::max(std::cmp::min(elev_blocks, CHUNKSIZE), 0);
