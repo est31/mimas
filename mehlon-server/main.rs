@@ -3,8 +3,8 @@
 extern crate mehlon_server;
 extern crate structopt;
 
-use mehlon_server::{Server, ServerToClientMsg, ClientToServerMsg};
-use mehlon_server::generic_net::{TcpClientConn, TcpServerSocket, NetworkClientConn};
+use mehlon_server::Server;
+use mehlon_server::generic_net::TcpServerSocket;
 
 use structopt::StructOpt;
 
