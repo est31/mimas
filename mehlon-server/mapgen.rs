@@ -51,6 +51,8 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let smnoise = Perlin::new().set_seed(seeder.gen::<u32>());
 	// Tree noise
 	let tnoise = Perlin::new().set_seed(seeder.gen::<u32>());
+	// Macro tree noise
+	let mtnoise = Perlin::new().set_seed(seeder.gen::<u32>());
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), seeder.gen::<u64>());
 	let mut res = MapChunk {
 		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
@@ -85,10 +87,19 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 					}
 					if el > 0 && el < CHUNKSIZE {
 						// Tree spawning
-						let tf = 0.0058971;
+						let tf = 0.0088971;
 						let tp = [(pos.x + x) as f64 * tf, (pos.y + y) as f64 * tf];
+						let mtf = 0.00093952;
+						let mtp = [(pos.x + x) as f64 * mtf, (pos.y + y) as f64 * mtf];
 						let tree_density = 0.4;
-						let local_density = tnoise.get(tp);
+						let macro_density = mtnoise.get(mtp);
+						let macro_density = if macro_density < 0.0 {
+							0.0
+						} else {
+							macro_density
+						};
+						let local_density = tnoise.get(tp) + macro_density;
+
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
 							if tpcg.gen::<f64>() > 0.9 {
