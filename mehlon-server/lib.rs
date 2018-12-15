@@ -19,6 +19,7 @@ pub mod generic_net;
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
+use std::thread;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -123,6 +124,21 @@ impl Server {
 		};
 		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
 		self.last_fps = fps;
+
+		const FPS_TGT :f32 = 60.0;
+		// If we exceed our target FPS by a too high
+		// amount, slow a little bit down
+		// to avoid 100% CPU
+		if fps > 1.5 * FPS_TGT {
+			let smooth_delta = 1.0 / fps;
+			let delta_tgt = 1.0 / FPS_TGT;
+			let time_too_fast = delta_tgt - smooth_delta;
+			// Don't slow down by the full time that we were too fast,
+			// because then we are guaranteed to undershoot
+			// the FPS target in this frame. That's not our goal!
+			let micros_to_wait = (time_too_fast * 0.4 * 1_000_000.0) as u64;
+			thread::sleep(Duration::from_micros(micros_to_wait));
+		}
 		float_delta
 	}
 	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
