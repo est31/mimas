@@ -63,6 +63,9 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	// Coal noise
 	let cf = 0.033951;
 	let cnoise = Noise::new(seeder.gen::<u32>(), cf);
+	// Cave noise
+	let ca_f = 0.052951;
+	let ca_noise = Noise::new(seeder.gen::<u32>(), ca_f);
 
 	let mut res = MapChunk {
 		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
@@ -82,6 +85,15 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 						let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
 						if cnoise.get_3d(p3) > 0.8 {
 							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
+						}
+						// Generate caves,
+						// but make sure that there is a distance
+						// between the cave and where the water starts.
+						// We need to compare with elev_blocks instead of el
+						// so that there are no artifacts introduced by the
+						// maxing with CHUNKSIZE above.
+						if z + 10 < elev_blocks && ca_noise.get_3d(p3) > 0.45 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Air;
 						}
 					}
 					for z in  el .. CHUNKSIZE {
