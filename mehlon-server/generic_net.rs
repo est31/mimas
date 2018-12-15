@@ -33,13 +33,13 @@ impl NetworkServerSocket for MpscServerSocket {
 }
 
 pub struct MpscServerConn {
-	pub(crate) stc_s :Sender<ServerToClientMsg>,
-	pub(crate) cts_r :Receiver<ClientToServerMsg>,
+	stc_s :Sender<ServerToClientMsg>,
+	cts_r :Receiver<ClientToServerMsg>,
 }
 
 pub struct MpscClientConn {
-	pub(crate) stc_r :Receiver<ServerToClientMsg>,
-	pub(crate) cts_s :Sender<ClientToServerMsg>,
+	stc_r :Receiver<ServerToClientMsg>,
+	cts_s :Sender<ClientToServerMsg>,
 }
 
 impl NetworkServerConn for MpscServerConn {
