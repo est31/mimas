@@ -679,7 +679,15 @@ impl Camera {
 	}
 	fn handle_mouse_move(&mut self, delta :winit::dpi::LogicalPosition) {
 		let factor = 0.7;
-		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -89.999, 89.999);
+		// Limit the pitch by this value so that we never look 100%
+		// straight down. Otherwise the Matrix4::look_at_rh function
+		// will return NaN values.
+		// The further we are from the center, the stricter this limit
+		// has to be, probably due to float precision reasons.
+		// The value we set works for coordinates tens of thousands
+		// of blocks away from the center (60_000.0, 40_000.0, 20.0).
+		const MAX_PITCH :f32 = 89.0;
+		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -MAX_PITCH, MAX_PITCH);
 		self.yaw += factor * delta.x as f32;
 		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
 	}
@@ -691,8 +699,9 @@ impl Camera {
 	}
 
 	fn get_matrix(&self) -> [[f32; 4]; 4] {
+		let looking_at = self.direction() + self.pos;
 		let m = Matrix4::look_at_rh(&(Point3::origin() + self.pos),
-			&(self.direction() + self.pos), &Vector3::z());
+			&looking_at, &Vector3::z());
 		m.into()
 	}
 
