@@ -21,15 +21,17 @@ pub trait NetworkClientConn {
 	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr>;
 }
 
-pub struct MpscServerSocket {
-	srv_conn :Option<MpscServerConn>,
+impl NetworkClientConn for Box<dyn NetworkClientConn> {
+	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr> {
+		(**self).try_recv()
+	}
+	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr> {
+		(**self).send(msg)
+	}
 }
 
-impl NetworkServerSocket for MpscServerSocket {
-	type Conn = MpscServerConn;
-	fn try_open_conn(&mut self) -> Option<Self::Conn> {
-		self.srv_conn.take()
-	}
+pub struct MpscServerSocket {
+	srv_conn :Option<MpscServerConn>,
 }
 
 pub struct MpscServerConn {
@@ -40,6 +42,13 @@ pub struct MpscServerConn {
 pub struct MpscClientConn {
 	stc_r :Receiver<ServerToClientMsg>,
 	cts_s :Sender<ClientToServerMsg>,
+}
+
+impl NetworkServerSocket for MpscServerSocket {
+	type Conn = MpscServerConn;
+	fn try_open_conn(&mut self) -> Option<Self::Conn> {
+		self.srv_conn.take()
+	}
 }
 
 impl NetworkServerConn for MpscServerConn {
@@ -59,6 +68,16 @@ impl NetworkClientConn for MpscClientConn {
 	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr> {
 		let _ = self.cts_s.send(msg);
 		Ok(())
+	}
+}
+
+impl MpscServerSocket {
+	pub fn new() -> (Self, MpscClientConn) {
+		let (srv_conn, client_conn) = MpscServerConn::new();
+		let res = MpscServerSocket {
+			srv_conn : Some(srv_conn),
+		};
+		(res, client_conn)
 	}
 }
 

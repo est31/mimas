@@ -26,7 +26,7 @@ use structopt::StructOpt;
 
 use std::thread;
 use mehlon_server::Server;
-use mehlon_server::generic_net::{TcpClientConn, TcpServerSocket};
+use mehlon_server::generic_net::{TcpClientConn, MpscServerSocket, NetworkClientConn};
 
 /// Mehlon client
 #[derive(StructOpt, Debug)]
@@ -41,17 +41,19 @@ fn main() {
 
 	let options = Options::from_args();
 
-	if options.connect.is_none() {
-		let server_socket = TcpServerSocket::new();
+	let client_conn :Box<dyn NetworkClientConn>= if let Some(addr) = options.connect.clone() {
+		let client_conn = TcpClientConn::from_socket_addr(addr);
+		Box::new(client_conn)
+	} else {
+		let (server_socket, client_conn) = MpscServerSocket::new();
 		thread::spawn(move || {
 			let mut server = Server::new(server_socket);
 			server.run_loop();
 		});
-	}
+		Box::new(client_conn)
+	};
 
 	let mut events_loop = glutin::EventsLoop::new();
-	let addr = options.connect.clone().unwrap_or_else(||"127.0.0.1:7700".to_string());
-	let client_conn = TcpClientConn::from_socket_addr(addr);
 	let mut game = Game::new(&events_loop, client_conn);
 
 	game.run_loop(&mut events_loop);
