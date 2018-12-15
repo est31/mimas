@@ -45,24 +45,24 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let mut seeder = Pcg32::new(seed.wrapping_add(24) as u64, seed.wrapping_add(400) as u64);
 	// Basic chunk noise
 	let f = 0.02356;
-	let noise = Noise2d::new(seeder.gen::<u32>(), f);
+	let noise = Noise::new(seeder.gen::<u32>(), f);
 	// Macro noise
 	let mf = 0.0018671;
-	let mnoise = Noise2d::new(seeder.gen::<u32>(), mf);
+	let mnoise = Noise::new(seeder.gen::<u32>(), mf);
 	// Super macro noise
 	let smf = 0.00043571;
-	let smnoise = Noise2d::new(seeder.gen::<u32>(), smf);
+	let smnoise = Noise::new(seeder.gen::<u32>(), smf);
 	// Tree noise
 	let tf = 0.0088971;
-	let tnoise = Noise2d::new(seeder.gen::<u32>(), tf);
+	let tnoise = Noise::new(seeder.gen::<u32>(), tf);
 	// Macro tree noise
 	let mtf = 0.00093952;
-	let mtnoise = Noise2d::new(seeder.gen::<u32>(), mtf);
+	let mtnoise = Noise::new(seeder.gen::<u32>(), mtf);
 	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), seeder.gen::<u64>());
 	// Coal noise
 	let cf = 0.033951;
-	let cnoise = Noise2d::new(seeder.gen::<u32>(), cf);
+	let cnoise = Noise::new(seeder.gen::<u32>(), cf);
 
 	let mut res = MapChunk {
 		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
@@ -119,14 +119,14 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	res
 }
 
-struct Noise2d {
+struct Noise {
 	freq :f64,
 	perlin :Perlin,
 }
 
-impl Noise2d {
+impl Noise {
 	fn new(seed :u32, freq :f64) -> Self {
-		Noise2d {
+		Noise {
 			freq,
 			perlin : Perlin::new().set_seed(seed),
 		}
