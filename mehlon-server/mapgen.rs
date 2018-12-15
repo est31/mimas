@@ -58,7 +58,12 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	// Macro tree noise
 	let mtf = 0.00093952;
 	let mtnoise = Noise2d::new(seeder.gen::<u32>(), mtf);
+	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), seeder.gen::<u64>());
+	// Coal noise
+	let cf = 0.033951;
+	let cnoise = Noise2d::new(seeder.gen::<u32>(), cf);
+
 	let mut res = MapChunk {
 		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
 		generation_phase : GenerationPhase::PhaseOne,
@@ -74,6 +79,10 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 				if pos.z < 0 {
 					for z in 0 .. el {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
+						let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
+						if cnoise.get_3d(p3) > 0.8 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
+						}
 					}
 					for z in  el .. CHUNKSIZE {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Water;
@@ -124,6 +133,10 @@ impl Noise2d {
 	}
 	fn get(&self, pos :[f64; 2]) -> f64 {
 		let fp = [pos[0] * self.freq, pos[1] * self.freq];
+		self.perlin.get(fp)
+	}
+	fn get_3d(&self, pos :[f64; 3]) -> f64 {
+		let fp = [pos[0] * self.freq, pos[1] * self.freq, pos[2] * self.freq];
 		self.perlin.get(fp)
 	}
 }

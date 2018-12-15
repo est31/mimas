@@ -121,6 +121,9 @@ fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChu
 					MapBlock::Leaves => {
 						push_blk([0.0, 0.4, 0.0, 1.0]);
 					},
+					MapBlock::Coal => {
+						push_blk([0.05, 0.05, 0.05, 1.0]);
+					},
 				}
 			}
 		}
