@@ -23,7 +23,7 @@ use std::thread;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
-use generic_net::{TcpServerConn, TcpServerSocket, NetworkServerConn, NetErr};
+use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -50,15 +50,15 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
-struct Player {
-	conn :TcpServerConn,
+struct Player<C: NetworkServerConn> {
+	conn :C,
 	pos :Vector3<f32>,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
 
-impl Player {
-	pub fn from_conn(conn :TcpServerConn) -> Self {
+impl<C: NetworkServerConn> Player<C> {
+	pub fn from_conn(conn :C) -> Self {
 		Player {
 			conn,
 			pos : Vector3::new(0.0, 0.0, 0.0),
@@ -68,9 +68,9 @@ impl Player {
 	}
 }
 
-pub struct Server {
-	srv_socket :TcpServerSocket,
-	players :Rc<RefCell<Vec<Player>>>,
+pub struct Server<S :NetworkServerSocket> {
+	srv_socket :S,
+	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
 	last_fps :f32,
@@ -78,11 +78,11 @@ pub struct Server {
 	map :ServerMap,
 }
 
-impl Server {
-	pub fn new(srv_socket :TcpServerSocket) -> Self {
+impl<S :NetworkServerSocket> Server<S> {
+	pub fn new(srv_socket :S) -> Self {
 		let mut map = ServerMap::new(78);
 
-		let players = Rc::new(RefCell::new(Vec::<Player>::new()));
+		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			let mut players = playersc.borrow_mut();
@@ -172,7 +172,7 @@ impl Server {
 		close_connections(&conns_to_close, &mut *players);
 		msgs
 	}
-	fn send_chunks_to_player(&mut self, player :&mut Player) {
+	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) {
 		let isize_pos = player.pos.map(|v| v as isize);
 		let (pmin, pmax) = chunk_positions_around(isize_pos, 4, 2);
 		let pmin = pmin / CHUNKSIZE;

@@ -6,6 +6,11 @@ use std::mem::replace;
 use {ClientToServerMsg, ServerToClientMsg};
 use bincode::{serialize, deserialize};
 
+pub trait NetworkServerSocket {
+	type Conn :NetworkServerConn + 'static;
+	fn try_open_conn(&mut self) -> Option<Self::Conn>;
+}
+
 pub trait NetworkServerConn {
 	fn try_recv(&mut self) -> Result<Option<ClientToServerMsg>, NetErr>;
 	fn send(&self, msg :ServerToClientMsg) -> Result<(), NetErr>;
@@ -14,6 +19,17 @@ pub trait NetworkServerConn {
 pub trait NetworkClientConn {
 	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr>;
 	fn send(&self, msg :ClientToServerMsg) -> Result<(), NetErr>;
+}
+
+pub struct MpscServerSocket {
+	srv_conn :Option<MpscServerConn>,
+}
+
+impl NetworkServerSocket for MpscServerSocket {
+	type Conn = MpscServerConn;
+	fn try_open_conn(&mut self) -> Option<Self::Conn> {
+		self.srv_conn.take()
+	}
 }
 
 pub struct MpscServerConn {
@@ -207,6 +223,19 @@ pub struct TcpServerSocket {
 	listener :TcpListener,
 }
 
+impl NetworkServerSocket for TcpServerSocket {
+	type Conn = TcpServerConn;
+	fn try_open_conn(&mut self) -> Option<Self::Conn> {
+		match self.listener.accept() {
+			Ok((stream, addr)) => {
+				let conn = TcpServerConn::from_stream_addr(stream, addr);
+				Some(conn)
+			}
+			Err(_) => None,
+		}
+	}
+}
+
 impl TcpServerSocket {
 	pub fn new() -> Self {
 		Self::with_socket_addr("127.0.0.1:7700")
@@ -216,15 +245,6 @@ impl TcpServerSocket {
 		listener.set_nonblocking(true).expect("can't set nonblocking");
 		TcpServerSocket {
 			listener,
-		}
-	}
-	pub fn try_open_conn(&mut self) -> Option<TcpServerConn> {
-		match self.listener.accept() {
-			Ok((stream, addr)) => {
-				let conn = TcpServerConn::from_stream_addr(stream, addr);
-				Some(conn)
-			}
-			Err(_) => None,
 		}
 	}
 }
