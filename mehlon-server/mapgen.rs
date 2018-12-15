@@ -45,13 +45,13 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let mut seeder = Pcg32::new(seed.wrapping_add(24) as u64, seed.wrapping_add(400) as u64);
 	// Basic chunk noise
 	let f = 0.02356;
-	let noise = Noise::new(seeder.gen::<u32>(), f);
+	let noise = NoiseMag::new(seeder.gen::<u32>(), f, 8.3);
 	// Macro noise
 	let mf = 0.0018671;
-	let mnoise = Noise::new(seeder.gen::<u32>(), mf);
+	let mnoise = NoiseMag::new(seeder.gen::<u32>(), mf, 23.27713);
 	// Super macro noise
 	let smf = 0.00043571;
-	let smnoise = Noise::new(seeder.gen::<u32>(), smf);
+	let smnoise = NoiseMag::new(seeder.gen::<u32>(), smf, 137.479131);
 	// Tree noise
 	let tf = 0.0088971;
 	let tnoise = Noise::new(seeder.gen::<u32>(), tf);
@@ -72,7 +72,7 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
 			let p = [(pos.x + x) as f64, (pos.y + y) as f64];
-			let elev = noise.get(p) * 8.3 + mnoise.get(p) * 23.27713 + smnoise.get(p) * 137.479131;
+			let elev = noise.get(p) + mnoise.get(p) + smnoise.get(p);
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let el = std::cmp::max(std::cmp::min(elev_blocks, CHUNKSIZE), 0);
@@ -139,6 +139,30 @@ impl Noise {
 		let fp = [pos[0] * self.freq, pos[1] * self.freq, pos[2] * self.freq];
 		self.perlin.get(fp)
 	}
+}
+
+struct NoiseMag {
+	freq :f64,
+	mag :f64,
+	perlin :Perlin,
+}
+
+impl NoiseMag {
+	fn new(seed :u32, freq :f64, mag :f64) -> Self {
+		NoiseMag {
+			freq,
+			mag,
+			perlin : Perlin::new().set_seed(seed),
+		}
+	}
+	fn get(&self, pos :[f64; 2]) -> f64 {
+		let fp = [pos[0] * self.freq, pos[1] * self.freq];
+		self.perlin.get(fp) * self.mag
+	}
+	/*fn get_3d(&self, pos :[f64; 3]) -> f64 {
+		let fp = [pos[0] * self.freq, pos[1] * self.freq, pos[2] * self.freq];
+		self.perlin.get(fp) * self.mag
+	}*/
 }
 
 pub struct Schematic {
