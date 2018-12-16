@@ -265,7 +265,7 @@ fn mod_euc(a :f32, b :f32) -> f32 {
 }
 
 /// Block position to chunk position
-fn btchn(v :Vector3<isize>) -> Vector3<isize> {
+pub fn btchn(v :Vector3<isize>) -> Vector3<isize> {
 	fn r(x :isize) -> isize {
 		let x = x as f32 / (CHUNKSIZE as f32);
 		x.floor() as isize * CHUNKSIZE

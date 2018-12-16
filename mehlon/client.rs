@@ -20,7 +20,7 @@ use nphysics3d::volumetric::Volumetric;
 use nphysics3d::world::World;
 use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
-use mehlon_server::{ServerToClientMsg, ClientToServerMsg};
+use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
 
 use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
@@ -200,7 +200,7 @@ impl<C :NetworkClientConn> Game<C> {
 			if !self.menu_enabled {
 				self.movement(float_delta);
 				let msg = ClientToServerMsg::SetPos(self.camera.pos);
-				self.srv_conn.send(msg);
+				let _ = self.srv_conn.send(msg);
 
 			}
 			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
@@ -467,16 +467,16 @@ impl<C :NetworkClientConn> Game<C> {
 									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 									blk.set(MapBlock::Air);
 									let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
-									self.srv_conn.send(msg);
+									let _ = self.srv_conn.send(msg);
 								} else if button == glutin::MouseButton::Right {
 									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 									blk.set(MapBlock::Wood);
 									let msg = ClientToServerMsg::SetBlock(before_selected, MapBlock::Wood);
-									self.srv_conn.send(msg);
+									let _ = self.srv_conn.send(msg);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
-									self.srv_conn.send(msg);
+									let _ = self.srv_conn.send(msg);
 								}
 							}
 						}
@@ -569,20 +569,6 @@ fn mod_euc(a :f32, b :f32) -> f32 {
 /// Degrees to radians
 fn dtr(v :f32) -> f32 {
 	v / 180.0 * std::f32::consts::PI
-}
-
-/// Block position to chunk position
-fn btchn(v :Vector3<isize>) -> Vector3<isize> {
-	fn r(x :isize) -> isize {
-		let x = x as f32 / (CHUNKSIZE as f32);
-		x.floor() as isize * CHUNKSIZE
-	}
-	v.map(r)
-}
-
-/// Block position to position inside chunk
-fn btpic(v :Vector3<isize>) -> Vector3<isize> {
-	v.map(|v| mod_euc(v as f32, CHUNKSIZE as f32) as isize)
 }
 
 struct Camera {
