@@ -224,6 +224,9 @@ impl TcpServerConn {
 			addr,
 		}
 	}
+	pub fn get_addr(&self) -> SocketAddr {
+		self.addr
+	}
 }
 
 impl TcpClientConn {
