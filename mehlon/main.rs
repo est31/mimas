@@ -18,6 +18,7 @@ extern crate mehlon_server;
 extern crate mehlon_meshgen;
 
 mod client;
+mod ui;
 
 use glium::glutin;
 use client::Game;
