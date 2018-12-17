@@ -7,7 +7,6 @@ extern crate nphysics3d;
 extern crate glium;
 extern crate winit;
 extern crate glium_glyph;
-extern crate line_drawing;
 extern crate num_traits;
 extern crate frustum_query;
 extern crate rand_pcg;
