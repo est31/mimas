@@ -2,9 +2,11 @@ use nalgebra::Vector3;
 use noise::{Perlin, NoiseFn, Seedable};
 use std::collections::{HashMap, hash_map::Entry};
 use std::mem::replace;
+use std::hash::Hasher;
 use {btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
+use fasthash::{MetroHasher, FastHasher};
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 
@@ -41,6 +43,14 @@ impl MapChunk {
 	}
 }
 
+fn pos_hash(pos :Vector3<isize>) -> u64 {
+	let mut mh :MetroHasher = MetroHasher::new();
+	mh.write_isize(pos.x);
+	mh.write_isize(pos.y);
+	mh.write_isize(pos.z);
+	mh.finish()
+}
+
 fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let mut seeder = Pcg32::new(seed.wrapping_add(24) as u64, seed.wrapping_add(400) as u64);
 	// Basic chunk noise
@@ -59,7 +69,7 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let mtf = 0.00093952;
 	let mtnoise = Noise::new(seeder.gen::<u32>(), mtf);
 	// Tree pcg
-	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), seeder.gen::<u64>());
+	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
 	// Coal noise
 	let cf = 0.033951;
 	let cnoise = Noise::new(seeder.gen::<u32>(), cf);

@@ -11,6 +11,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_big_array;
 extern crate bincode;
+extern crate fasthash;
 
 pub mod map;
 pub mod mapgen;
