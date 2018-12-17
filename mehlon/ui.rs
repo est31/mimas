@@ -45,7 +45,7 @@ pub fn render_menu<'a, 'b>(display :&glium::Display, program :&glium::Program, g
 	};
 	let mesh_dims = get_section_bounding_box(&section, &glyph_brush).unwrap();
 	let dims = (mesh_dims.width(), mesh_dims.height());
-	let vertices = square_mesh(dims, screen_dims);
+	let vertices = square_mesh(dims, screen_dims, BACKGROUND_COLOR);
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
 			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
@@ -106,8 +106,9 @@ fn get_section_bounding_box<'a, 'b>(section :&Section, glyph_brush :&GlyphBrush<
 	})
 }
 
-fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32)) -> Vec<Vertex> {
-	const COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
+const BACKGROUND_COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
+
+pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[f32; 4]) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 
 	let size_x = (mesh_dims.0 as f32) / (framebuffer_dims.0 as f32);
@@ -121,27 +122,27 @@ fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32)) -> Vec<Verte
 
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		color : COLOR,
+		color,
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
-		color : COLOR,
+		color,
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		color : COLOR,
+		color,
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		color : COLOR,
+		color,
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
-		color : COLOR,
+		color,
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		color : COLOR,
+		color,
 	});
 	vertices
 }
