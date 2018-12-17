@@ -25,7 +25,7 @@ use mehlon_server::generic_net::NetworkClientConn;
 
 use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
 
-use ui::render_menu;
+use ui::{render_menu, square_mesh, IDENTITY};
 
 type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
@@ -338,6 +338,25 @@ impl<C :NetworkClientConn> Game<C> {
 		glyph_brush.draw_queued(&self.display, &mut target);
 		if self.menu_enabled {
 			render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
+		} else {
+			let params = glium::draw_parameters::DrawParameters {
+				blend :glium::Blend::alpha_blending(),
+				.. Default::default()
+			};
+
+			let uniforms = uniform! {
+				vmatrix : IDENTITY,
+				pmatrix : IDENTITY
+			};
+			// Draw crosshair
+			let vertices_horiz = square_mesh((20, 2), screen_dims, [0.8, 0.8, 0.8, 0.85]);
+			let vertices_vert = square_mesh((2, 20), screen_dims, [0.8, 0.8, 0.8, 0.85]);
+			let mut vertices = vertices_horiz;
+			vertices.extend_from_slice(&vertices_vert);
+			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
+			target.draw(&vbuff,
+				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+				&self.program, &uniforms, &params).unwrap();
 		}
 
 		target.finish().unwrap();

@@ -7,14 +7,16 @@ use glium_glyph::glyph_brush::GlyphCruncher;
 
 use mehlon_meshgen::Vertex;
 
+pub const IDENTITY :[[f32; 4]; 4] = [
+	[1.0, 0.0, 0.0, 0.0f32],
+	[0.0, 1.0, 0.0, 0.0],
+	[0.0, 0.0, 1.0, 0.0],
+	[0.0, 0.0, 0.0, 1.0],
+];
+
 pub fn render_menu<'a, 'b>(display :&glium::Display, program :&glium::Program, glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 	let screen_dims = display.get_framebuffer_dimensions();
-	const IDENTITY :[[f32; 4]; 4] = [
-		[1.0, 0.0, 0.0, 0.0f32],
-		[0.0, 1.0, 0.0, 0.0],
-		[0.0, 0.0, 1.0, 0.0],
-		[0.0, 0.0, 0.0, 1.0],
-	];
+
 	let uniforms = uniform! {
 		vmatrix : IDENTITY,
 		pmatrix : IDENTITY
