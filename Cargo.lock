@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "glium-glyph"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -577,7 +577,7 @@ version = "0.1.0"
 dependencies = [
  "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glium-glyph 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "line_drawing 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mehlon-meshgen 0.1.0",
  "mehlon-server 0.1.0",
@@ -1489,7 +1489,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum gl_generator 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7a795170cbd85b5a7baa58d6d7525cae6a03e486859860c220f7ebbbdd379d0a"
 "checksum gleam 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)" = "4b47f5b15742aee359c7895ab98cf2cceecc89bb4feb6f4e42f802d7899877da"
 "checksum glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6ec8f9506ee0379c931299f280a6e06767b0dc6ac0f1890cf1cb6c30d600fca5"
-"checksum glium-glyph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5d0caa03cef045113238ec9d55c8a1ded92eec32947b8afce7c09567903a598f"
+"checksum glium-glyph 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "577071be4ce6ea7e0fe9aae64993877f2551e2f2e45f2864e43004bcca4244f5"
 "checksum glutin 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a70c5fe78efbd5a3b243a804ea1032053c584510f8822819f94cfb29b2100317"
 "checksum glyph_brush 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "83a8e5d17f3711dcf45434148b4c36b89c3f6320af00a6c0daa095dfdada4eea"
 "checksum glyph_brush_layout 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e1c00a04cfe112ff6d3ecf03185653a32447080bc60977df44aa98c98b3bdce2"
