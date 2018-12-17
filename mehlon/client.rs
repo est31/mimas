@@ -7,7 +7,6 @@ use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	rusttype::Font, Section,
 };
-use line_drawing::{VoxelOrigin, WalkVoxels};
 use std::collections::HashMap;
 use std::time::{Instant, Duration};
 use std::thread;
@@ -26,6 +25,8 @@ use mehlon_server::generic_net::NetworkClientConn;
 use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, IDENTITY};
+
+use voxel_walk::VoxelWalker;
 
 type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
 
@@ -642,14 +643,8 @@ impl Camera {
 	}
 
 	pub fn get_selected_pos<B :MapBackend>(&self, map :&Map<B>) -> Option<(Vector3<isize>, Vector3<isize>)> {
-		const SELECTION_RANGE :f32 = 10.0;
-		let pointing_at_distance = self.pos + self.direction().coords * SELECTION_RANGE;
-		let (dx, dy, dz) = (pointing_at_distance.x, pointing_at_distance.y, pointing_at_distance.z);
-		let (px, py, pz) = (self.pos.x, self.pos.y, self.pos.z);
-		for ((xs, ys, zs), (xe, ye, ze)) in WalkVoxels::<f32, isize>::new((px, py, pz),
-				(dx, dy, dz), &VoxelOrigin::Corner).steps() {
-			let vs = Vector3::new(xs as isize, ys as isize, zs as isize);
-			let ve = Vector3::new(xe as isize, ye as isize, ze as isize);
+		for (vs, ve) in VoxelWalker::new(self.pos,
+				self.direction().coords) {
 			if let Some(blk) = map.get_blk(ve) {
 				if blk.is_pointable() {
 					return Some((ve, vs));

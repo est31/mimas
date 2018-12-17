@@ -19,6 +19,7 @@ extern crate mehlon_meshgen;
 
 mod client;
 mod ui;
+mod voxel_walk;
 
 use glium::glutin;
 use client::Game;
