@@ -32,11 +32,10 @@ pub fn render_menu<'a, 'b>(display :&glium::Display, program :&glium::Program, g
 		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
 		.. Default::default()
 	};
-	let f = 1.0 / 2.0 ;//- 0.02;
 	let mut section = Section {
 		text : "Menu\nPress esc to continue Game",
 		bounds : (screen_dims.0 as f32 * 0.14, screen_dims.1 as f32),
-		screen_position : (screen_dims.0 as f32 * f, screen_dims.1 as f32 * f),
+		screen_position : (screen_dims.0 as f32 / 2.0, screen_dims.1 as f32 / 2.0),
 		layout : Layout::default()
 			.h_align(HorizontalAlign::Center),
 		color : [0.9, 0.9, 0.9, 1.0],
@@ -47,7 +46,8 @@ pub fn render_menu<'a, 'b>(display :&glium::Display, program :&glium::Program, g
 	mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
 	//section.screen_position.0 -= mesh_dims.width() as f32 / 2.0;
 	section.screen_position.1 -= mesh_dims.height() as f32 / 2.0;
-	let dims = (mesh_dims.width(), mesh_dims.height());
+	let border = 4;
+	let dims = (mesh_dims.width() + border, mesh_dims.height() + border);
 	let vertices = square_mesh(dims, screen_dims, BACKGROUND_COLOR);
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
