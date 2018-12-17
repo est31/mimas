@@ -1,30 +1,59 @@
 use nalgebra::Vector3;
-use line_drawing::{VoxelOrigin, Voxel, WalkVoxels};
-use line_drawing::steps::Steps;
 
 pub struct VoxelWalker {
-	steps :Steps<Voxel<isize>, WalkVoxels<f32, isize>>,
+	start :Vector3<f32>,
+	pos :Vector3<f32>,
+	direction :Vector3<f32>,
+}
+
+fn fmin(a: f32, b :f32) -> f32 {
+	if a < b {
+		a
+	} else {
+		b
+	}
 }
 
 impl VoxelWalker {
 	pub fn new(start :Vector3<f32>, direction :Vector3<f32>) -> Self {
-		const SELECTION_RANGE :f32 = 10.0;
-		let pointing_at_distance = start + direction * SELECTION_RANGE;
-		let (dx, dy, dz) = (pointing_at_distance.x, pointing_at_distance.y, pointing_at_distance.z);
-		let (px, py, pz) = (start.x, start.y, start.z);
-		let steps = WalkVoxels::<f32, isize>::new((px, py, pz),
-			(dx, dy, dz), &VoxelOrigin::Center).steps();
 		VoxelWalker {
-			steps,
+			start,
+			pos : start,
+			direction,
 		}
+	}
+	fn peek_next(&self) -> Vector3<f32> {
+		let nx = next_for_dim(self.pos.x, self.direction.x);
+		let ny = next_for_dim(self.pos.y, self.direction.y);
+		let nz = next_for_dim(self.pos.z, self.direction.z);
+		let factor = fmin(nx, fmin(ny, nz));
+		self.pos + self.direction * factor
 	}
 }
 
+fn next_for_dim(off :f32, dir :f32) -> f32 {
+	let step = 0.01;
+	let mut mult = 0.0;
+	while off.floor() - (off + mult * dir).floor() == 0.0 {
+		mult += step;
+		if mult > 100.0 {
+			return mult;
+		}
+	}
+	mult
+}
+
 impl Iterator for VoxelWalker {
-	type Item = (Vector3<isize>, Vector3<isize>);
+	type Item = (Vector3<f32>, Vector3<f32>);
 	fn next(&mut self) -> Option<Self::Item> {
-		self.steps.next().map(|((xs, ys, zs), (xe, ye, ze))| {
-			(Vector3::new(xs, ys, zs), Vector3::new(xe, ye, ze))
-		})
+		let next_pos = self.peek_next();
+		const SELECTION_RANGE :f32 = 10.0;
+		if (next_pos - self.start).norm() < SELECTION_RANGE {
+			let old_pos = self.pos;
+			self.pos = next_pos;
+			Some((old_pos, self.pos))
+		} else {
+			None
+		}
 	}
 }

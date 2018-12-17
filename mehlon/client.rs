@@ -645,6 +645,8 @@ impl Camera {
 	pub fn get_selected_pos<B :MapBackend>(&self, map :&Map<B>) -> Option<(Vector3<isize>, Vector3<isize>)> {
 		for (vs, ve) in VoxelWalker::new(self.pos,
 				self.direction().coords) {
+			let vs = vs.map(|v| v.floor() as isize);
+			let ve = ve.map(|v| v.floor() as isize);
 			if let Some(blk) = map.get_blk(ve) {
 				if blk.is_pointable() {
 					return Some((ve, vs));
