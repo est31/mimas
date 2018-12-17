@@ -1,6 +1,7 @@
 use nalgebra::Vector3;
 
 pub struct VoxelWalker {
+	first : bool,
 	start :Vector3<f32>,
 	pos :Vector3<f32>,
 	direction :Vector3<f32>,
@@ -17,6 +18,7 @@ fn fmin(a: f32, b :f32) -> f32 {
 impl VoxelWalker {
 	pub fn new(start :Vector3<f32>, direction :Vector3<f32>) -> Self {
 		VoxelWalker {
+			first : true,
 			start,
 			pos : start,
 			direction,
@@ -91,6 +93,10 @@ fn test_next_for_dim() {
 impl Iterator for VoxelWalker {
 	type Item = (Vector3<f32>, Vector3<f32>);
 	fn next(&mut self) -> Option<Self::Item> {
+		if self.first {
+			self.first = false;
+			return Some((self.pos, self.pos));
+		}
 		let next_pos = self.peek_next();
 		const SELECTION_RANGE :f32 = 10.0;
 		if (next_pos - self.start).norm() < SELECTION_RANGE {
