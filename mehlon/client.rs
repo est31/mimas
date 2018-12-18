@@ -449,20 +449,25 @@ impl<C :NetworkClientConn> Game<C> {
 							glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
 						};
 						fn rotate(mb :MapBlock) -> MapBlock {
+							use mehlon_server::map::MapBlock::*;
 							match mb {
-								MapBlock::Wood => MapBlock::Ground,
-								MapBlock::Ground => MapBlock::Stone,
-								MapBlock::Stone => MapBlock::Wood,
+								Water => Ground,
+								Ground => Wood,
+								Wood => Stone,
+								Stone => Leaves,
+								Leaves => Tree,
+								Tree => Coal,
+								Coal => Water,
 								_ => unreachable!(),
 							}
 						}
 						if lines_diff < 0.0 {
 							self.item_in_hand = rotate(self.item_in_hand);
 						} else if lines_diff > 0.0 {
-							self.item_in_hand = rotate(self.item_in_hand);
-							self.item_in_hand = rotate(self.item_in_hand);
+							for _ in 0 .. 6 {
+								self.item_in_hand = rotate(self.item_in_hand);
+							}
 						}
-						println!("New item in hand is now {:?}", self.item_in_hand);
 
 					},
 
