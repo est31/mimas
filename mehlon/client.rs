@@ -326,7 +326,7 @@ impl<C :NetworkClientConn> Game<C> {
 			};
 			let vmatrix :[[f32; 4]; 4] = {
 				let m = Matrix4::look_at_rh(&(Point3::origin()),
-					&(Point3::origin() + Vector3::x()), &Vector3::z());
+					&(Point3::origin() + Vector3::x() + Vector3::y()), &Vector3::z());
 				m.into()
 			};
 			let pmatrix :[[f32; 4]; 4] = {
@@ -339,7 +339,7 @@ impl<C :NetworkClientConn> Game<C> {
 				vmatrix : vmatrix,
 				pmatrix : pmatrix
 			};
-			let hand_mesh_pos = Vector3::new(2.0, -1.0, -1.0);
+			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
 			let hand_mesh = hand_mesh(hand_mesh_pos,
 				self.item_in_hand);
 			let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
