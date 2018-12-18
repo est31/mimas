@@ -511,18 +511,18 @@ impl<C :NetworkClientConn> Game<C> {
 }
 
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
+	const DELTA :f32 = 0.05;
+	const DELTAH :f32 = DELTA / 2.0;
 	const COLOR :[f32; 4] = [0.0, 0.0, 0.3, 0.5];
 	let mut vertices = Vec::new();
 
 	push_block(&mut vertices,
-		[pos.x as f32, pos.y as f32, pos.z as f32],
-		COLOR, COLOR, 1.0, |_| false);
+		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
+		COLOR, COLOR, 1.0 + DELTA, |_| false);
 	vertices
 }
 
 fn hand_mesh(pos :Vector3<f32>, blk :MapBlock) -> Vec<Vertex> {
-	const DELTA :f32 = 0.05;
-	const DELTAH :f32 = DELTA / 2.0;
 	let mut vertices = Vec::new();
 	let color = if let Some(c) = mehlon_meshgen::get_color_for_blk(blk) {
 		c
@@ -532,7 +532,7 @@ fn hand_mesh(pos :Vector3<f32>, blk :MapBlock) -> Vec<Vertex> {
 	let colorh = mehlon_meshgen::colorh(color);
 
 	push_block(&mut vertices,
-		[pos.x - DELTAH, pos.y - DELTAH, pos.z - DELTAH],
+		[pos.x, pos.y, pos.z],
 		color, colorh, 0.5, |_| false);
 	vertices
 }
