@@ -57,6 +57,7 @@ pub struct Game<C :NetworkClientConn> {
 	vbuffs :HashMap<Vector3<isize>, (Option<ColliderHandle>, VertexBuffer<Vertex>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
+	item_in_hand :MapBlock,
 
 	last_pos :Option<winit::dpi::LogicalPosition>,
 
@@ -134,6 +135,7 @@ impl<C :NetworkClientConn> Game<C> {
 			vbuffs : HashMap::new(),
 
 			selected_pos : None,
+			item_in_hand : MapBlock::Wood,
 
 			last_pos : None,
 			last_frame_time : Instant::now(),
@@ -430,8 +432,8 @@ impl<C :NetworkClientConn> Game<C> {
 									let _ = self.srv_conn.send(msg);
 								} else if button == glutin::MouseButton::Right {
 									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-									blk.set(MapBlock::Wood);
-									let msg = ClientToServerMsg::SetBlock(before_selected, MapBlock::Wood);
+									blk.set(self.item_in_hand);
+									let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
 									let _ = self.srv_conn.send(msg);
 								} else if button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
@@ -440,6 +442,28 @@ impl<C :NetworkClientConn> Game<C> {
 								}
 							}
 						}
+					},
+					glutin::WindowEvent::MouseWheel { delta, .. } => {
+						let lines_diff = match delta {
+							glutin::MouseScrollDelta::LineDelta(_x, y) => y,
+							glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
+						};
+						fn rotate(mb :MapBlock) -> MapBlock {
+							match mb {
+								MapBlock::Wood => MapBlock::Ground,
+								MapBlock::Ground => MapBlock::Stone,
+								MapBlock::Stone => MapBlock::Wood,
+								_ => unreachable!(),
+							}
+						}
+						if lines_diff < 0.0 {
+							self.item_in_hand = rotate(self.item_in_hand);
+						} else if lines_diff > 0.0 {
+							self.item_in_hand = rotate(self.item_in_hand);
+							self.item_in_hand = rotate(self.item_in_hand);
+						}
+						println!("New item in hand is now {:?}", self.item_in_hand);
+
 					},
 
 					_ => (),
