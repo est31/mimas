@@ -69,61 +69,55 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 	}
 }
 
+pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
+	match blk {
+		MapBlock::Air => None,
+		MapBlock::Ground => Some([0.0, 1.0, 0.0, 1.0]),
+		MapBlock::Water => Some([0.0, 0.0, 1.0, 1.0]),
+		MapBlock::Wood => Some([0.5, 0.25, 0.0, 1.0]),
+		MapBlock::Stone => Some([0.5, 0.5, 0.5, 1.0]),
+		MapBlock::Tree => Some([0.38, 0.25, 0.125, 1.0]),
+		MapBlock::Leaves => Some([0.0, 0.4, 0.0, 1.0]),
+		MapBlock::Coal => Some([0.05, 0.05, 0.05, 1.0]),
+	}
+}
+
 fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChunkData, mut f :F) ->
 		Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
 			for z in 0 .. CHUNKSIZE {
-				let mut push_blk = |color :[f32; 4]| {
-						let pos = offs + Vector3::new(x, y, z);
-						let fpos = [pos.x as f32, pos.y as f32, pos.z as f32];
-						let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
-						let mut any_non_blocked = false;
-						push_block(&mut r, fpos, color, colorh, 1.0, |[xo, yo, zo]| {
-							let pos = Vector3::new(x + xo, y + yo, z + zo);
-							let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
-							if outside.x || outside.y || outside.z {
-								any_non_blocked = true;
-								return false;
-							}
-							match *chunk.get_blk(pos) {
-								MapBlock::Air => {
-									any_non_blocked = true;
-									false
-								},
-								_ => true,
-							}
-						});
-						// If any of the faces is unblocked, this block
-						// will be reported
-						if any_non_blocked {
-							f(pos);
-						}
+				let blk = *chunk.get_blk(Vector3::new(x, y, z));
+				let color = if let Some(color) = get_color_for_blk(blk) {
+					color
+				} else {
+					continue;
 				};
-				match *chunk.get_blk(Vector3::new(x, y, z)) {
-					MapBlock::Air => (),
-					MapBlock::Ground => {
-						push_blk([0.0, 1.0, 0.0, 1.0]);
-					},
-					MapBlock::Water => {
-						push_blk([0.0, 0.0, 1.0, 1.0]);
-					},
-					MapBlock::Wood => {
-						push_blk([0.5, 0.25, 0.0, 1.0]);
-					},
-					MapBlock::Stone => {
-						push_blk([0.5, 0.5, 0.5, 1.0]);
-					},
-					MapBlock::Tree => {
-						push_blk([0.38, 0.25, 0.125, 1.0]);
-					},
-					MapBlock::Leaves => {
-						push_blk([0.0, 0.4, 0.0, 1.0]);
-					},
-					MapBlock::Coal => {
-						push_blk([0.05, 0.05, 0.05, 1.0]);
-					},
+
+				let pos = offs + Vector3::new(x, y, z);
+				let fpos = [pos.x as f32, pos.y as f32, pos.z as f32];
+				let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
+				let mut any_non_blocked = false;
+				push_block(&mut r, fpos, color, colorh, 1.0, |[xo, yo, zo]| {
+					let pos = Vector3::new(x + xo, y + yo, z + zo);
+					let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
+					if outside.x || outside.y || outside.z {
+						any_non_blocked = true;
+						return false;
+					}
+					match *chunk.get_blk(pos) {
+						MapBlock::Air => {
+							any_non_blocked = true;
+							false
+						},
+						_ => true,
+					}
+				});
+				// If any of the faces is unblocked, this block
+				// will be reported
+				if any_non_blocked {
+					f(pos);
 				}
 			}
 		}
