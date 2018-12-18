@@ -38,31 +38,9 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
-const VERTEX_SHADER_SRC :&str = r#"
-	#version 140
-	in vec3 position;
-	in vec4 color;
+const VERTEX_SHADER_SRC :&str = include_str!("vertex-shader.glsl");
 
-	out vec4 vcolor;
-
-	uniform mat4 pmatrix;
-	uniform mat4 vmatrix;
-	void main() {
-		vcolor = color;
-		gl_Position = pmatrix * vmatrix * vec4(position, 1.0);
-	}
-"#;
-
-const FRAGMENT_SHADER_SRC :&str = r#"
-	#version 140
-	in vec4 vcolor;
-
-	out vec4 fcolor;
-
-	void main() {
-		fcolor = vcolor;
-	}
-"#;
+const FRAGMENT_SHADER_SRC :&str = include_str!("fragment-shader.glsl");
 
 const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
