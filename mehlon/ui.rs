@@ -74,26 +74,32 @@ pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
 		color,
+		normal :[0.0, 1.0, 0.0],
 	});
 	vertices
 }

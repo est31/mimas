@@ -15,32 +15,33 @@ use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
 pub struct Vertex {
 	pub position :[f32; 3],
 	pub color :[f32; 4],
+	pub normal :[f32; 3],
 }
 
-implement_vertex!(Vertex, position, color);
+implement_vertex!(Vertex, position, color, normal);
 
 #[inline]
 pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32, mut blocked :F) {
 	macro_rules! push_face {
 		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-		r.push(Vertex { position: [$x, $y, $z], color : $color });
-		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
-		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
+		r.push(Vertex { position: [$x, $y, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
 
-		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
-		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color });
-		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
+		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : [$xsd, $ysd + $yd, $zd] });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
 		}
 	};
 	macro_rules! push_face_rev {
 		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
-		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
-		r.push(Vertex { position: [$x, $y, $z], color : $color });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		r.push(Vertex { position: [$x, $y, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
 
-		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color });
-		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color });
-		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color });
+		r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
 		}
 	};
 	// X-Y face
