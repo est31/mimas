@@ -317,6 +317,36 @@ impl<C :NetworkClientConn> Game<C> {
 				&self.program, &uniforms, &params).unwrap();
 		}
 		glyph_brush.draw_queued(&self.display, &mut target);
+		// Draw the wielded item
+		{
+			let params = glium::draw_parameters::DrawParameters {
+				backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
+				blend :glium::Blend::alpha_blending(),
+				.. Default::default()
+			};
+			let vmatrix :[[f32; 4]; 4] = {
+				let m = Matrix4::look_at_rh(&(Point3::origin()),
+					&(Point3::origin() + Vector3::x()), &Vector3::z());
+				m.into()
+			};
+			let pmatrix :[[f32; 4]; 4] = {
+				let fov = dtr(45.0);
+				let zfar = 1024.0;
+				let znear = 0.1;
+				Matrix4::new_perspective(self.camera.aspect_ratio, fov, znear, zfar).into()
+			};
+			let uniforms = uniform! {
+				vmatrix : vmatrix,
+				pmatrix : pmatrix
+			};
+			let hand_mesh_pos = Vector3::new(2.0, -1.0, -1.0);
+			let hand_mesh = hand_mesh(hand_mesh_pos,
+				self.item_in_hand);
+			let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
+			target.draw(&vbuff,
+				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+				&self.program, &uniforms, &params).unwrap();
+		}
 		if self.menu_enabled {
 			render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
 		} else {
@@ -481,14 +511,29 @@ impl<C :NetworkClientConn> Game<C> {
 }
 
 fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
-	const DELTA :f32 = 0.05;
-	const DELTAH :f32 = DELTA / 2.0;
 	const COLOR :[f32; 4] = [0.0, 0.0, 0.3, 0.5];
 	let mut vertices = Vec::new();
 
 	push_block(&mut vertices,
-		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
-		COLOR, COLOR, 1.0 + DELTA, |_| false);
+		[pos.x as f32, pos.y as f32, pos.z as f32],
+		COLOR, COLOR, 1.0, |_| false);
+	vertices
+}
+
+fn hand_mesh(pos :Vector3<f32>, blk :MapBlock) -> Vec<Vertex> {
+	const DELTA :f32 = 0.05;
+	const DELTAH :f32 = DELTA / 2.0;
+	let mut vertices = Vec::new();
+	let color = if let Some(c) = mehlon_meshgen::get_color_for_blk(blk) {
+		c
+	} else {
+		return vec![];
+	};
+	let colorh = mehlon_meshgen::colorh(color);
+
+	push_block(&mut vertices,
+		[pos.x - DELTAH, pos.y - DELTAH, pos.z - DELTAH],
+		color, colorh, 0.5, |_| false);
 	vertices
 }
 

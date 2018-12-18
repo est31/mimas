@@ -69,6 +69,7 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 	}
 }
 
+#[inline]
 pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
 	match blk {
 		MapBlock::Air => None,
@@ -80,6 +81,11 @@ pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
 		MapBlock::Leaves => Some([0.0, 0.4, 0.0, 1.0]),
 		MapBlock::Coal => Some([0.05, 0.05, 0.05, 1.0]),
 	}
+}
+
+#[inline]
+pub fn colorh(col :[f32; 4]) -> [f32; 4] {
+	[col[0]/2.0, col[1]/2.0, col[2]/2.0, col[3]]
 }
 
 fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChunkData, mut f :F) ->
@@ -97,7 +103,7 @@ fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChu
 
 				let pos = offs + Vector3::new(x, y, z);
 				let fpos = [pos.x as f32, pos.y as f32, pos.z as f32];
-				let colorh = [color[0]/2.0, color[1]/2.0, color[2]/2.0, color[3]];
+				let colorh = colorh(color);
 				let mut any_non_blocked = false;
 				push_block(&mut r, fpos, color, colorh, 1.0, |[xo, yo, zo]| {
 					let pos = Vector3::new(x + xo, y + yo, z + zo);
