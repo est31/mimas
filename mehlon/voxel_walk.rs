@@ -79,7 +79,7 @@ fn test_next_for_dim() {
 				assert_eq!(nfd_s, std::f32::INFINITY);
 			} else {
 				let dist = (nfd - nfd_s).abs();
-				assert!(dist < SEARCH_STEP * 2,
+				assert!(dist < SEARCH_STEP * 2.0,
 					"off: {}, dir: {}, nfd: {}, ndfs: {}",
 					off, dir, nfd, nfd_s);
 			}
