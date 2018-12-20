@@ -14,6 +14,7 @@ use std::sync::mpsc::{channel, Receiver};
 use frustum_query::frustum::Frustum;
 use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide3d::math::Isometry;
+use ncollide3d::query;
 use nphysics3d::math::Inertia;
 use nphysics3d::volumetric::Volumetric;
 use nphysics3d::world::World;
@@ -54,7 +55,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, (Option<ColliderHandle>, VertexBuffer<Vertex>)>,
+	vbuffs :HashMap<Vector3<isize>, (Option<Compound<f32>>, VertexBuffer<Vertex>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	item_in_hand :MapBlock,
@@ -207,6 +208,24 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
+		if !self.camera.noclip_mode {
+			let chunk_pos = btchn(self.camera.pos.map(|v| v as isize));
+			let col = self.vbuffs.get(&chunk_pos).map(|v| &v.0);
+			if let Some(Some(col)) = col {
+				const PRED :f32 = 0.01;
+				let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
+				let player_pos = Isometry3::new(self.camera.pos, nalgebra::zero());
+				let collision = query::contact(&Isometry3::identity(), col, &player_pos, &player_collisionbox, PRED);
+				if let Some(collision) = collision {
+					let normal = collision.normal.as_ref();
+					//delta_pos.try_normalize_mut(std::f32::EPSILON);
+					let d = delta_pos.dot(normal);
+					if d < 0.0 {
+						delta_pos -= d * normal;
+					}
+				}
+			}
+		}
 		if self.camera.fast_mode {
 			const DELTA :f32 = 40.0;
 			delta_pos *= DELTA;
@@ -214,33 +233,14 @@ impl<C :NetworkClientConn> Game<C> {
 			const FAST_DELTA :f32 = 10.0;
 			delta_pos *= FAST_DELTA;
 		}
-		if self.camera.noclip_mode {
-			self.camera.pos += delta_pos * time_delta;
-			let player_body = self.physics_world.body_mut(self.player_handle);
-			match player_body {
-				BodyMut::RigidBody(b) => {
-					let pos = self.camera.pos - Vector3::new(0.0, 0.0, 1.6);
-					b.set_position(Isometry3::new(pos, nalgebra::zero()))
-				},
-				_ => panic!("Player is expected to be a RigidBody!"),
-			}
-		} else {
-			let player_body = self.physics_world.body_mut(self.player_handle);
-			match player_body {
-				BodyMut::RigidBody(b) => {
-					let pos = b.position().translation.vector;
-					b.set_linear_velocity(delta_pos);
-					/*let mut v = b.velocity().linear;
-					v.try_normalize_mut(std::f32::EPSILON);
-					b.set_linear_velocity(v);
-					b.apply_force(&Force3::linear(delta_pos));*/
-					// The idea is that the eyes are in the middle of the collision box
-					// The collision box is 0.7 in all directions.
-					let xyh = 0.35;
-					self.camera.pos = pos + Vector3::new(xyh, xyh, 1.6);
-				},
-				_ => panic!("Player is expected to be a RigidBody!"),
-			};
+		self.camera.pos += delta_pos * time_delta;
+		let player_body = self.physics_world.body_mut(self.player_handle);
+		match player_body {
+			BodyMut::RigidBody(b) => {
+				let pos = self.camera.pos - Vector3::new(0.0, 0.0, 1.6);
+				b.set_position(Isometry3::new(pos, nalgebra::zero()))
+			},
+			_ => panic!("Player is expected to be a RigidBody!"),
 		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
@@ -376,16 +376,11 @@ impl<C :NetworkClientConn> Game<C> {
 	fn recv_vbuffs(&mut self) {
 		while let Ok((p, c, m)) = self.meshres_r.try_recv() {
 			let material = Material::new(0.0, 0.0);
-			let collider = c.map(|c| {
-				let hdl = ShapeHandle::new(c);
-				self.physics_world.add_collider(0.01, hdl,
-					BodyHandle::ground(), nalgebra::one(), material)
-			});
 			let vbuff = VertexBuffer::new(&self.display, &m).unwrap();
-			let old_opt = self.vbuffs.insert(p, (collider, vbuff));
-			if let Some((Some(coll), _)) = old_opt {
+			let old_opt = self.vbuffs.insert(p, (c, vbuff));
+			/*if let Some((Some(coll), _)) = old_opt {
 				self.physics_world.remove_colliders(&[coll]);
-			}
+			}*/
 		}
 	}
 
