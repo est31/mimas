@@ -255,13 +255,13 @@ impl<C :NetworkClientConn> Game<C> {
 					let v :[f32;3]  = iso.translation.vector.into();
 					let nv :[f32;3]  = (normal).into();
 					print!("collision({:?}, {:?}), ", v, nv);
-					//delta_pos.try_normalize_mut(std::f32::EPSILON);
 					let d = delta_pos.dot(&normal);
 					if d < 0.0 {
 						delta_pos -= d * normal;
 					}
 				}
 			}
+			delta_pos.try_normalize_mut(std::f32::EPSILON);
 			println!();
 		}
 		if self.camera.fast_mode {
