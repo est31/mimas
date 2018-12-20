@@ -181,7 +181,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 		}
 	}
-	fn collide_delta_pos(&mut self, mut delta_pos :Vector3<f32>) -> Vector3<f32> {
+	fn collide_delta_pos(&mut self, mut delta_pos :Vector3<f32>, time_delta :f32) -> Vector3<f32> {
 		let pos = self.camera.pos.map(|v| v as isize);
 		let mut cubes = Vec::new();
 		let d = 3;
@@ -203,6 +203,7 @@ impl<C :NetworkClientConn> Game<C> {
 		let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
 		let player_collisionbox = Cuboid::new(player_colb_extent);
 		let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
+		let mut touches_ground = false;
 		for (iso, cube) in cubes.iter() {
 			const PRED :f32 = 0.01;
 			// X coord
@@ -210,7 +211,6 @@ impl<C :NetworkClientConn> Game<C> {
 			let player_pos_iso = Isometry3::new(ppx, nalgebra::zero());
 			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
 			if collision.is_some() {
-				let mut bl = player_pos - iso.translation.vector;
 				let normal = -Vector3::new(delta_pos.x.signum(), 0.0, 0.0);
 				let d = delta_pos.dot(&normal);
 				if d < 0.0 {
@@ -223,7 +223,6 @@ impl<C :NetworkClientConn> Game<C> {
 			let player_pos_iso = Isometry3::new(ppy, nalgebra::zero());
 			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
 			if collision.is_some() {
-				let mut bl = player_pos - iso.translation.vector;
 				let normal = -Vector3::new(0.0, delta_pos.y.signum(), 0.0);
 				let d = delta_pos.dot(&normal);
 				if d < 0.0 {
@@ -236,13 +235,23 @@ impl<C :NetworkClientConn> Game<C> {
 			let player_pos_iso = Isometry3::new(ppz, nalgebra::zero());
 			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
 			if collision.is_some() {
-				let mut bl = player_pos - iso.translation.vector;
 				let normal = -Vector3::new(0.0, 0.0, delta_pos.z.signum());
 				let d = delta_pos.dot(&normal);
+				if delta_pos.z < 0.0 {
+					touches_ground = true;
+				}
 				if d < 0.0 {
 					delta_pos -= d * normal;
 				}
 			}
+		}
+		if touches_ground || self.camera.fly_mode {
+			self.camera.velocity = nalgebra::zero();
+			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
+				self.camera.velocity = Vector3::new(0.0, 0.0, 3.0);
+			}
+		} else {
+			self.camera.velocity += Vector3::new(0.0, 0.0, -9.81) * time_delta;
 		}
 		//delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos
@@ -250,7 +259,7 @@ impl<C :NetworkClientConn> Game<C> {
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
 		if !self.camera.noclip_mode {
-			delta_pos = self.collide_delta_pos(delta_pos);
+			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
 		}
 		if self.camera.fast_mode {
 			const DELTA :f32 = 40.0;
@@ -581,6 +590,7 @@ struct Camera {
 	pitch :f32,
 	yaw :f32,
 	pos :Vector3<f32>,
+	velocity :Vector3<f32>,
 
 	forward_pressed :bool,
 	left_pressed :bool,
@@ -589,6 +599,7 @@ struct Camera {
 
 	fast_mode :bool,
 	noclip_mode :bool,
+	fly_mode :bool,
 
 	up_pressed :bool,
 	down_pressed :bool,
@@ -601,6 +612,7 @@ impl Camera {
 			pitch : 0.0,
 			yaw : 0.0,
 			pos : Vector3::new(60.0, 40.0, 20.0),
+			velocity : Vector3::new(0.0, 0.0, 0.0),
 
 			forward_pressed : false,
 			left_pressed : false,
@@ -609,6 +621,7 @@ impl Camera {
 
 			fast_mode : false,
 			noclip_mode : false,
+			fly_mode : true,
 
 			up_pressed : false,
 			down_pressed : false,
@@ -629,6 +642,11 @@ impl Camera {
 			glutin::VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
 		_ => (),
 		}
+		if key == glutin::VirtualKeyCode::K {
+			if input.state == glutin::ElementState::Pressed {
+				self.fly_mode = !self.fly_mode;
+			}
+		}
 		if key == glutin::VirtualKeyCode::J {
 			if input.state == glutin::ElementState::Pressed {
 				self.fast_mode = !self.fast_mode;
@@ -639,6 +657,7 @@ impl Camera {
 				self.noclip_mode = !self.noclip_mode;
 			}
 		}
+
 		if let Some(b) = b {
 			*b = input.state == glutin::ElementState::Pressed;
 		}
@@ -665,6 +684,10 @@ impl Camera {
 		}
 		delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
+
+		if !self.fly_mode {
+			delta_pos += self.velocity;
+		}
 
 		delta_pos
 	}
