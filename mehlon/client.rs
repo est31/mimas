@@ -206,7 +206,6 @@ impl<C :NetworkClientConn> Game<C> {
 			let player_collisionbox = Cuboid::new(player_colb_extent);
 			let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
 			let player_pos_iso = Isometry3::new(player_pos, nalgebra::zero());
-			print!("ccheck({}): ", cubes.len());
 			for (iso, cube) in cubes.iter() {
 				const PRED :f32 = 0.01;
 				let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
@@ -228,9 +227,6 @@ impl<C :NetworkClientConn> Game<C> {
 							Vector3::new(0.0, 0.0, bl.z.signum())
 						}
 					};
-					let v :[f32;3]  = iso.translation.vector.into();
-					let nv :[f32;3]  = (normal).into();
-					print!("collision({:?}, {:?}), ", v, nv);
 					let d = delta_pos.dot(&normal);
 					if d < 0.0 {
 						delta_pos -= d * normal;
@@ -238,7 +234,6 @@ impl<C :NetworkClientConn> Game<C> {
 				}
 			}
 			delta_pos.try_normalize_mut(std::f32::EPSILON);
-			println!();
 		}
 		if self.camera.fast_mode {
 			const DELTA :f32 = 40.0;
