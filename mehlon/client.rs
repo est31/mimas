@@ -181,7 +181,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 		}
 	}
-	fn collide_delta_pos(&mut self, delta_pos :Vector3<f32>) -> Vector3<f32> {
+	fn collide_delta_pos(&mut self, mut delta_pos :Vector3<f32>) -> Vector3<f32> {
 		let pos = self.camera.pos.map(|v| v as isize);
 		let mut cubes = Vec::new();
 		let d = 3;
@@ -203,35 +203,48 @@ impl<C :NetworkClientConn> Game<C> {
 		let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
 		let player_collisionbox = Cuboid::new(player_colb_extent);
 		let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
-		let player_pos_iso = Isometry3::new(player_pos, nalgebra::zero());
 		for (iso, cube) in cubes.iter() {
 			const PRED :f32 = 0.01;
+			// X coord
+			let ppx = player_pos + Vector3::new(delta_pos.x * 0.5, 0.0, 0.0);
+			let player_pos_iso = Isometry3::new(ppx, nalgebra::zero());
 			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
 			if collision.is_some() {
-				//let normal = collision.normal.as_ref();
-				let bl = player_pos - iso.translation.vector;
-				let normal = {
-					// We just take the axis with the largest extent
-					// as our normal. Of course, such a method is bound
-					// to fail.
-					let x = bl.x.abs();
-					let y = bl.y.abs();
-					let z = bl.z.abs();
-					if x > y && x > z {
-						Vector3::new(bl.x.signum(), 0.0, 0.0)
-					} else if y > z {
-						Vector3::new(0.0, bl.y.signum(), 0.0)
-					} else {
-						Vector3::new(0.0, 0.0, bl.z.signum())
-					}
-				};
+				let mut bl = player_pos - iso.translation.vector;
+				let normal = -Vector3::new(delta_pos.x.signum(), 0.0, 0.0);
+				let d = delta_pos.dot(&normal);
+				if d < 0.0 {
+					delta_pos -= d * normal;
+				}
+			}
+
+			// Y coord
+			let ppy = player_pos + Vector3::new(0.0, delta_pos.y * 0.5, 0.0);
+			let player_pos_iso = Isometry3::new(ppy, nalgebra::zero());
+			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
+			if collision.is_some() {
+				let mut bl = player_pos - iso.translation.vector;
+				let normal = -Vector3::new(0.0, delta_pos.y.signum(), 0.0);
+				let d = delta_pos.dot(&normal);
+				if d < 0.0 {
+					delta_pos -= d * normal;
+				}
+			}
+
+			// Z coord
+			let ppz = player_pos + Vector3::new(0.0, 0.0, delta_pos.z * 0.5);
+			let player_pos_iso = Isometry3::new(ppz, nalgebra::zero());
+			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
+			if collision.is_some() {
+				let mut bl = player_pos - iso.translation.vector;
+				let normal = -Vector3::new(0.0, 0.0, delta_pos.z.signum());
 				let d = delta_pos.dot(&normal);
 				if d < 0.0 {
 					delta_pos -= d * normal;
 				}
 			}
 		}
-		delta_pos.try_normalize_mut(std::f32::EPSILON);
+		//delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos
 	}
 	fn movement(&mut self, time_delta :f32) {
