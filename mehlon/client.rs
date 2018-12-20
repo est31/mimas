@@ -228,15 +228,17 @@ impl<C :NetworkClientConn> Game<C> {
 					}
 				}
 			}
-			let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
-			let player_pos = Isometry3::new(self.camera.pos, nalgebra::zero());
+			let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
+			let player_collisionbox = Cuboid::new(player_colb_extent);
+			let player_pos = self.camera.pos - player_colb_extent;
+			let player_pos_iso = Isometry3::new(player_pos, nalgebra::zero());
 			print!("ccheck({}): ", cubes.len());
 			for (iso, cube) in cubes.iter() {
 				const PRED :f32 = 0.01;
-				let collision = query::contact(&iso, cube, &player_pos, &player_collisionbox, PRED);
+				let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
 				if collision.is_some() {
 					//let normal = collision.normal.as_ref();
-					let bl = self.camera.pos - iso.translation.vector;
+					let bl = player_pos - iso.translation.vector;
 					let normal = {
 						// We just take the axis with the largest extent
 						// as our normal. Of course, such a method is bound
