@@ -209,15 +209,36 @@ impl<C :NetworkClientConn> Game<C> {
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
 		if !self.camera.noclip_mode {
+			let pos = self.camera.pos.map(|v| v as isize);
 			let chunk_pos = btchn(self.camera.pos.map(|v| v as isize));
-			let col = self.vbuffs.get(&chunk_pos).map(|v| &v.0);
-			if let Some(Some(col)) = col {
+			let mut cubes = Vec::new();
+			let d = 3;
+			for x in -d .. d {
+				for y in -d .. d {
+					for z in -d .. d {
+						let p = pos + Vector3::new(x, y, z);
+						match self.map.get_blk(p) {
+							Some(MapBlock::Air) => continue,
+							None => (),
+							Some(_) => (),
+						}
+						let iso = Isometry3::new(p.map(|v| v as f32).into(), nalgebra::zero());
+						let cuboid = Cuboid::new(Vector3::new(0.5, 0.5, 0.5));
+						cubes.push((iso, cuboid));
+					}
+				}
+			}
+			let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
+			let player_pos = Isometry3::new(self.camera.pos, nalgebra::zero());
+			print!("ccheck({}): ", cubes.len());
+			for (iso, cube) in cubes.iter() {
 				const PRED :f32 = 0.01;
-				let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
-				let player_pos = Isometry3::new(self.camera.pos, nalgebra::zero());
-				let collision = query::contact(&Isometry3::identity(), col, &player_pos, &player_collisionbox, PRED);
+				let collision = query::contact(&iso, cube, &player_pos, &player_collisionbox, PRED);
 				if let Some(collision) = collision {
 					let normal = collision.normal.as_ref();
+					let v :[f32;3]  = iso.translation.vector.into();
+					let nv :[f32;3]  = (*normal).into();
+					print!("collision({:?}, {:?}), ", v, nv);
 					//delta_pos.try_normalize_mut(std::f32::EPSILON);
 					let d = delta_pos.dot(normal);
 					if d < 0.0 {
@@ -225,6 +246,7 @@ impl<C :NetworkClientConn> Game<C> {
 					}
 				}
 			}
+			println!();
 		}
 		if self.camera.fast_mode {
 			const DELTA :f32 = 40.0;
