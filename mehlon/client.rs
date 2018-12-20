@@ -264,11 +264,11 @@ impl<C :NetworkClientConn> Game<C> {
 			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
 		}
 		if self.camera.fast_mode {
-			const DELTA :f32 = 40.0;
-			delta_pos *= DELTA;
-		} else {
-			const FAST_DELTA :f32 = 10.0;
+			const FAST_DELTA :f32 = 40.0;
 			delta_pos *= FAST_DELTA;
+		} else {
+			const DELTA :f32 = 10.0;
+			delta_pos *= DELTA;
 		}
 		self.camera.pos += delta_pos * time_delta;
 	}
