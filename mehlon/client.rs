@@ -230,7 +230,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
 			let player_collisionbox = Cuboid::new(player_colb_extent);
-			let player_pos = self.camera.pos - player_colb_extent;
+			let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
 			let player_pos_iso = Isometry3::new(player_pos, nalgebra::zero());
 			print!("ccheck({}): ", cubes.len());
 			for (iso, cube) in cubes.iter() {
