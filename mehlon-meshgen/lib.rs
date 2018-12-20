@@ -1,15 +1,13 @@
 #![forbid(unsafe_code)]
 
 extern crate nalgebra;
-extern crate ncollide3d;
 #[macro_use]
 extern crate glium;
 extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
 	CHUNKSIZE, MapBlock};
-use nalgebra::{Vector3, Isometry3};
-use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
+use nalgebra::Vector3;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -89,8 +87,7 @@ pub fn colorh(col :[f32; 4]) -> [f32; 4] {
 	[col[0]/2.0, col[1]/2.0, col[2]/2.0, col[3]]
 }
 
-fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChunkData, mut f :F) ->
-		Vec<Vertex> {
+pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex> {
 	let mut r = Vec::new();
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
@@ -105,45 +102,21 @@ fn mesh_for_chunk<F :FnMut(Vector3<isize>)>(offs :Vector3<isize>, chunk :&MapChu
 				let pos = offs + Vector3::new(x, y, z);
 				let fpos = [pos.x as f32, pos.y as f32, pos.z as f32];
 				let colorh = colorh(color);
-				let mut any_non_blocked = false;
 				push_block(&mut r, fpos, color, colorh, 1.0, |[xo, yo, zo]| {
 					let pos = Vector3::new(x + xo, y + yo, z + zo);
 					let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 					if outside.x || outside.y || outside.z {
-						any_non_blocked = true;
 						return false;
 					}
 					match *chunk.get_blk(pos) {
 						MapBlock::Air => {
-							any_non_blocked = true;
 							false
 						},
 						_ => true,
 					}
 				});
-				// If any of the faces is unblocked, this block
-				// will be reported
-				if any_non_blocked {
-					f(pos);
-				}
 			}
 		}
 	}
 	r
-}
-
-pub fn mesh_compound_for_chunk(offs :Vector3<isize>,
-		chunk :&MapChunkData) -> (Vec<Vertex>, Option<Compound<f32>>) {
-	let mut shapes = Vec::new();
-	let mesh = mesh_for_chunk(offs, &chunk, |p :Vector3<isize>| {
-		let iso = Isometry3::new(p.map(|v| v as f32).into(), nalgebra::zero());
-		let cuboid = ShapeHandle::new(Cuboid::new(Vector3::new(0.5, 0.5, 0.5)));
-		shapes.push((iso, cuboid));
-	});
-	let compound = if shapes.len() > 0 {
-		Some(Compound::new(shapes))
-	} else {
-		None
-	};
-	(mesh, compound)
 }

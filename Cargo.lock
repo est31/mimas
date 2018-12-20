@@ -611,7 +611,6 @@ dependencies = [
  "mehlon-server 0.1.0",
  "nalgebra 0.16.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ncollide3d 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "nphysics3d 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_pcg 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -626,7 +625,6 @@ dependencies = [
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mehlon-server 0.1.0",
  "nalgebra 0.16.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "ncollide3d 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

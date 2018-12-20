@@ -12,24 +12,19 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
 use frustum_query::frustum::Frustum;
-use ncollide3d::shape::{Cuboid, Compound, ShapeHandle};
-use ncollide3d::math::Isometry;
+use ncollide3d::shape::Cuboid;
 use ncollide3d::query;
-use nphysics3d::math::Inertia;
-use nphysics3d::volumetric::Volumetric;
-use nphysics3d::world::World;
-use nphysics3d::object::{BodyHandle, BodyMut, ColliderHandle, Material};
 
 use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
 
-use mehlon_meshgen::{Vertex, mesh_compound_for_chunk, push_block};
+use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, IDENTITY};
 
 use voxel_walk::VoxelWalker;
 
-type MeshResReceiver = Receiver<(Vector3<isize>, Option<Compound<f32>>, Vec<Vertex>)>;
+type MeshResReceiver = Receiver<(Vector3<isize>, Vec<Vertex>)>;
 
 fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
@@ -48,14 +43,11 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 pub struct Game<C :NetworkClientConn> {
 	srv_conn :C,
 
-	physics_world :World<f32>,
-	player_handle :BodyHandle,
-
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, (Option<Compound<f32>>, VertexBuffer<Vertex>)>,
+	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	item_in_hand :MapBlock,
@@ -95,8 +87,8 @@ impl<C :NetworkClientConn> Game<C> {
 		let (meshres_s, meshres_r) = channel();
 		thread::spawn(move || {
 			while let Ok((p, chunk)) = meshgen_r.recv() {
-				let (mesh, compound) = mesh_compound_for_chunk(p, &chunk);
-				let _ = meshres_s.send((p, compound, mesh));
+				let mesh = mesh_for_chunk(p, &chunk);
+				let _ = meshres_s.send((p, mesh));
 			}
 		});
 
@@ -111,23 +103,8 @@ impl<C :NetworkClientConn> Game<C> {
 		let swidth = 1024.0;
 		let sheight = 768.0;
 
-		let mut physics_world = World::new();
-
-		let player_collisionbox = Cuboid::new(Vector3::new(0.35, 0.35, 0.9));
-		let player_handle = physics_world.add_rigid_body(
-			Isometry::new(Vector3::new(60.0, 40.0, 20.0), nalgebra::zero()),
-			Inertia::new(1.0, nalgebra::zero()),
-			player_collisionbox.center_of_mass());
-		let material = Material::new(1.0, 1.0);
-		let player_shape = ShapeHandle::new(player_collisionbox);
-		let _player_collider = physics_world.add_collider(0.01,
-			player_shape, player_handle, nalgebra::one(), material);
-
 		Game {
 			srv_conn,
-
-			physics_world,
-			player_handle,
 
 			meshres_r,
 
@@ -178,8 +155,6 @@ impl<C :NetworkClientConn> Game<C> {
 				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
-			self.physics_world.set_timestep(float_delta);
-			self.physics_world.step();
 			let close = self.handle_events(events_loop);
 			if !self.menu_enabled {
 				self.movement(float_delta);
@@ -210,7 +185,6 @@ impl<C :NetworkClientConn> Game<C> {
 		let mut delta_pos = self.camera.delta_pos();
 		if !self.camera.noclip_mode {
 			let pos = self.camera.pos.map(|v| v as isize);
-			let chunk_pos = btchn(self.camera.pos.map(|v| v as isize));
 			let mut cubes = Vec::new();
 			let d = 3;
 			for x in -d .. d {
@@ -274,14 +248,6 @@ impl<C :NetworkClientConn> Game<C> {
 			delta_pos *= FAST_DELTA;
 		}
 		self.camera.pos += delta_pos * time_delta;
-		let player_body = self.physics_world.body_mut(self.player_handle);
-		match player_body {
-			BodyMut::RigidBody(b) => {
-				let pos = self.camera.pos - Vector3::new(0.0, 0.0, 1.6);
-				b.set_position(Isometry3::new(pos, nalgebra::zero()))
-			},
-			_ => panic!("Player is expected to be a RigidBody!"),
-		}
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
 		self.recv_vbuffs();
@@ -339,7 +305,7 @@ impl<C :NetworkClientConn> Game<C> {
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
 		for buff in self.vbuffs.iter()
-				.filter_map(|(p, (_c, m))| {
+				.filter_map(|(p, m)| {
 					// Frustum culling.
 					// We approximate chunks as spheres here, as the library
 					// has no cube checker.
@@ -414,13 +380,9 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 
 	fn recv_vbuffs(&mut self) {
-		while let Ok((p, c, m)) = self.meshres_r.try_recv() {
-			let material = Material::new(0.0, 0.0);
+		while let Ok((p, m)) = self.meshres_r.try_recv() {
 			let vbuff = VertexBuffer::new(&self.display, &m).unwrap();
-			let old_opt = self.vbuffs.insert(p, (c, vbuff));
-			/*if let Some((Some(coll), _)) = old_opt {
-				self.physics_world.remove_colliders(&[coll]);
-			}*/
+			self.vbuffs.insert(p, vbuff);
 		}
 	}
 

@@ -2,7 +2,6 @@
 
 extern crate nalgebra;
 extern crate ncollide3d;
-extern crate nphysics3d;
 #[macro_use]
 extern crate glium;
 extern crate winit;
