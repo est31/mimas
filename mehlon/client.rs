@@ -234,13 +234,29 @@ impl<C :NetworkClientConn> Game<C> {
 			for (iso, cube) in cubes.iter() {
 				const PRED :f32 = 0.01;
 				let collision = query::contact(&iso, cube, &player_pos, &player_collisionbox, PRED);
-				if let Some(collision) = collision {
-					let normal = collision.normal.as_ref();
+				if collision.is_some() {
+					//let normal = collision.normal.as_ref();
+					let bl = self.camera.pos - iso.translation.vector;
+					let normal = {
+						// We just take the axis with the largest extent
+						// as our normal. Of course, such a method is bound
+						// to fail.
+						let x = bl.x.abs();
+						let y = bl.y.abs();
+						let z = bl.z.abs();
+						if x > y && x > z {
+							Vector3::new(bl.x.signum(), 0.0, 0.0)
+						} else if y > z {
+							Vector3::new(0.0, bl.y.signum(), 0.0)
+						} else {
+							Vector3::new(0.0, 0.0, bl.z.signum())
+						}
+					};
 					let v :[f32;3]  = iso.translation.vector.into();
-					let nv :[f32;3]  = (*normal).into();
+					let nv :[f32;3]  = (normal).into();
 					print!("collision({:?}, {:?}), ", v, nv);
 					//delta_pos.try_normalize_mut(std::f32::EPSILON);
-					let d = delta_pos.dot(normal);
+					let d = delta_pos.dot(&normal);
 					if d < 0.0 {
 						delta_pos -= d * normal;
 					}
