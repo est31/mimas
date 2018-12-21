@@ -302,10 +302,11 @@ impl<C :NetworkClientConn> Game<C> {
 		// TODO turn off anti-aliasing of the font
 		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
 		glyph_brush.queue(Section {
-			text : &format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}",
+			text : &format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}, CL: {}",
 				self.camera.pos.x, self.camera.pos.y, self.camera.pos.z,
 				self.camera.pitch, self.camera.yaw,
-				sel_text, self.last_fps as u16),
+				sel_text, self.last_fps as u16,
+				self.vbuffs.len()),
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
 			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
