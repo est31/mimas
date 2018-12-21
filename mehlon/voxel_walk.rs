@@ -65,7 +65,7 @@ fn test_next_for_dim() {
 		mult
 	}
 	let step = 0.01;
-	let mut off = 0.0f32;//-5.0f32;
+	let mut off = -5.0f32;
 	let mut dir = -20.0;
 	while off < 5.0 {
 		if off == off.floor() {
