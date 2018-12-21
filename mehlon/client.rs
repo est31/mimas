@@ -332,7 +332,7 @@ impl<C :NetworkClientConn> Game<C> {
 		for buff in self.vbuffs.iter()
 				.filter_map(|(p, m)| {
 					// Viewing range based culling
-					const VIEWING_RANGE :f32 = 64.0;
+					const VIEWING_RANGE :f32 = 128.0;
 					if (p.map(|v| v as f32) - player_pos).norm() > VIEWING_RANGE {
 						return None;
 					}
