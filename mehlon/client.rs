@@ -328,18 +328,23 @@ impl<C :NetworkClientConn> Game<C> {
 		let mut target = self.display.draw();
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
+		let player_pos = self.camera.pos;
 		for buff in self.vbuffs.iter()
 				.filter_map(|(p, m)| {
+					// Viewing range based culling
+					const VIEWING_RANGE :f32 = 64.0;
+					if (p.map(|v| v as f32) - player_pos).norm() > VIEWING_RANGE {
+						return None;
+					}
 					// Frustum culling.
 					// We approximate chunks as spheres here, as the library
 					// has no cube checker.
 					let p = p.map(|v| (v + CHUNKSIZE / 2) as f32);
 					let r = CHUNKSIZE as f32 * 3.0_f32.sqrt();
-					if frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
-						Some(m)
-					} else {
-						None
+					if !frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
+						return None;
 					}
+					return Some(m);
 				})
 				.chain(selbuff.iter()) {
 			target.draw(buff,
