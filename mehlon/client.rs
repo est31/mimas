@@ -251,7 +251,7 @@ impl<C :NetworkClientConn> Game<C> {
 				self.camera.velocity = Vector3::new(0.0, 0.0, 3.0);
 			}
 		} else {
-			self.camera.velocity += Vector3::new(0.0, 0.0, -9.81) * time_delta;
+			self.camera.velocity += Vector3::new(0.0, 0.0, -9.81 / 2.0) * time_delta;
 			// Maximum falling speed
 			self.camera.velocity.z = clamp(self.camera.velocity.z, -3.0, 0.0);
 		}
