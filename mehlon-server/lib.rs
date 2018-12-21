@@ -173,7 +173,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		close_connections(&conns_to_close, &mut *players);
 		msgs
 	}
-	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) {
+	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) -> Result<(), NetErr> {
 		let isize_pos = player.pos.map(|v| v as isize);
 		let (pmin, pmax) = chunk_positions_around(isize_pos, 4, 2);
 		let pmin = pmin / CHUNKSIZE;
@@ -185,25 +185,30 @@ impl<S :NetworkServerSocket> Server<S> {
 					if let Some(c) = self.map.get_chunk(p) {
 						if !player.sent_chunks.contains(&p) {
 							let msg = ServerToClientMsg::ChunkUpdated(p, *c);
-							player.conn.send(msg);
+							player.conn.send(msg)?;
 							player.sent_chunks.insert(p);
 						}
 					}
 				}
 			}
 		}
+		Ok(())
 	}
 	fn send_chunks_to_players(&mut self) {
 		let players = self.players.clone();
-		for player in players.borrow_mut().iter_mut() {
+		let mut players_to_remove = Vec::new();
+		for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
 			let isize_pos = player.pos.map(|v| v as isize);
 			let player_pos_chn = btchn(isize_pos);
 			if player.last_chunk_pos == player_pos_chn {
 				continue;
 			}
 			player.last_chunk_pos = player_pos_chn;
-			self.send_chunks_to_player(player);
+			if self.send_chunks_to_player(player).is_err() {
+				players_to_remove.push(idx);
+			}
 		}
+		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
 	pub fn run_loop(&mut self) {
 		loop {
