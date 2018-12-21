@@ -14,8 +14,6 @@ path = "lib.rs"
 [dependencies]
 noise = "0.5"
 nalgebra = { version = "0.16", features = ["serde-serialize"] }
-ncollide3d = "0.17.2"
-nphysics3d = "0.9.0"
 num-traits = "0.2"
 rand_pcg = "0.1.1"
 rand = "0.6.0"
