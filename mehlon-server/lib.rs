@@ -175,7 +175,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) -> Result<(), NetErr> {
 		let isize_pos = player.pos.map(|v| v as isize);
-		let (pmin, pmax) = chunk_positions_around(isize_pos, 4, 2);
+		let (pmin, pmax) = chunk_positions_around(isize_pos, 6, 3);
 		let pmin = pmin / CHUNKSIZE;
 		let pmax = pmax / CHUNKSIZE;
 		for x in pmin.x .. pmax.x {
@@ -217,7 +217,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				.map(|player| player.pos).collect::<Vec<_>>();
 			for pos in positions {
 				gen_chunks_around(&mut self.map,
-					pos.map(|v| v as isize), 4, 2);
+					pos.map(|v| v as isize), 6, 3);
 			}
 			let _float_delta = self.update_fps();
 			let exit = false;
