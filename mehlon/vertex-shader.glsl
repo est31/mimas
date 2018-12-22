@@ -4,6 +4,7 @@ in vec4 color;
 in vec3 normal;
 
 out vec4 vcolor;
+out vec4 vposition;
 
 uniform mat4 pmatrix;
 uniform mat4 vmatrix;
@@ -12,7 +13,8 @@ const vec3 dir_light_a = normalize(vec3(0.0, -1.0, -1.0));
 const vec3 dir_light_b = normalize(vec3(0.0, 1.0, 1.0));
 
 void main() {
-	gl_Position = pmatrix * vmatrix * vec4(position, 1.0);
+	vposition = vmatrix * vec4(position, 1.0);
+	gl_Position = pmatrix * vposition;
 	vec3 nnormal = normalize(normal);
 
 	// Lambertian shading
