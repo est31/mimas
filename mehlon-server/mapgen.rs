@@ -193,6 +193,17 @@ pub struct Schematic {
 	pub(super) aabb_max :Vector3<isize>,
 }
 
+impl Schematic {
+	pub fn from_items(items :Vec<(Vector3<isize>, MapBlock)>) -> Self {
+		let (aabb_min, aabb_max) = aabb_min_max(&items);
+		Schematic {
+			items,
+			aabb_min,
+			aabb_max,
+		}
+	}
+}
+
 lazy_static! {
     pub static ref TREE_SCHEMATIC :Schematic = tree_schematic();
 }
@@ -219,12 +230,7 @@ fn tree_schematic() -> Schematic {
 	for z in 0 .. 4 {
 		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
 	}
-	let (aabb_min, aabb_max) = aabb_min_max(&items);
-	Schematic {
-		items,
-		aabb_min,
-		aabb_max,
-	}
+	Schematic::from_items(items)
 }
 
 fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>, schematic :&Schematic) {
