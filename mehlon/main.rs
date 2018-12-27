@@ -16,6 +16,7 @@ extern crate mehlon_server;
 extern crate mehlon_meshgen;
 
 mod client;
+mod collide;
 mod ui;
 mod voxel_walk;
 

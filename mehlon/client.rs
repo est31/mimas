@@ -1,7 +1,7 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
-use nalgebra::{Vector3, Matrix4, Point3, Rotation3, Isometry3};
+use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
@@ -12,8 +12,7 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
 use frustum_query::frustum::Frustum;
-use ncollide3d::shape::Cuboid;
-use ncollide3d::query;
+use collide::collide;
 
 use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
@@ -194,22 +193,16 @@ impl<C :NetworkClientConn> Game<C> {
 						None => (),
 						Some(_) => (),
 					}
-					let iso = Isometry3::new(p.map(|v| v as f32).into(), nalgebra::zero());
-					let cuboid = Cuboid::new(Vector3::new(0.5, 0.5, 0.5));
-					cubes.push((iso, cuboid));
+					cubes.push(p);
 				}
 			}
 		}
-		let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
-		let player_collisionbox = Cuboid::new(player_colb_extent);
 		let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
 		let mut touches_ground = false;
-		for (iso, cube) in cubes.iter() {
-			const PRED :f32 = 0.01;
+		for pos in cubes.into_iter() {
 			// X coord
 			let ppx = player_pos + Vector3::new(delta_pos.x * 0.5, 0.0, 0.0);
-			let player_pos_iso = Isometry3::new(ppx, nalgebra::zero());
-			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
+			let collision = collide(ppx, pos);
 			if collision.is_some() {
 				let normal = -Vector3::new(delta_pos.x.signum(), 0.0, 0.0);
 				let d = delta_pos.dot(&normal);
@@ -220,8 +213,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 			// Y coord
 			let ppy = player_pos + Vector3::new(0.0, delta_pos.y * 0.5, 0.0);
-			let player_pos_iso = Isometry3::new(ppy, nalgebra::zero());
-			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
+			let collision = collide(ppy, pos);
 			if collision.is_some() {
 				let normal = -Vector3::new(0.0, delta_pos.y.signum(), 0.0);
 				let d = delta_pos.dot(&normal);
@@ -232,8 +224,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 			// Z coord
 			let ppz = player_pos + Vector3::new(0.0, 0.0, delta_pos.z * 0.5);
-			let player_pos_iso = Isometry3::new(ppz, nalgebra::zero());
-			let collision = query::contact(&iso, cube, &player_pos_iso, &player_collisionbox, PRED);
+			let collision = collide(ppz, pos);
 			if collision.is_some() {
 				let normal = -Vector3::new(0.0, 0.0, delta_pos.z.signum());
 				let d = delta_pos.dot(&normal);
