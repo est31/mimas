@@ -203,8 +203,7 @@ impl<C :NetworkClientConn> Game<C> {
 			// X coord
 			let ppx = player_pos + Vector3::new(delta_pos.x * 0.5, 0.0, 0.0);
 			let collision = collide(ppx, pos);
-			if collision.is_some() {
-				let normal = -Vector3::new(delta_pos.x.signum(), 0.0, 0.0);
+			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
 				if d < 0.0 {
 					delta_pos -= d * normal;
@@ -214,8 +213,7 @@ impl<C :NetworkClientConn> Game<C> {
 			// Y coord
 			let ppy = player_pos + Vector3::new(0.0, delta_pos.y * 0.5, 0.0);
 			let collision = collide(ppy, pos);
-			if collision.is_some() {
-				let normal = -Vector3::new(0.0, delta_pos.y.signum(), 0.0);
+			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
 				if d < 0.0 {
 					delta_pos -= d * normal;
@@ -225,8 +223,7 @@ impl<C :NetworkClientConn> Game<C> {
 			// Z coord
 			let ppz = player_pos + Vector3::new(0.0, 0.0, delta_pos.z * 0.5);
 			let collision = collide(ppz, pos);
-			if collision.is_some() {
-				let normal = -Vector3::new(0.0, 0.0, delta_pos.z.signum());
+			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
 				if delta_pos.z < 0.0 {
 					touches_ground = true;
