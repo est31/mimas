@@ -1,13 +1,29 @@
-use nalgebra::{Vector3, Isometry3};
-use ncollide3d::shape::Cuboid;
-use ncollide3d::query;
+use nalgebra::Vector3;
+
+fn overlap(a_min :f32, a_max :f32, b_min :f32, b_max :f32) -> bool {
+	!(a_min > b_max || b_min > a_max)
+}
+
+fn overlap_fn<T, F :Fn(T) -> f32>(f :F, a_min :T, a_max :T, b_min :T, b_max :T) -> bool {
+	overlap(f(a_min), f(a_max), f(b_min), f(b_max))
+}
 
 pub fn collide(player_pos :Vector3<f32>, pos :Vector3<isize>) -> Option<()> {
-	const PRED :f32 = 0.01;
+	let pos = pos.map(|v| v as f32);
 	let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
-	let player_collisionbox = Cuboid::new(player_colb_extent);
-	let iso = Isometry3::new(pos.map(|v| v as f32).into(), nalgebra::zero());
-	let player_pos_iso = Isometry3::new(player_pos, nalgebra::zero());
-	let cube = Cuboid::new(Vector3::new(0.5, 0.5, 0.5));
-	query::contact(&iso, &cube, &player_pos_iso, &player_collisionbox, PRED).map(|_|())
+	let pmin = player_pos - player_colb_extent;
+	let pmax = player_pos - player_colb_extent;
+	let cube_extent = Vector3::new(0.5, 0.5, 0.5);
+	let cmin = pos - cube_extent;
+	let cmax = pos + cube_extent;
+
+	let overlap = overlap_fn(|p| p.x, pmin, pmax, cmin, cmax) &&
+		overlap_fn(|p| p.y, pmin, pmax, cmin, cmax) &&
+		overlap_fn(|p| p.z, pmin, pmax, cmin, cmax);
+
+	if overlap {
+		Some(())
+	} else {
+		None
+	}
 }

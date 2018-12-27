@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 extern crate nalgebra;
-extern crate ncollide3d;
 #[macro_use]
 extern crate glium;
 extern crate winit;
