@@ -51,12 +51,33 @@ pub fn collide(player_pos :Vector3<f32>, pos :Vector3<isize>) -> Option<Vector3<
 				-1.0
 			}
 		}
-		if ox < oy && ox < oz {
-			normal = Vector3::new(f(player_pos.x, pos.x), 0.0, 0.0);
-		} else if oy < oz {
-			normal = Vector3::new(0.0, f(player_pos.y, pos.y), 0.0);
+		const LIMIT :f32 = 0.04;
+		let num_smaller = [ox, oy, oz].into_iter().filter(|v| v <= &&LIMIT).count();
+		let xnormal = Vector3::new(f(player_pos.x, pos.x), 0.0, 0.0);
+		let ynormal = Vector3::new(0.0, f(player_pos.y, pos.y), 0.0);
+		let znormal = Vector3::new(0.0, 0.0, f(player_pos.z, pos.z));
+		fn c(a :&[Vector3<f32>]) -> Vector3<f32> {
+			a.iter().fold(nalgebra::zero(), |v :Vector3<f32>, w| v + w).normalize()
+		}
+		if num_smaller <= 1 {
+			if ox < oy && ox < oz {
+				normal = xnormal;
+			} else if oy < oz {
+				normal = ynormal;
+			} else {
+				normal = znormal;
+			}
+		} else if num_smaller == 2 {
+			if ox > oy && ox > oz {
+				normal = c(&[ynormal, znormal]);
+			} else if oy < oz {
+				normal = c(&[xnormal, znormal]);
+			} else {
+				normal = c(&[xnormal, ynormal]);
+			}
 		} else {
-			normal = Vector3::new(0.0, 0.0, f(player_pos.z, pos.z));
+			debug_assert_eq!(num_smaller, 3);
+			normal = c(&[xnormal, ynormal, znormal]);
 		}
 		Some(normal)
 	} else {
