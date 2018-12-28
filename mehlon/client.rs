@@ -182,12 +182,15 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn collide_delta_pos(&mut self, mut delta_pos :Vector3<f32>, time_delta :f32) -> Vector3<f32> {
 		let pos = self.camera.pos.map(|v| v as isize);
+		let new_pos = (self.camera.pos + delta_pos).map(|v| v as isize);
 		let mut cubes = Vec::new();
 		let d = 3;
-		for x in -d .. d {
-			for y in -d .. d {
-				for z in -d .. d {
-					let p = pos + Vector3::new(x, y, z);
+		let cubes_min = Vector3::new(pos.x.min(new_pos.x) - d, pos.y.min(new_pos.y) - d, pos.z.min(new_pos.z) - d);
+		let cubes_max = Vector3::new(pos.x.max(new_pos.x) + d, pos.y.max(new_pos.y) + d, pos.z.max(new_pos.z) + d);
+		for x in cubes_min.x .. cubes_max.x {
+			for y in cubes_min.y .. cubes_max.y {
+				for z in cubes_min.z .. cubes_max.z {
+					let p = Vector3::new(x, y, z);
 					match self.map.get_blk(p) {
 						Some(MapBlock::Air) => continue,
 						None => (),
@@ -201,7 +204,7 @@ impl<C :NetworkClientConn> Game<C> {
 		let mut touches_ground = false;
 		for pos in cubes.into_iter() {
 			// X coord
-			let ppx = player_pos + Vector3::new(delta_pos.x * 0.5, 0.0, 0.0);
+			let ppx = player_pos + Vector3::new(delta_pos.x, 0.0, 0.0);
 			let collision = collide(ppx, pos);
 			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
@@ -211,7 +214,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 
 			// Y coord
-			let ppy = player_pos + Vector3::new(0.0, delta_pos.y * 0.5, 0.0);
+			let ppy = player_pos + Vector3::new(0.0, delta_pos.y, 0.0);
 			let collision = collide(ppy, pos);
 			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
@@ -221,7 +224,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 
 			// Z coord
-			let ppz = player_pos + Vector3::new(0.0, 0.0, delta_pos.z * 0.5);
+			let ppz = player_pos + Vector3::new(0.0, 0.0, delta_pos.z);
 			let collision = collide(ppz, pos);
 			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
@@ -236,6 +239,7 @@ impl<C :NetworkClientConn> Game<C> {
 		if touches_ground || self.camera.fly_mode {
 			self.camera.velocity = nalgebra::zero();
 			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
+				// Jumping speed
 				self.camera.velocity = Vector3::new(0.0, 0.0, 3.0);
 			}
 		} else {
@@ -248,9 +252,6 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
-		if !self.camera.noclip_mode {
-			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
-		}
 		if self.camera.fast_mode {
 			const FAST_DELTA :f32 = 40.0;
 			delta_pos *= FAST_DELTA;
@@ -258,7 +259,11 @@ impl<C :NetworkClientConn> Game<C> {
 			const DELTA :f32 = 10.0;
 			delta_pos *= DELTA;
 		}
-		self.camera.pos += delta_pos * time_delta;
+		delta_pos = delta_pos * time_delta;
+		if !self.camera.noclip_mode {
+			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
+		}
+		self.camera.pos += delta_pos;
 	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
 		self.recv_vbuffs();
