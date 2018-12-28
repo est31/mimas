@@ -240,12 +240,14 @@ impl<C :NetworkClientConn> Game<C> {
 			self.camera.velocity = nalgebra::zero();
 			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
 				// Jumping speed
-				self.camera.velocity = Vector3::new(0.0, 0.0, 3.0);
+				let jumping_speed = Vector3::new(0.0, 0.0, 3.0);
+				self.camera.velocity = jumping_speed;
 			}
 		} else {
-			self.camera.velocity += Vector3::new(0.0, 0.0, -9.81 / 2.0) * time_delta;
+			let gravity = Vector3::new(0.0, 0.0, -9.81);
+			self.camera.velocity += gravity * 3.0 * time_delta;
 			// Maximum falling speed
-			self.camera.velocity.z = clamp(self.camera.velocity.z, -3.0, 0.0);
+			self.camera.velocity.z = clamp(self.camera.velocity.z, -30.0, 0.0);
 		}
 		//delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos
@@ -258,6 +260,9 @@ impl<C :NetworkClientConn> Game<C> {
 		} else {
 			const DELTA :f32 = 10.0;
 			delta_pos *= DELTA;
+		}
+		if !self.camera.fly_mode {
+			delta_pos += self.camera.velocity;
 		}
 		delta_pos = delta_pos * time_delta;
 		if !self.camera.noclip_mode {
@@ -683,10 +688,6 @@ impl Camera {
 		}
 		delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos = Rotation3::from_axis_angle(&Vector3::z_axis(), dtr(-self.yaw)) * delta_pos;
-
-		if !self.fly_mode {
-			delta_pos += self.velocity;
-		}
 
 		delta_pos
 	}
