@@ -558,10 +558,7 @@ fn hand_mesh(pos :Vector3<f32>, blk :MapBlock) -> Vec<Vertex> {
 }
 
 fn durtofl(d :Duration) -> f32 {
-	// Soon we can just convert to u128. It's already in FCP.
-	// https://github.com/rust-lang/rust/issues/50202
-	// Very soon...
-	d.as_secs() as f32 + d.subsec_millis() as f32 / 1000.0
+	d.as_millis() as f32 / 1_000.0
 }
 
 fn clamp(a :f32, min :f32, max :f32) -> f32 {
