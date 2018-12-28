@@ -31,11 +31,13 @@ pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
 	SetPos(Vector3<f32>),
+	Chat(String),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ServerToClientMsg {
 	ChunkUpdated(Vector3<isize>, MapChunkData),
+	Chat(String),
 }
 
 fn chunk_positions_around(pos :Vector3<isize>, xyradius :isize, zradius :isize) -> (Vector3<isize>, Vector3<isize>) {
@@ -210,6 +212,18 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	fn handle_chat_msg(&mut self, msg :String) {
+		println!("Chat: {}", msg);
+		let players = self.players.clone();
+		let mut players_to_remove = Vec::new();
+		for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
+			let msg = ServerToClientMsg::Chat(msg.clone());
+			if player.conn.send(msg).is_err() {
+				players_to_remove.push(idx);
+			}
+		}
+		close_connections(&players_to_remove, &mut *players.borrow_mut());
+	}
 	pub fn run_loop(&mut self) {
 		loop {
 			self.send_chunks_to_players();
@@ -240,6 +254,9 @@ impl<S :NetworkServerSocket> Server<S> {
 						map::spawn_tree(&mut self.map, p);
 					},
 					SetPos(_p) => unreachable!(),
+					Chat(m) => {
+						self.handle_chat_msg(m);
+					},
 				}
 			}
 

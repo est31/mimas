@@ -60,6 +60,7 @@ pub struct Game<C :NetworkClientConn> {
 	grab_cursor :bool,
 	grabbing_cursor :bool,
 	has_focus :bool,
+	chat_msgs :Vec<String>,
 	chat_window :Option<ChatWindow>,
 	menu_enabled :bool,
 
@@ -122,6 +123,7 @@ impl<C :NetworkClientConn> Game<C> {
 			grab_cursor : true,
 			grabbing_cursor : false,
 			has_focus : false,
+			chat_msgs : Vec::new(),
 			chat_window : None,
 			menu_enabled : false,
 			map,
@@ -171,6 +173,9 @@ impl<C :NetworkClientConn> Game<C> {
 				match msg {
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);
+					},
+					ServerToClientMsg::Chat(s) => {
+						self.chat_msgs.push(s);
 					},
 				}
 			}
@@ -276,6 +281,9 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 		self.camera.pos += delta_pos;
 	}
+	fn chat_string(&self) -> String {
+		self.chat_msgs.iter().fold(String::new(), |v, w| v + "\n" + w)
+	}
 	fn render<'a, 'b>(&mut self, glyph_brush :&mut GlyphBrush<'a, 'b>) {
 		self.recv_vbuffs();
 		let pmatrix = self.camera.get_perspective();
@@ -305,12 +313,13 @@ impl<C :NetworkClientConn> Game<C> {
 		let screen_dims = self.display.get_framebuffer_dimensions();
 		// TODO turn off anti-aliasing of the font
 		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
-		glyph_brush.queue(Section {
-			text : &format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}, CL: {}",
+		let text = format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}, CL: {}",
 				self.camera.pos.x, self.camera.pos.y, self.camera.pos.z,
 				self.camera.pitch, self.camera.yaw,
 				sel_text, self.last_fps as u16,
-				self.vbuffs.len()),
+				self.vbuffs.len()) + "\n" + &self.chat_string();
+		glyph_brush.queue(Section {
+			text :&text,
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
 			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
@@ -443,7 +452,8 @@ impl<C :NetworkClientConn> Game<C> {
 			ChatWindowEvent::SendChat => {
 				{
 					let text = &self.chat_window.as_ref().unwrap().text();
-					println!("chat {}", text);
+					let msg = ClientToServerMsg::Chat(text.to_string());
+					let _ = self.srv_conn.send(msg);
 				}
 				self.chat_window = None;
 				self.check_grab_change();
