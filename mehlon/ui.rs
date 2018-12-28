@@ -125,6 +125,11 @@ impl ChatWindow {
 		if input == '\n' {
 			return ChatWindowEvent::SendChat;
 		}
+		if input == '\x08' {
+			// Backspace. Remove last character.
+			self.text.pop();
+			return ChatWindowEvent::None;
+		}
 		self.text.push(input);
 		ChatWindowEvent::None
 	}
