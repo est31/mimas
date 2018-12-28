@@ -435,43 +435,39 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 
 	fn handle_kinput(&mut self, input :&KeyboardInput) -> bool {
-		use ui::ChatWindowEvent;
-		let ev = if let Some(ref mut w) = self.chat_window {
-			w.handle_kinput(input)
-		} else {
-			ChatWindowEvent::None
-		};
-		match ev {
-			ChatWindowEvent::CloseChatWindow => {
-				self.chat_window = None;
-				self.check_grab_change();
+		match input.virtual_keycode {
+			Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
+				return true;
 			},
-			ChatWindowEvent::SendChat => {
-				{
-					let text = &self.chat_window.as_ref().unwrap().text();
-					println!("chat {}", text);
-				}
-				self.chat_window = None;
-				self.check_grab_change();
-			},
-			ChatWindowEvent::None => (),
+			_ => (),
 		}
+
+		if let Some(ev) = (&mut self.chat_window).as_mut().map(|w| w.handle_kinput(input)) {
+			use ui::ChatWindowEvent;
+			match ev {
+				ChatWindowEvent::CloseChatWindow => {
+					self.chat_window = None;
+					self.check_grab_change();
+				},
+				ChatWindowEvent::SendChat => {
+					{
+						let text = &self.chat_window.as_ref().unwrap().text();
+						println!("chat {}", text);
+					}
+					self.chat_window = None;
+					self.check_grab_change();
+				},
+				ChatWindowEvent::None => (),
+			}
+			return false;
+		}
+
 		match input.virtual_keycode {
 			Some(glutin::VirtualKeyCode::Escape) => {
 				if input.state == glutin::ElementState::Pressed {
 					self.menu_enabled = !self.menu_enabled;
 					self.check_grab_change();
 				}
-			},
-			Some(glutin::VirtualKeyCode::T) => {
-				if input.state == glutin::ElementState::Pressed
-						&& self.chat_window.is_none() {
-					self.chat_window = Some(ChatWindow::new());
-					self.check_grab_change();
-				}
-			},
-			Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
-				return true;
 			},
 			_ => (),
 		}
@@ -504,6 +500,10 @@ impl<C :NetworkClientConn> Game<C> {
 						let ev = if let Some(ref mut w) = self.chat_window {
 							w.handle_character(ch)
 						} else {
+							if ch == 't' {
+								self.chat_window = Some(ChatWindow::new());
+								self.check_grab_change();
+							}
 							ChatWindowEvent::None
 						};
 						match ev {
