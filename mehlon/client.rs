@@ -1,6 +1,7 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
+use glutin::KeyboardInput;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
@@ -19,7 +20,7 @@ use mehlon_server::generic_net::NetworkClientConn;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
-use ui::{render_menu, square_mesh, IDENTITY};
+use ui::{render_menu, square_mesh, ChatWindow, IDENTITY};
 
 use voxel_walk::VoxelWalker;
 
@@ -59,6 +60,7 @@ pub struct Game<C :NetworkClientConn> {
 	grab_cursor :bool,
 	grabbing_cursor :bool,
 	has_focus :bool,
+	chat_window :Option<ChatWindow>,
 	menu_enabled :bool,
 
 	map :ClientMap,
@@ -120,6 +122,7 @@ impl<C :NetworkClientConn> Game<C> {
 			grab_cursor : true,
 			grabbing_cursor : false,
 			has_focus : false,
+			chat_window : None,
 			menu_enabled : false,
 			map,
 			camera,
@@ -146,6 +149,9 @@ impl<C :NetworkClientConn> Game<C> {
 		self.last_fps = fps;
 		float_delta
 	}
+	fn in_background(&self) -> bool {
+		self.chat_window.is_some() || self.menu_enabled
+	}
 	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
@@ -155,7 +161,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
-			if !self.menu_enabled {
+			if !self.in_background() {
 				self.movement(float_delta);
 				let msg = ClientToServerMsg::SetPos(self.camera.pos);
 				let _ = self.srv_conn.send(msg);
@@ -381,8 +387,12 @@ impl<C :NetworkClientConn> Game<C> {
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&self.program, &uniforms, &params).unwrap();
 		}
-		if self.menu_enabled {
-			render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
+		if self.in_background() {
+			if self.menu_enabled {
+				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
+			} else if let Some(cw) = &self.chat_window {
+				cw.render(&mut self.display, &self.program, glyph_brush, &mut target);
+			}
 		} else {
 			let params = glium::draw_parameters::DrawParameters {
 				blend :glium::Blend::alpha_blending(),
@@ -416,7 +426,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 	fn check_grab_change(&mut self) {
 		let grabbing_cursor = self.has_focus &&
-			!self.menu_enabled && self.grab_cursor;
+			!self.in_background() && self.grab_cursor;
 		if self.grabbing_cursor != grabbing_cursor {
 			self.display.gl_window().hide_cursor(grabbing_cursor);
 			let _  = self.display.gl_window().grab_cursor(grabbing_cursor);
@@ -424,6 +434,50 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 	}
 
+	fn handle_kinput(&mut self, input :&KeyboardInput) -> bool {
+		use ui::ChatWindowEvent;
+		let ev = if let Some(ref mut w) = self.chat_window {
+			w.handle_kinput(input)
+		} else {
+			ChatWindowEvent::None
+		};
+		match ev {
+			ChatWindowEvent::CloseChatWindow => {
+				self.chat_window = None;
+				self.check_grab_change();
+			},
+			ChatWindowEvent::SendChat => {
+				{
+					let text = &self.chat_window.as_ref().unwrap().text();
+					println!("chat {}", text);
+				}
+				self.chat_window = None;
+				self.check_grab_change();
+			},
+			ChatWindowEvent::None => (),
+		}
+		match input.virtual_keycode {
+			Some(glutin::VirtualKeyCode::Escape) => {
+				if input.state == glutin::ElementState::Pressed {
+					self.menu_enabled = !self.menu_enabled;
+					self.check_grab_change();
+				}
+			},
+			Some(glutin::VirtualKeyCode::T) => {
+				if input.state == glutin::ElementState::Pressed
+						&& self.chat_window.is_none() {
+					self.chat_window = Some(ChatWindow::new());
+					self.check_grab_change();
+				}
+			},
+			Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
+				return true;
+			},
+			_ => (),
+		}
+		self.camera.handle_kinput(input);
+		return false;
+	}
 	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
 		let mut close = false;
 		events_loop.poll_events(|event| {
@@ -443,23 +497,33 @@ impl<C :NetworkClientConn> Game<C> {
 						self.camera.aspect_ratio = (width / height) as f32;
 					},
 					glutin::WindowEvent::KeyboardInput { input, .. } => {
-						match input.virtual_keycode {
-							Some(glutin::VirtualKeyCode::Escape) => {
-								if input.state == glutin::ElementState::Pressed {
-									self.menu_enabled = !self.menu_enabled;
-									self.check_grab_change();
+						close |= self.handle_kinput(&input);
+					},
+					glutin::WindowEvent::ReceivedCharacter(ch) => {
+						use ui::ChatWindowEvent;
+						let ev = if let Some(ref mut w) = self.chat_window {
+							w.handle_character(ch)
+						} else {
+							ChatWindowEvent::None
+						};
+						match ev {
+							ChatWindowEvent::CloseChatWindow => {
+								self.chat_window = None;
+								self.check_grab_change();
+							},
+							ChatWindowEvent::SendChat => {
+								{
+									let text = &self.chat_window.as_ref().unwrap().text();
+									println!("chat {}", text);
 								}
+								self.chat_window = None;
+								self.check_grab_change();
 							},
-							Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
-								close = true;
-							},
-							_ => (),
+							ChatWindowEvent::None => (),
 						}
-						self.camera.handle_kinput(input);
-
 					},
 					glutin::WindowEvent::CursorMoved { position, .. } => {
-						if self.has_focus && !self.menu_enabled {
+						if self.has_focus && !self.in_background() {
 							if self.grab_cursor {
 								self.last_pos = Some(winit::dpi::LogicalPosition {
 									x : self.swidth / 2.0,
@@ -478,7 +542,7 @@ impl<C :NetworkClientConn> Game<C> {
 						}
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
-						if state == glutin::ElementState::Pressed && !self.menu_enabled {
+						if state == glutin::ElementState::Pressed && !self.in_background() {
 							if let Some((selected_pos, before_selected)) = self.selected_pos {
 								if button == glutin::MouseButton::Left {
 									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
@@ -631,7 +695,7 @@ impl Camera {
 			down_pressed : false,
 		}
 	}
-	fn handle_kinput(&mut self, input :glium::glutin::KeyboardInput) {
+	fn handle_kinput(&mut self, input :&KeyboardInput) {
 		let key = match input.virtual_keycode {
 			Some(key) => key,
 			None => return,
