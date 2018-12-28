@@ -217,7 +217,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				.map(|player| player.pos).collect::<Vec<_>>();
 			for pos in positions {
 				gen_chunks_around(&mut self.map,
-					pos.map(|v| v as isize), 6, 3);
+					pos.map(|v| v as isize), 5, 2);
 			}
 			let _float_delta = self.update_fps();
 			let exit = false;
