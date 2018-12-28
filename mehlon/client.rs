@@ -20,7 +20,7 @@ use mehlon_server::generic_net::NetworkClientConn;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
-use ui::{render_menu, square_mesh, ChatWindow, IDENTITY};
+use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent, IDENTITY};
 
 use voxel_walk::VoxelWalker;
 
@@ -434,6 +434,23 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 	}
 
+	fn handle_chat_win_ev(&mut self, ev :ChatWindowEvent) {
+		match ev {
+			ChatWindowEvent::CloseChatWindow => {
+				self.chat_window = None;
+				self.check_grab_change();
+			},
+			ChatWindowEvent::SendChat => {
+				{
+					let text = &self.chat_window.as_ref().unwrap().text();
+					println!("chat {}", text);
+				}
+				self.chat_window = None;
+				self.check_grab_change();
+			},
+			ChatWindowEvent::None => (),
+		}
+	}
 	fn handle_kinput(&mut self, input :&KeyboardInput) -> bool {
 		match input.virtual_keycode {
 			Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
@@ -443,22 +460,7 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 
 		if let Some(ev) = (&mut self.chat_window).as_mut().map(|w| w.handle_kinput(input)) {
-			use ui::ChatWindowEvent;
-			match ev {
-				ChatWindowEvent::CloseChatWindow => {
-					self.chat_window = None;
-					self.check_grab_change();
-				},
-				ChatWindowEvent::SendChat => {
-					{
-						let text = &self.chat_window.as_ref().unwrap().text();
-						println!("chat {}", text);
-					}
-					self.chat_window = None;
-					self.check_grab_change();
-				},
-				ChatWindowEvent::None => (),
-			}
+			self.handle_chat_win_ev(ev);
 			return false;
 		}
 
@@ -496,7 +498,6 @@ impl<C :NetworkClientConn> Game<C> {
 						close |= self.handle_kinput(&input);
 					},
 					glutin::WindowEvent::ReceivedCharacter(ch) => {
-						use ui::ChatWindowEvent;
 						let ev = if let Some(ref mut w) = self.chat_window {
 							w.handle_character(ch)
 						} else {
@@ -506,21 +507,7 @@ impl<C :NetworkClientConn> Game<C> {
 							}
 							ChatWindowEvent::None
 						};
-						match ev {
-							ChatWindowEvent::CloseChatWindow => {
-								self.chat_window = None;
-								self.check_grab_change();
-							},
-							ChatWindowEvent::SendChat => {
-								{
-									let text = &self.chat_window.as_ref().unwrap().text();
-									println!("chat {}", text);
-								}
-								self.chat_window = None;
-								self.check_grab_change();
-							},
-							ChatWindowEvent::None => (),
-						}
+						self.handle_chat_win_ev(ev);
 					},
 					glutin::WindowEvent::CursorMoved { position, .. } => {
 						if self.has_focus && !self.in_background() {
