@@ -243,7 +243,8 @@ impl<S :NetworkServerSocket> Server<S> {
 				};
 				// In singleplayer, don't spam messages about players joining
 				if player_count > 1 {
-					self.handle_chat_msg("New player joined".to_string());
+					let msg = format!("New player joined. Amount of players: {}", player_count);
+					self.handle_chat_msg(msg);
 				}
 			}
 			let msgs = self.get_msgs();
