@@ -236,7 +236,15 @@ impl<S :NetworkServerSocket> Server<S> {
 			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Some(conn) = self.srv_socket.try_open_conn() {
-				self.players.borrow_mut().push(Player::from_conn(conn));
+				let player_count = {
+					let mut players = self.players.borrow_mut();
+					players.push(Player::from_conn(conn));
+					players.len()
+				};
+				// In singleplayer, don't spam messages about players joining
+				if player_count > 1 {
+					self.handle_chat_msg("New player joined".to_string());
+				}
 			}
 			let msgs = self.get_msgs();
 
