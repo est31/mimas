@@ -299,32 +299,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "extprim"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.83 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "fasthash"
-version = "0.2.8"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "extprim 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fasthash-sys 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fasthash-sys 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "seahash 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "xoroshiro128 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "fasthash-sys"
-version = "0.2.8"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -634,7 +620,7 @@ name = "mehlon-server"
 version = "0.1.0"
 dependencies = [
  "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "fasthash 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fasthash 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.16.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1082,9 +1068,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "serde"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "serde_derive 1.0.83 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "serde-big-array"
@@ -1423,9 +1406,8 @@ dependencies = [
 "checksum downcast-rs 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "18df8ce4470c189d18aa926022da57544f31e154631eb4cfe796aea97051fe6c"
 "checksum either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3be565ca5c557d7f59e7cfcf1844f9e3033650c929c6566f511e8005f205c1d0"
 "checksum enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "be4551092f4d519593039259a9ed8daedf0da12e5109c5280338073eaeb81180"
-"checksum extprim 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "054bc2552b3f66fa8097e29e47255bfff583c08e737a67cbbb54b817ddaa5206"
-"checksum fasthash 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "8b950cff0cd7f02ca7bb84f5efa208f87a9d4c8fe193cf9c918c446a4b973b98"
-"checksum fasthash-sys 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "2cf1557bc0342bf092a3413ada460ecb50cd6befc04ff58ae5d75b39f0574173"
+"checksum fasthash 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ce56b715df3559085323d0a6724eccfd52994ac5abac9e9ffc6093853163f3bb"
+"checksum fasthash-sys 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b6de941abfe2e715cdd34009d90546f850597eb69ca628ddfbf616e53dda28f8"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum foreign-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 "checksum foreign-types-shared 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
