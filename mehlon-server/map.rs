@@ -2,7 +2,7 @@ use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
 
-use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenMap};
+use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenThread};
 
 pub const CHUNKSIZE :isize = 16;
 
@@ -53,7 +53,7 @@ pub struct Map<B :MapBackend> {
 	on_change :Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
 }
 
-pub type ServerMap = Map<MapgenMap>;
+pub type ServerMap = Map<MapgenThread>;
 pub type ClientMap = Map<ClientBackend>;
 
 impl MapChunkData {
