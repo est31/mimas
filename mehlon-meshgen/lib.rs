@@ -18,9 +18,22 @@ pub struct Vertex {
 
 implement_vertex!(Vertex, position, color, normal);
 
+// This is NOT the same function as f32::signum!
+// For -0.0, and 0.0, this function returns 0.0,
+// while f32::signum returns -1.0 and 1.0.
+fn zsig(v :f32) -> f32 {
+	if v > 0.0 {
+		return 1.0;
+	}
+	if v < 0.0 {
+		return -1.0;
+	}
+	0.0
+}
+
 macro_rules! sign {
 	($x:expr, $y:expr, $z:expr) => {
-		[f32::signum($x), f32::signum($y), f32::signum($z)]
+		[zsig($x), zsig($y), zsig($z)]
 	};
 }
 
