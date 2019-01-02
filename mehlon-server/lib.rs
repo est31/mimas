@@ -226,13 +226,18 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	pub fn run_loop(&mut self) {
 		loop {
-			self.send_chunks_to_players();
 			let positions = self.players.borrow().iter()
-				.map(|player| player.pos).collect::<Vec<_>>();
+				.map(|player| {
+					(btchn(player.pos.map(|v| v as isize)), player.last_chunk_pos)
+				})
+				.filter(|(cp, lcp)| cp != lcp)
+				.map(|(cp, _lcp)| cp)
+				.collect::<Vec<_>>();
 			for pos in positions {
 				gen_chunks_around(&mut self.map,
 					pos.map(|v| v as isize), 5, 2);
 			}
+			self.send_chunks_to_players();
 			self.map.tick();
 			let _float_delta = self.update_fps();
 			let exit = false;
