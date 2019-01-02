@@ -29,6 +29,7 @@ pub struct MapChunk {
 
 pub struct MapgenMap {
 	seed :u32,
+	chunk_events :Vec<Vector3<isize>>,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
 }
 
@@ -244,8 +245,8 @@ fn spawn_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 }
 
 impl MapBackend for MapgenMap {
-	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, pos_min :Vector3<isize>,
-			pos_max :Vector3<isize>, f :&mut F) {
+	fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
+			pos_max :Vector3<isize>) {
 		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
 		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
 
@@ -295,9 +296,19 @@ impl MapBackend for MapgenMap {
 					let chk = self.chunks.get_mut(&pos).unwrap();
 					if chk.generation_phase != GenerationPhase::Done {
 						chk.generation_phase = GenerationPhase::Done;
-						f(pos, &chk.data);
+						self.chunk_events.push(pos);
 					}
 				}
+			}
+		}
+	}
+
+	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
+			f :&mut F) {
+		let chunk_events = std::mem::replace(&mut self.chunk_events, Vec::new());
+		for pos in chunk_events {
+			if let Some(ch) = self.chunks.get(&pos) {
+				f(pos, &ch.data);
 			}
 		}
 	}
@@ -307,6 +318,7 @@ impl MapgenMap {
 	pub fn new(seed :u32) -> Self {
 		MapgenMap {
 			seed,
+			chunk_events : Vec::new(),
 			chunks : HashMap::new(),
 		}
 	}

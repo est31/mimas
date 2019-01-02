@@ -233,6 +233,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				gen_chunks_around(&mut self.map,
 					pos.map(|v| v as isize), 5, 2);
 			}
+			self.map.tick();
 			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Some(conn) = self.srv_socket.try_open_conn() {

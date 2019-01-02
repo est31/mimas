@@ -109,15 +109,21 @@ impl<'a> MapBlockHandle<'a> {
 pub struct ClientBackend;
 
 impl MapBackend for ClientBackend {
-	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, _pos_min :Vector3<isize>,
-			_pos_max :Vector3<isize>, _f :&mut F) {
+	fn gen_chunks_in_area(&mut self, _pos_min :Vector3<isize>,
+			_pos_max :Vector3<isize>) {
+		// Do nothing. The server just pushes any chunks.
+	}
+	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
+			_f :&mut F) {
 		// Do nothing. The server just pushes any chunks.
 	}
 }
 
 pub trait MapBackend {
-	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self, pos_min :Vector3<isize>,
-			pos_max :Vector3<isize>, f :&mut F);
+	fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
+			pos_max :Vector3<isize>);
+	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
+			f :&mut F);
 }
 
 impl Map<ClientBackend> {
@@ -149,9 +155,12 @@ impl<B :MapBackend> Map<B> {
 	}
 	pub fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
 			pos_max :Vector3<isize>) {
+		self.backend.gen_chunks_in_area(pos_min, pos_max,);
+	}
+	pub fn tick(&mut self) {
 		let on_change = &self.on_change;
 		let chunks = &mut self.chunks;
-		self.backend.gen_chunks_in_area(pos_min, pos_max, &mut |pos, chn :&MapChunkData| {
+		self.backend.run_for_generated_chunks(&mut |pos, chn :&MapChunkData| {
 			chunks.insert(pos, *chn);
 			on_change(pos, chn);
 		});
