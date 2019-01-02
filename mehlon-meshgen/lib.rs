@@ -18,26 +18,32 @@ pub struct Vertex {
 
 implement_vertex!(Vertex, position, color, normal);
 
+macro_rules! sign {
+	($x:expr, $y:expr, $z:expr) => {
+		[f32::signum($x), f32::signum($y), f32::signum($z)]
+	};
+}
+
 macro_rules! rpush_face {
 	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-	$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
-	$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
-	$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
 
-	$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
-	$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : [$xsd, $ysd + $yd, $zd] });
-	$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
 	}
 }
 macro_rules! rpush_face_rev {
 	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-	$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
-	$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
-	$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 
-	$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
-	$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
-	$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : [-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 	}
 }
 
