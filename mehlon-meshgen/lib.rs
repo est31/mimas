@@ -226,41 +226,55 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 			}
 		}
 	}
-	let siz = 1.0;
-	for z in 0 .. CHUNKSIZE {
-		for x in 0 .. CHUNKSIZE {
-			let mut walker = Walker::new();
-			for y in 0 .. CHUNKSIZE {
-				let blk = *chunk.get_blk(Vector3::new(x, y, z));
-				let mut color = get_color_for_blk(blk);
-				let blocked = |[xo, yo, zo]: [isize; 3]| {
-					let pos = Vector3::new(x + xo, y + yo, z + zo);
-					let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
-					if outside.x || outside.y || outside.z {
-						return false;
-					}
-					match *chunk.get_blk(pos) {
-						MapBlock::Air => {
-							false
-						},
-						_ => true,
-					}
-				};
-				if color.is_some() && blocked([0, 0, 1]) {
-					color = None;
+	fn blocked(chunk :&MapChunkData,
+			[xo, yo, zo]: [isize; 3], pos :Vector3<isize>) -> bool {
+		let pos = Vector3::new(pos.x + xo, pos.y + yo, pos.z + zo);
+		let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
+		if outside.x || outside.y || outside.z {
+			return false;
+		}
+		match *chunk.get_blk(pos) {
+			MapBlock::Air => {
+				false
+			},
+			_ => true,
+		}
+	};
+	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>) -> Option<[f32; 4]> {
+		let blk = *chunk.get_blk(pos);
+		let mut color = get_color_for_blk(blk);
+		if color.is_some() && blocked(chunk, [0, 0, 1], pos) {
+			color = None;
+		}
+		color
+	};
+	fn walk_for_all_blocks<G :FnMut(&mut Walker, Option<[f32; 4]>, Vector3<isize>)>(
+			f :fn(isize, isize, isize) -> Vector3<isize>,
+			chunk :&MapChunkData, g :&mut G) {
+		for c1 in 0 .. CHUNKSIZE {
+			for c2 in 0 .. CHUNKSIZE {
+				let mut walker = Walker::new();
+				for c3 in 0 .. CHUNKSIZE {
+					let rel_pos = f(c1, c2, c3);
+					let color = get_col(chunk, rel_pos);
+					g(&mut walker, color, rel_pos)
 				}
-				let pos = offs + Vector3::new(x, y, z);
-				walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
-					let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-					rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
-				});
+				let rel_pos = f(c1, c2, CHUNKSIZE);
+				g(&mut walker, None, rel_pos)
 			}
-			let pos = offs + Vector3::new(x, CHUNKSIZE, z);
-			walker.next(pos.y as f32, None, |l_col, last_y, ylen| {
+		}
+	}
+	let siz = 1.0;
+	walk_for_all_blocks(
+		|c1, c2, c3| Vector3::new(c1, c3, c2),
+		chunk,
+		&mut |walker, color, rel_pos| {
+			let pos = offs + rel_pos;
+			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
 			});
 		}
-	}
+	);
 	r
 }
