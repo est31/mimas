@@ -188,10 +188,48 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 			}
 		}
 	}
+	struct Walker {
+		last :Option<(f32, [f32; 4])>,
+	}
+	impl Walker {
+		fn new() -> Self {
+			Walker {
+				last : None,
+			}
+		}
+		fn next<F :FnOnce([f32; 4], f32, f32)>(&mut self,
+				v :f32, color :Option<[f32; 4]>, emit :F) {
+			match (color, self.last).clone() {
+				(None, Some((last_v, l_col))) => {
+					// Some mesh ends here. Emit it.
+					let vlen = v - last_v;
+					emit(l_col, last_v, vlen);
+					self.last = None;
+				},
+				(Some(color), Some((last_v, l_col))) => {
+					if color != l_col {
+						// Color changed. Emit the old color.
+						let vlen = v - last_v;
+						emit(l_col, last_v, vlen);
+						self.last = Some((v, color));
+					} else {
+						// Color is the same. do nothing.
+					}
+				},
+				// Start a new thing.
+				(Some(color), None) => {
+					self.last = Some((v, color));
+				},
+				// Nothing to do if there is no color
+				// and no last color
+				(None, None) => (),
+			}
+		}
+	}
 	let siz = 1.0;
 	for z in 0 .. CHUNKSIZE {
 		for x in 0 .. CHUNKSIZE {
-			let mut last = None;
+			let mut walker = Walker::new();
 			for y in 0 .. CHUNKSIZE {
 				let blk = *chunk.get_blk(Vector3::new(x, y, z));
 				let mut color = get_color_for_blk(blk);
@@ -212,40 +250,16 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 					color = None;
 				}
 				let pos = offs + Vector3::new(x, y, z);
-				let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				match (color, last).clone() {
-					(None, Some((last_y, l_col))) => {
-						// Some mesh ends here. Emit it.
-						let ylen = y - last_y;
-						rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
-						last = None;
-					},
-					(Some(color), Some((last_y, l_col))) => {
-						if color != l_col {
-							// Color changed. Emit the old color.
-							let ylen = y - last_y;
-							rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
-							last = Some((y, color));
-						} else {
-							// Color is the same. do nothing.
-						}
-					},
-					// Start a new thing.
-					(Some(color), None) => {
-						last = Some((y, color));
-					},
-					// Nothing to do if there is no color
-					// and no last color
-					(None, None) => (),
-				}
-
+				walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
+					let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
+					rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
+				});
 			}
-			if let Some((last_y, l_col)) = last {
-				// Emit if we reached the end
-				let (x, z) = ((offs.x + x) as f32, (offs.z + z) as f32);
-				let ylen = (offs.y + CHUNKSIZE) as f32 - last_y;
+			let pos = offs + Vector3::new(x, CHUNKSIZE, z);
+			walker.next(pos.y as f32, None, |l_col, last_y, ylen| {
+				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
-			}
+			});
 		}
 	}
 	r
