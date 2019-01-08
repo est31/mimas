@@ -26,7 +26,7 @@ enum GenerationPhase {
 pub struct MapChunk {
 	pub data :MapChunkData,
 	generation_phase :GenerationPhase,
-	tree_spawn_points :Vec<Vector3<isize>>,
+	tree_spawn_points :Vec<(Vector3<isize>, bool)>,
 }
 
 pub struct MapgenMap {
@@ -147,7 +147,8 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
 							if tpcg.gen::<f64>() > 0.9 {
-								res.tree_spawn_points.push(pos + Vector3::new(x, y, el));
+								let in_desert = ground_block == MapBlock::Sand;
+								res.tree_spawn_points.push((pos + Vector3::new(x, y, el), in_desert));
 							}
 						}
 					}
@@ -223,6 +224,7 @@ impl Schematic {
 
 lazy_static! {
     pub static ref TREE_SCHEMATIC :Schematic = tree_schematic();
+    pub static ref DEAD_TREE_SCHEMATIC :Schematic = dead_tree_schematic();
 }
 
 fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector3<isize>) {
@@ -250,6 +252,14 @@ fn tree_schematic() -> Schematic {
 	Schematic::from_items(items)
 }
 
+fn dead_tree_schematic() -> Schematic {
+	let mut items = Vec::new();
+	for z in 0 .. 4 {
+		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
+	}
+	Schematic::from_items(items)
+}
+
 fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>, schematic :&Schematic) {
 	for (bpos, mb) in schematic.items.iter() {
 		let blk = map.get_blk_p1_mut(pos + bpos).unwrap();
@@ -258,6 +268,11 @@ fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>, schematic :&
 }
 fn spawn_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 	spawn_schematic_mapgen(map, pos, &TREE_SCHEMATIC);
+}
+
+
+fn spawn_dead_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
+	spawn_schematic_mapgen(map, pos, &DEAD_TREE_SCHEMATIC);
 }
 
 impl MapgenMap {
@@ -287,8 +302,12 @@ impl MapgenMap {
 			chnk.generation_phase = GenerationPhase::PhaseTwo;
 			replace(&mut chnk.tree_spawn_points, Vec::new())
 		};
-		for p in tree_spawn_points {
-			spawn_tree_mapgen(self, p);
+		for (p, in_desert) in tree_spawn_points {
+			if in_desert {
+				spawn_dead_tree_mapgen(self, p);
+			} else {
+				spawn_tree_mapgen(self, p);
+			}
 		}
 	}
 
