@@ -591,13 +591,13 @@ dependencies = [
 
 [[package]]
 name = "mehlon"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "frustum_query 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium-glyph 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mehlon-meshgen 0.1.0-dev",
- "mehlon-server 0.1.0-dev",
+ "mehlon-meshgen 0.1.0",
+ "mehlon-server 0.1.0",
  "nalgebra 0.16.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -608,16 +608,16 @@ dependencies = [
 
 [[package]]
 name = "mehlon-meshgen"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "glium 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mehlon-server 0.1.0-dev",
+ "mehlon-server 0.1.0",
  "nalgebra 0.16.13 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mehlon-server"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fasthash 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
