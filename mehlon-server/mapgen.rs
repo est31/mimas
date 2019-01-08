@@ -224,7 +224,7 @@ impl Schematic {
 
 lazy_static! {
     pub static ref TREE_SCHEMATIC :Schematic = tree_schematic();
-    pub static ref DEAD_TREE_SCHEMATIC :Schematic = dead_tree_schematic();
+    pub static ref CACTUS_SCHEMATIC :Schematic = cactus_schematic();
 }
 
 fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector3<isize>) {
@@ -252,7 +252,7 @@ fn tree_schematic() -> Schematic {
 	Schematic::from_items(items)
 }
 
-fn dead_tree_schematic() -> Schematic {
+fn cactus_schematic() -> Schematic {
 	let mut items = Vec::new();
 	for z in 0 .. 4 {
 		items.push((Vector3::new(0, 0, z), MapBlock::Cactus));
@@ -271,8 +271,8 @@ fn spawn_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 }
 
 
-fn spawn_dead_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
-	spawn_schematic_mapgen(map, pos, &DEAD_TREE_SCHEMATIC);
+fn spawn_cactus_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
+	spawn_schematic_mapgen(map, pos, &CACTUS_SCHEMATIC);
 }
 
 impl MapgenMap {
@@ -304,7 +304,7 @@ impl MapgenMap {
 		};
 		for (p, in_desert) in tree_spawn_points {
 			if in_desert {
-				spawn_dead_tree_mapgen(self, p);
+				spawn_cactus_mapgen(self, p);
 			} else {
 				spawn_tree_mapgen(self, p);
 			}
