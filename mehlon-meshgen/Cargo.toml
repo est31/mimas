@@ -1,6 +1,6 @@
 [package]
 name = "mehlon-meshgen"
-version = "0.1.0"
+version = "0.1.0-dev"
 authors = ["est31 <MTest31@outlook.com>"]
 
 [lib]
