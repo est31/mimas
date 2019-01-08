@@ -74,7 +74,7 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let bf = 0.0093881;
 	let binoise = Noise::new(seeder.gen::<u32>(), bf);
 	// Macro biome noise
-	let mbf = 0.00393881;
+	let mbf = 0.000393881;
 	let mbinoise = Noise::new(seeder.gen::<u32>(), mbf);
 	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
@@ -255,7 +255,7 @@ fn tree_schematic() -> Schematic {
 fn dead_tree_schematic() -> Schematic {
 	let mut items = Vec::new();
 	for z in 0 .. 4 {
-		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
+		items.push((Vector3::new(0, 0, z), MapBlock::Cactus));
 	}
 	Schematic::from_items(items)
 }

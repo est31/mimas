@@ -595,7 +595,8 @@ impl<C :NetworkClientConn> Game<C> {
 								Wood => Stone,
 								Stone => Leaves,
 								Leaves => Tree,
-								Tree => Coal,
+								Tree => Cactus,
+								Cactus => Coal,
 								Coal => Water,
 								_ => unreachable!(),
 							}
@@ -603,7 +604,7 @@ impl<C :NetworkClientConn> Game<C> {
 						if lines_diff < 0.0 {
 							self.item_in_hand = rotate(self.item_in_hand);
 						} else if lines_diff > 0.0 {
-							for _ in 0 .. 7 {
+							for _ in 0 .. 8 {
 								self.item_in_hand = rotate(self.item_in_hand);
 							}
 						}

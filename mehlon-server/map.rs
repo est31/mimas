@@ -16,6 +16,7 @@ pub enum MapBlock {
 	Stone,
 	Leaves,
 	Tree,
+	Cactus,
 	Coal,
 }
 
@@ -35,6 +36,7 @@ impl MapBlock {
 			MapBlock::Stone |
 			MapBlock::Tree |
 			MapBlock::Leaves |
+			MapBlock::Cactus |
 			MapBlock::Coal => true,
 			_ => false
 		}

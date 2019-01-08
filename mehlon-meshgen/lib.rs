@@ -109,6 +109,7 @@ pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
 		MapBlock::Stone => Some([0.5, 0.5, 0.5, 1.0]),
 		MapBlock::Tree => Some([0.38, 0.25, 0.125, 1.0]),
 		MapBlock::Leaves => Some([0.0, 0.4, 0.0, 1.0]),
+		MapBlock::Cactus => Some([0.0, 0.2, 0.0, 1.0]),
 		MapBlock::Coal => Some([0.05, 0.05, 0.05, 1.0]),
 	}
 }
