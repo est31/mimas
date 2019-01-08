@@ -163,6 +163,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
+			self.handle_mouse_buttons();
 			if !self.in_background() {
 				self.movement(float_delta);
 				let msg = ClientToServerMsg::SetPos(self.camera.pos);
@@ -486,6 +487,22 @@ impl<C :NetworkClientConn> Game<C> {
 		self.camera.handle_kinput(input);
 		return false;
 	}
+	fn handle_mouse_buttons(&mut self) {
+		if let Some((selected_pos, before_selected)) = self.selected_pos {
+			if self.camera.mouse_left_down {
+				let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
+				blk.set(MapBlock::Air);
+				let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
+				let _ = self.srv_conn.send(msg);
+			}
+			if self.camera.mouse_right_down {
+				let mut blk = self.map.get_blk_mut(before_selected).unwrap();
+				blk.set(self.item_in_hand);
+				let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
+				let _ = self.srv_conn.send(msg);
+			}
+		}
+	}
 	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
 		let mut close = false;
 		events_loop.poll_events(|event| {
@@ -539,19 +556,15 @@ impl<C :NetworkClientConn> Game<C> {
 						}
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
-						if state == glutin::ElementState::Pressed && !self.in_background() {
-							if let Some((selected_pos, before_selected)) = self.selected_pos {
-								if button == glutin::MouseButton::Left {
-									let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
-									blk.set(MapBlock::Air);
-									let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
-									let _ = self.srv_conn.send(msg);
-								} else if button == glutin::MouseButton::Right {
-									let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-									blk.set(self.item_in_hand);
-									let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
-									let _ = self.srv_conn.send(msg);
-								} else if button == glutin::MouseButton::Middle {
+						if !self.in_background() {
+							let pressed = state == glutin::ElementState::Pressed;
+							if button == glutin::MouseButton::Left {
+								self.camera.handle_mouse_left(pressed);
+							} else if button == glutin::MouseButton::Right {
+								self.camera.handle_mouse_right(pressed);
+							}
+							if let Some((_selected_pos, before_selected)) = self.selected_pos {
+								if pressed && button == glutin::MouseButton::Middle {
 									spawn_tree(&mut self.map, before_selected);
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
 									let _ = self.srv_conn.send(msg);
@@ -668,6 +681,9 @@ struct Camera {
 
 	up_pressed :bool,
 	down_pressed :bool,
+
+	mouse_left_down :bool,
+	mouse_right_down :bool,
 }
 
 impl Camera {
@@ -690,7 +706,16 @@ impl Camera {
 
 			up_pressed : false,
 			down_pressed : false,
+
+			mouse_left_down : false,
+			mouse_right_down : false,
 		}
+	}
+	fn handle_mouse_left(&mut self, down :bool) {
+		self.mouse_left_down = down;
+	}
+	fn handle_mouse_right(&mut self, down :bool) {
+		self.mouse_right_down = down;
 	}
 	fn handle_kinput(&mut self, input :&KeyboardInput) {
 		let key = match input.virtual_keycode {
