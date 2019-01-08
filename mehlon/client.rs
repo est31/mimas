@@ -590,7 +590,8 @@ impl<C :NetworkClientConn> Game<C> {
 							use mehlon_server::map::MapBlock::*;
 							match mb {
 								Water => Ground,
-								Ground => Wood,
+								Ground => Sandstone,
+								Sandstone => Wood,
 								Wood => Stone,
 								Stone => Leaves,
 								Leaves => Tree,
@@ -602,7 +603,7 @@ impl<C :NetworkClientConn> Game<C> {
 						if lines_diff < 0.0 {
 							self.item_in_hand = rotate(self.item_in_hand);
 						} else if lines_diff > 0.0 {
-							for _ in 0 .. 6 {
+							for _ in 0 .. 7 {
 								self.item_in_hand = rotate(self.item_in_hand);
 							}
 						}

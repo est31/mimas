@@ -10,6 +10,7 @@ pub const CHUNKSIZE :isize = 16;
 pub enum MapBlock {
 	Air,
 	Water,
+	Sandstone,
 	Ground,
 	Wood,
 	Stone,
@@ -28,6 +29,7 @@ impl MapBlock {
 	pub fn is_pointable(&self) -> bool {
 		match self {
 			MapBlock::Water |
+			MapBlock::Sandstone |
 			MapBlock::Ground |
 			MapBlock::Wood |
 			MapBlock::Stone |

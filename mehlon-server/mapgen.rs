@@ -70,6 +70,12 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	// Macro tree noise
 	let mtf = 0.00093952;
 	let mtnoise = Noise::new(seeder.gen::<u32>(), mtf);
+	// Biome noise
+	let bf = 0.00393881;
+	let binoise = Noise::new(seeder.gen::<u32>(), bf);
+	// Macro biome noise
+	let mbf = 0.000393881;
+	let mbinoise = Noise::new(seeder.gen::<u32>(), mbf);
 	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
 	// Coal noise
@@ -116,8 +122,13 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Water;
 					}
 				} else {
+					let ground_block = if binoise.get(p) + mbinoise.get(p) < 0.0 {
+						MapBlock::Ground
+					} else {
+						MapBlock::Sandstone
+					};
 					for z in 0 .. el {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Ground;
+						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_block;
 					}
 					if pos.z == 0 && el <= 0 {
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
