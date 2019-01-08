@@ -71,11 +71,11 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 	let mtf = 0.00093952;
 	let mtnoise = Noise::new(seeder.gen::<u32>(), mtf);
 	// Biome noise
-	let bf = 0.0093881;
-	let binoise = Noise::new(seeder.gen::<u32>(), bf);
+	let bf = 0.0023881;
+	let binoise = NoiseMag::new(seeder.gen::<u32>(), bf, 0.4);
 	// Macro biome noise
-	let mbf = 0.000393881;
-	let mbinoise = Noise::new(seeder.gen::<u32>(), mbf);
+	let mbf = 0.00113881;
+	let mbinoise = NoiseMag::new(seeder.gen::<u32>(), mbf, 0.6);
 	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
 	// Coal noise
