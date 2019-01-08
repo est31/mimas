@@ -163,7 +163,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
 			let close = self.handle_events(events_loop);
-			self.handle_mouse_buttons();
+			self.handle_mouse_buttons(float_delta);
 			if !self.in_background() {
 				self.movement(float_delta);
 				let msg = ClientToServerMsg::SetPos(self.camera.pos);
@@ -487,19 +487,28 @@ impl<C :NetworkClientConn> Game<C> {
 		self.camera.handle_kinput(input);
 		return false;
 	}
-	fn handle_mouse_buttons(&mut self) {
+	fn handle_mouse_buttons(&mut self, float_delta :f32) {
+		const BUTTON_COOLDOWN :f32 = 0.2;
+		self.camera.mouse_left_cooldown -= float_delta;
+		self.camera.mouse_right_cooldown -= float_delta;
 		if let Some((selected_pos, before_selected)) = self.selected_pos {
 			if self.camera.mouse_left_down {
-				let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
-				blk.set(MapBlock::Air);
-				let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
-				let _ = self.srv_conn.send(msg);
+				if self.camera.mouse_left_cooldown <= 0.0 {
+					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
+					blk.set(MapBlock::Air);
+					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
+					let _ = self.srv_conn.send(msg);
+					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;
+				}
 			}
 			if self.camera.mouse_right_down {
-				let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-				blk.set(self.item_in_hand);
-				let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
-				let _ = self.srv_conn.send(msg);
+				if self.camera.mouse_right_cooldown <= 0.0 {
+					let mut blk = self.map.get_blk_mut(before_selected).unwrap();
+					blk.set(self.item_in_hand);
+					let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
+					let _ = self.srv_conn.send(msg);
+					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+				}
 			}
 		}
 	}
@@ -684,6 +693,8 @@ struct Camera {
 
 	mouse_left_down :bool,
 	mouse_right_down :bool,
+	mouse_right_cooldown :f32,
+	mouse_left_cooldown :f32,
 }
 
 impl Camera {
@@ -709,6 +720,8 @@ impl Camera {
 
 			mouse_left_down : false,
 			mouse_right_down : false,
+			mouse_left_cooldown : 0.0,
+			mouse_right_cooldown : 0.0,
 		}
 	}
 	fn handle_mouse_left(&mut self, down :bool) {
