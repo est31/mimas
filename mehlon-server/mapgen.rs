@@ -125,7 +125,7 @@ fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
 					let ground_block = if binoise.get(p) + mbinoise.get(p) < 0.0 {
 						MapBlock::Ground
 					} else {
-						MapBlock::Sandstone
+						MapBlock::Sand
 					};
 					for z in 0 .. el {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_block;

@@ -590,8 +590,8 @@ impl<C :NetworkClientConn> Game<C> {
 							use mehlon_server::map::MapBlock::*;
 							match mb {
 								Water => Ground,
-								Ground => Sandstone,
-								Sandstone => Wood,
+								Ground => Sand,
+								Sand => Wood,
 								Wood => Stone,
 								Stone => Leaves,
 								Leaves => Tree,
