@@ -103,7 +103,7 @@ pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
 	match blk {
 		MapBlock::Air => None,
 		MapBlock::Ground => Some([0.0, 1.0, 0.0, 1.0]),
-		MapBlock::Sandstone => Some([0.7, 0.5, 0.2, 1.0]),
+		MapBlock::Sandstone => Some([1.0, 1.0, 0.3, 1.0]),
 		MapBlock::Water => Some([0.0, 0.0, 1.0, 1.0]),
 		MapBlock::Wood => Some([0.5, 0.25, 0.0, 1.0]),
 		MapBlock::Stone => Some([0.5, 0.5, 0.5, 1.0]),
