@@ -41,14 +41,15 @@ struct Options {
 fn main() {
 
 	let options = Options::from_args();
+	let config = load_config();
 
 	let client_conn :Box<dyn NetworkClientConn>= if let Some(addr) = options.connect.clone() {
 		let client_conn = TcpClientConn::from_socket_addr(addr);
 		Box::new(client_conn)
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();
+		let config = config.clone();
 		thread::spawn(move || {
-			let config = load_config();
 			let mut server = Server::new(server_socket, config);
 			server.run_loop();
 		});
@@ -56,7 +57,7 @@ fn main() {
 	};
 
 	let mut events_loop = glutin::EventsLoop::new();
-	let mut game = Game::new(&events_loop, client_conn);
+	let mut game = Game::new(&events_loop, client_conn, config);
 
 	game.run_loop(&mut events_loop);
 }

@@ -17,6 +17,7 @@ use collide::collide;
 
 use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
+use mehlon_server::config::Config;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
@@ -42,6 +43,8 @@ const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
 pub struct Game<C :NetworkClientConn> {
 	srv_conn :C,
+
+	config :Config,
 
 	meshres_r :MeshResReceiver,
 
@@ -73,7 +76,7 @@ pub struct Game<C :NetworkClientConn> {
 
 impl<C :NetworkClientConn> Game<C> {
 	pub fn new(events_loop :&glutin::EventsLoop,
-			srv_conn :C) -> Self {
+			srv_conn :C, config :Config) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_title("Mehlon");
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
@@ -107,6 +110,8 @@ impl<C :NetworkClientConn> Game<C> {
 
 		Game {
 			srv_conn,
+
+			config,
 
 			meshres_r,
 
@@ -297,7 +302,7 @@ impl<C :NetworkClientConn> Game<C> {
 		let uniforms = uniform! {
 			vmatrix : vmatrix,
 			pmatrix : pmatrix,
-			fog_near_far : [40.0f32, 60.0]
+			fog_near_far : [self.config.fog_near, self.config.fog_far]
 		};
 		self.selected_pos = self.camera.get_selected_pos(&self.map);
 		let mut sel_text = "sel = None".to_string();
@@ -348,8 +353,8 @@ impl<C :NetworkClientConn> Game<C> {
 		for buff in self.vbuffs.iter()
 				.filter_map(|(p, m)| {
 					// Viewing range based culling
-					const VIEWING_RANGE :f32 = 128.0;
-					if (p.map(|v| v as f32) - player_pos).norm() > VIEWING_RANGE {
+					let viewing_range = self.config.viewing_range;
+					if (p.map(|v| v as f32) - player_pos).norm() > viewing_range {
 						return None;
 					}
 					// Frustum culling.

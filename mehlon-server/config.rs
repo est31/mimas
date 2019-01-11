@@ -6,6 +6,10 @@ use super::StrErr;
 pub struct Config {
 	pub mapgen_radius_xy :isize,
 	pub mapgen_radius_z :isize,
+
+	pub viewing_range :f32,
+	pub fog_near :f32,
+	pub fog_far :f32,
 }
 
 impl Default for Config {
@@ -13,6 +17,10 @@ impl Default for Config {
 		Self {
 			mapgen_radius_xy : 5,
 			mapgen_radius_z : 2,
+
+			viewing_range : 128.0,
+			fog_near : 40.0,
+			fog_far : 60.0,
 		}
 	}
 }
