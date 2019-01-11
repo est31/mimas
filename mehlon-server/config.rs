@@ -4,6 +4,7 @@ use super::StrErr;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
+	pub mapgen_seed :u32,
 	pub mapgen_radius_xy :isize,
 	pub mapgen_radius_z :isize,
 
@@ -15,6 +16,7 @@ pub struct Config {
 impl Default for Config {
 	fn default() -> Self {
 		Self {
+			mapgen_seed : 78,
 			mapgen_radius_xy : 5,
 			mapgen_radius_z : 2,
 

@@ -97,7 +97,7 @@ pub struct Server<S :NetworkServerSocket> {
 
 impl<S :NetworkServerSocket> Server<S> {
 	pub fn new(srv_socket :S, config :Config) -> Self {
-		let mut map = ServerMap::new(78);
+		let mut map = ServerMap::new(config.mapgen_seed);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
 		let playersc = players.clone();
