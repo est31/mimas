@@ -28,7 +28,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
-use config::ServerConfig;
+use config::Config;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -86,7 +86,7 @@ impl<C: NetworkServerConn> Player<C> {
 
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
-	config :ServerConfig,
+	config :Config,
 	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -96,7 +96,7 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S, config :ServerConfig) -> Self {
+	pub fn new(srv_socket :S, config :Config) -> Self {
 		let mut map = ServerMap::new(78);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
