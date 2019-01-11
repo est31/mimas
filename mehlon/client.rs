@@ -296,7 +296,8 @@ impl<C :NetworkClientConn> Game<C> {
 		// building the uniforms
 		let uniforms = uniform! {
 			vmatrix : vmatrix,
-			pmatrix : pmatrix
+			pmatrix : pmatrix,
+			fog_near_far : [40.0f32, 60.0]
 		};
 		self.selected_pos = self.camera.get_selected_pos(&self.map);
 		let mut sel_text = "sel = None".to_string();
@@ -387,7 +388,8 @@ impl<C :NetworkClientConn> Game<C> {
 			};
 			let uniforms = uniform! {
 				vmatrix : vmatrix,
-				pmatrix : pmatrix
+				pmatrix : pmatrix,
+				fog_near_far : [40.0f32, 60.0]
 			};
 			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
 			let hand_mesh = hand_mesh(hand_mesh_pos,
@@ -411,7 +413,8 @@ impl<C :NetworkClientConn> Game<C> {
 
 			let uniforms = uniform! {
 				vmatrix : IDENTITY,
-				pmatrix : IDENTITY
+				pmatrix : IDENTITY,
+				fog_near_far : [40.0f32, 60.0]
 			};
 			// Draw crosshair
 			let vertices_horiz = square_mesh((20, 2), screen_dims, [0.8, 0.8, 0.8, 0.85]);

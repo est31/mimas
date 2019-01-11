@@ -20,7 +20,8 @@ fn render_text<'a, 'b>(text :&str, display :&glium::Display, program :&glium::Pr
 
 	let uniforms = uniform! {
 		vmatrix : IDENTITY,
-		pmatrix : IDENTITY
+		pmatrix : IDENTITY,
+		fog_near_far : [40.0f32, 60.0]
 	};
 	let params = glium::draw_parameters::DrawParameters {
 		/*depth : glium::Depth {
