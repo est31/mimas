@@ -27,6 +27,7 @@ use structopt::StructOpt;
 use std::thread;
 use mehlon_server::Server;
 use mehlon_server::generic_net::{TcpClientConn, MpscServerSocket, NetworkClientConn};
+use mehlon_server::config::load_config;
 
 /// Mehlon client
 #[derive(StructOpt, Debug)]
@@ -47,7 +48,8 @@ fn main() {
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();
 		thread::spawn(move || {
-			let mut server = Server::new(server_socket, Default::default());
+			let config = load_config();
+			let mut server = Server::new(server_socket, config);
 			server.run_loop();
 		});
 		Box::new(client_conn)

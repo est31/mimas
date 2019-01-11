@@ -5,6 +5,7 @@ extern crate structopt;
 
 use mehlon_server::Server;
 use mehlon_server::generic_net::TcpServerSocket;
+use mehlon_server::config::load_config;
 
 use structopt::StructOpt;
 
@@ -25,6 +26,7 @@ fn main() {
 	} else {
 		TcpServerSocket::new()
 	};
-	let mut server = Server::new(server_socket, Default::default());
+	let config = load_config();
+	let mut server = Server::new(server_socket, config);
 	server.run_loop();
 }

@@ -12,6 +12,7 @@ extern crate serde_derive;
 extern crate serde_big_array;
 extern crate bincode;
 extern crate fasthash;
+extern crate toml;
 
 pub mod map;
 pub mod mapgen;
@@ -25,6 +26,7 @@ use std::thread;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
+use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::ServerConfig;
 
@@ -40,6 +42,15 @@ pub enum ClientToServerMsg {
 pub enum ServerToClientMsg {
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
+}
+
+#[derive(Debug)]
+pub struct StrErr(String);
+
+impl<T :Display> From<T> for StrErr {
+	fn from(v :T) -> Self {
+		StrErr(format!("{}", v))
+	}
 }
 
 fn chunk_positions_around(pos :Vector3<isize>, xyradius :isize, zradius :isize) -> (Vector3<isize>, Vector3<isize>) {
