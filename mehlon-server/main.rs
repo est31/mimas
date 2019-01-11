@@ -25,6 +25,6 @@ fn main() {
 	} else {
 		TcpServerSocket::new()
 	};
-	let mut server = Server::new(server_socket);
+	let mut server = Server::new(server_socket, Default::default());
 	server.run_loop();
 }

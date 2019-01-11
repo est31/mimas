@@ -47,7 +47,7 @@ fn main() {
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();
 		thread::spawn(move || {
-			let mut server = Server::new(server_socket);
+			let mut server = Server::new(server_socket, Default::default());
 			server.run_loop();
 		});
 		Box::new(client_conn)

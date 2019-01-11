@@ -16,6 +16,7 @@ extern crate fasthash;
 pub mod map;
 pub mod mapgen;
 pub mod generic_net;
+pub mod config;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
@@ -25,6 +26,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
+use config::ServerConfig;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -73,6 +75,7 @@ impl<C: NetworkServerConn> Player<C> {
 
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
+	config :ServerConfig,
 	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -82,7 +85,7 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S) -> Self {
+	pub fn new(srv_socket :S, config :ServerConfig) -> Self {
 		let mut map = ServerMap::new(78);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
@@ -103,6 +106,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 		let srv = Server {
 			srv_socket,
+			config,
 			players,
 
 			last_frame_time : Instant::now(),
@@ -235,7 +239,9 @@ impl<S :NetworkServerSocket> Server<S> {
 				.collect::<Vec<_>>();
 			for pos in positions {
 				gen_chunks_around(&mut self.map,
-					pos.map(|v| v as isize), 5, 2);
+					pos.map(|v| v as isize),
+					self.config.mapgen_radius_xy,
+					self.config.mapgen_radius_z);
 			}
 			self.send_chunks_to_players();
 			self.map.tick();
