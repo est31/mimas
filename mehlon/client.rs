@@ -333,6 +333,12 @@ impl<C :NetworkClientConn> Game<C> {
 			.. Section::default()
 		});
 
+		let polygon_mode = if !self.config.draw_poly_lines {
+			glium::draw_parameters::PolygonMode::Fill
+		} else {
+			glium::draw_parameters::PolygonMode::Line
+		};
+
 		let params = glium::draw_parameters::DrawParameters {
 			depth : glium::Depth {
 				test : glium::draw_parameters::DepthTest::IfLess,
@@ -341,7 +347,7 @@ impl<C :NetworkClientConn> Game<C> {
 			},
 			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
 			blend :glium::Blend::alpha_blending(),
-			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
+			polygon_mode,
 			.. Default::default()
 		};
 

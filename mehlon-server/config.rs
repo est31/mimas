@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 use toml::from_str;
 use super::StrErr;
+use std::any::Any;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
@@ -8,6 +9,7 @@ pub struct Config {
 	pub mapgen_radius_xy :isize,
 	pub mapgen_radius_z :isize,
 
+	pub draw_poly_lines :bool,
 	pub viewing_range :f32,
 	pub fog_near :f32,
 	pub fog_far :f32,
@@ -20,6 +22,7 @@ impl Default for Config {
 			mapgen_radius_xy : 5,
 			mapgen_radius_z : 2,
 
+			draw_poly_lines : false,
 			viewing_range : 128.0,
 			fog_near : 40.0,
 			fog_far : 60.0,
