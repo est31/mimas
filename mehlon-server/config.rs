@@ -1,7 +1,6 @@
 use std::fs::read_to_string;
 use toml::from_str;
 use super::StrErr;
-use std::any::Any;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
