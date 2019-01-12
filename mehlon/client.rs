@@ -318,20 +318,6 @@ impl<C :NetworkClientConn> Game<C> {
 			selbuff = vec![vbuff];
 		}
 		let screen_dims = self.display.get_framebuffer_dimensions();
-		// TODO turn off anti-aliasing of the font
-		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
-		let text = format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}, CL: {}",
-				self.camera.pos.x, self.camera.pos.y, self.camera.pos.z,
-				self.camera.pitch, self.camera.yaw,
-				sel_text, self.last_fps as u16,
-				self.vbuffs.len()) + "\n" + &self.chat_string();
-		glyph_brush.queue(Section {
-			text :&text,
-			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
-			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
-			color : [0.9, 0.9, 0.9, 1.0],
-			.. Section::default()
-		});
 
 		let polygon_mode = if !self.config.draw_poly_lines {
 			glium::draw_parameters::PolygonMode::Fill
@@ -356,6 +342,7 @@ impl<C :NetworkClientConn> Game<C> {
 		target.clear_color_and_depth((0.05, 0.01, 0.6, 0.0), 1.0);
 
 		let player_pos = self.camera.pos;
+		let mut drawn_chunks_count = 0;
 		for buff in self.vbuffs.iter()
 				.filter_map(|(p, m)| {
 					// Viewing range based culling
@@ -374,10 +361,27 @@ impl<C :NetworkClientConn> Game<C> {
 					return Some(m);
 				})
 				.chain(selbuff.iter()) {
+			drawn_chunks_count += 1;
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 				&self.program, &uniforms, &params).unwrap();
 		}
+
+		// TODO turn off anti-aliasing of the font
+		// https://gitlab.redox-os.org/redox-os/rusttype/issues/61
+		let text = format!("pos = ({:.2}, {:.2}, {:.2}) pi = {:.0}, yw = {:.0}, {}, FPS: {:1.2}, CL: {} CD: {}",
+				self.camera.pos.x, self.camera.pos.y, self.camera.pos.z,
+				self.camera.pitch, self.camera.yaw,
+				sel_text, self.last_fps as u16,
+				self.vbuffs.len(), drawn_chunks_count) + "\n" + &self.chat_string();
+		glyph_brush.queue(Section {
+			text :&text,
+			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
+			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
+			color : [0.9, 0.9, 0.9, 1.0],
+			.. Section::default()
+		});
+
 		glyph_brush.draw_queued(&self.display, &mut target);
 		// Draw the wielded item
 		{
