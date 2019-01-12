@@ -30,7 +30,7 @@ pub struct MapChunk {
 }
 
 pub struct MapgenMap {
-	seed :u32,
+	seed :u64,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
 }
 
@@ -53,8 +53,8 @@ fn pos_hash(pos :Vector3<isize>) -> u64 {
 	mh.finish()
 }
 
-fn gen_chunk_phase_one(seed :u32, pos :Vector3<isize>) -> MapChunk {
-	let mut seeder = Pcg32::new(seed.wrapping_add(24) as u64, seed.wrapping_add(400) as u64);
+fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
+	let mut seeder = Pcg32::new(seed.wrapping_add(24), seed.wrapping_add(400));
 	// Basic chunk noise
 	let f = 0.02356;
 	let noise = NoiseMag::new(seeder.gen::<u32>(), f, 8.3);
@@ -276,7 +276,7 @@ fn spawn_cactus_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 }
 
 impl MapgenMap {
-	pub fn new(seed :u32) -> Self {
+	pub fn new(seed :u64) -> Self {
 		MapgenMap {
 			seed,
 			chunks : HashMap::new(),
@@ -389,7 +389,7 @@ pub struct MapgenThread {
 }
 
 impl MapgenThread {
-	pub fn new(seed :u32) -> Self {
+	pub fn new(seed :u64) -> Self {
 		let mut mapgen_map = MapgenMap::new(seed);
 		let (area_s, area_r) = channel();
 		let (result_s, result_r) = channel();
@@ -421,7 +421,7 @@ impl MapBackend for MapgenThread {
 }
 
 impl Map<MapgenThread> {
-	pub fn new(seed :u32) -> Self {
+	pub fn new(seed :u64) -> Self {
 		Map::from_backend(MapgenThread::new(seed))
 	}
 }

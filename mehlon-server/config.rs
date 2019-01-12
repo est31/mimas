@@ -4,7 +4,7 @@ use super::StrErr;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
-	pub mapgen_seed :u32,
+	pub mapgen_seed :u64,
 	pub mapgen_radius_xy :isize,
 	pub mapgen_radius_z :isize,
 
