@@ -5,6 +5,7 @@ use std::io::{Read, Write, Error as IoError, ErrorKind};
 use std::mem::replace;
 use {ClientToServerMsg, ServerToClientMsg};
 use bincode::{serialize, deserialize};
+use StrErr;
 
 pub trait NetworkServerSocket {
 	type Conn :NetworkServerConn + 'static;
@@ -235,9 +236,9 @@ impl TcpClientConn {
 			stream : TcpMsgStream::from_tcp_stream(tcp_stream),
 		}
 	}
-	pub fn from_socket_addr(addr :impl ToSocketAddrs) -> Self {
-		let tcp_stream = TcpStream::connect(addr).expect("couldn't open connection to server");
-		TcpClientConn::from_stream(tcp_stream)
+	pub fn from_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
+		let tcp_stream = TcpStream::connect(addr)?;
+		Ok(TcpClientConn::from_stream(tcp_stream))
 	}
 }
 
@@ -259,14 +260,14 @@ impl NetworkServerSocket for TcpServerSocket {
 }
 
 impl TcpServerSocket {
-	pub fn new() -> Self {
+	pub fn new() -> Result<Self, StrErr> {
 		Self::with_socket_addr("127.0.0.1:7700")
 	}
-	pub fn with_socket_addr(addr :impl ToSocketAddrs) -> Self {
-		let listener = TcpListener::bind(addr).expect("can't open tcp listener");
-		listener.set_nonblocking(true).expect("can't set nonblocking");
-		TcpServerSocket {
+	pub fn with_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
+		let listener = TcpListener::bind(addr)?;
+		listener.set_nonblocking(true)?;
+		Ok(TcpServerSocket {
 			listener,
-		}
+		})
 	}
 }

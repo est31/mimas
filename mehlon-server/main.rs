@@ -3,7 +3,7 @@
 extern crate mehlon_server;
 extern crate structopt;
 
-use mehlon_server::Server;
+use mehlon_server::{Server, StrErr};
 use mehlon_server::generic_net::TcpServerSocket;
 use mehlon_server::config::load_config;
 
@@ -18,15 +18,17 @@ struct Options {
 	listen_addr :Option<String>,
 }
 
-fn main() {
+fn main() -> Result<(), StrErr> {
 	let options = Options::from_args();
 
 	let server_socket = if let Some(addr) = options.listen_addr {
-		TcpServerSocket::with_socket_addr(addr)
+		TcpServerSocket::with_socket_addr(addr)?
 	} else {
-		TcpServerSocket::new()
+		TcpServerSocket::new()?
 	};
 	let config = load_config();
 	let mut server = Server::new(server_socket, config);
 	server.run_loop();
+
+	Ok(())
 }
