@@ -98,16 +98,24 @@ impl MpscServerConn {
 	}
 }
 
-pub struct TcpServerConn {
-	stream :TcpMsgStream,
-	addr :SocketAddr,
-}
-pub struct TcpClientConn {
-	stream :TcpMsgStream,
+pub trait MsgStream {
+	fn send_msg(&self, buf :&[u8]) -> Result<(), NetErr>;
+	fn try_recv_msg(&mut self) -> Result<Option<Vec<u8>>, NetErr>;
 }
 
+pub struct MsgStreamServerConn<M :MsgStream> {
+	stream :M,
+	addr :SocketAddr,
+}
+pub struct MsgStreamClientConn<M :MsgStream> {
+	stream :M,
+}
+
+pub type TcpClientConn = MsgStreamClientConn<TcpMsgStream>;
+pub type TcpServerConn = MsgStreamServerConn<TcpMsgStream>;
+
 const LEN_BYTES :usize = 8;
-struct TcpMsgStream {
+pub struct TcpMsgStream {
 	len_arr :[u8; LEN_BYTES],
 	len_read :usize,
 	cached :Vec<u8>,
@@ -115,7 +123,7 @@ struct TcpMsgStream {
 	tcp_stream :TcpStream,
 }
 
-impl NetworkServerConn for TcpServerConn {
+impl<M :MsgStream> NetworkServerConn for MsgStreamServerConn<M> {
 	fn try_recv(&mut self) -> Result<Option<ClientToServerMsg>, NetErr> {
 		let msg = self.stream.try_recv_msg()?;
 		if let Some(msg) = msg {
@@ -134,7 +142,7 @@ impl NetworkServerConn for TcpServerConn {
 	}
 }
 
-impl NetworkClientConn for TcpClientConn {
+impl<M :MsgStream> NetworkClientConn for MsgStreamClientConn<M> {
 	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr> {
 		let msg = self.stream.try_recv_msg()?;
 		if let Some(msg) = msg {
@@ -178,6 +186,8 @@ impl TcpMsgStream {
 			tcp_stream,
 		}
 	}
+}
+impl MsgStream for TcpMsgStream {
 	fn send_msg(&self, buf :&[u8]) -> Result<(), NetErr> {
 		// Set it to blocking mode for the duration of the write
 		// We don't support partial writing yet.
