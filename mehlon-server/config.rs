@@ -4,13 +4,20 @@ use super::StrErr;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
+	#[serde(default)]
 	pub mapgen_seed :u64,
+	#[serde(default)]
 	pub mapgen_radius_xy :isize,
+	#[serde(default)]
 	pub mapgen_radius_z :isize,
 
+	#[serde(default)]
 	pub draw_poly_lines :bool,
+	#[serde(default)]
 	pub viewing_range :f32,
+	#[serde(default)]
 	pub fog_near :f32,
+	#[serde(default)]
 	pub fog_far :f32,
 }
 
@@ -36,5 +43,8 @@ pub fn load_config_failible() -> Result<Config, StrErr> {
 }
 
 pub fn load_config() -> Config {
-	load_config_failible().unwrap_or_else(|_| Default::default())
+	load_config_failible().unwrap_or_else(|e| {
+		println!("Using default configuration due to error: {:?}", e);
+		Default::default()
+	})
 }
