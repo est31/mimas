@@ -111,6 +111,12 @@ pub struct MsgStreamClientConn<M :MsgStream> {
 	stream :M,
 }
 
+impl<M :MsgStream> MsgStreamServerConn<M> {
+	pub fn get_addr(&self) -> SocketAddr {
+		self.addr
+	}
+}
+
 pub type TcpClientConn = MsgStreamClientConn<TcpMsgStream>;
 pub type TcpServerConn = MsgStreamServerConn<TcpMsgStream>;
 
@@ -234,9 +240,6 @@ impl TcpServerConn {
 			stream : TcpMsgStream::from_tcp_stream(tcp_stream),
 			addr,
 		}
-	}
-	pub fn get_addr(&self) -> SocketAddr {
-		self.addr
 	}
 }
 
