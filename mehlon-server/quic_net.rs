@@ -1,7 +1,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::ToSocketAddrs;
 use StrErr;
-use quinn::{BiStream, NewStream};
+use quinn::{BiStream, NewStream, EndpointBuilder};
 use slog::{o, Drain, Logger};
 use generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
@@ -29,6 +29,21 @@ impl rustls::ServerCertVerifier for NullVerifier {
 	}
 }
 
+fn quinn_config() -> quinn::Config {
+	quinn::Config {
+		// This value prevents the connection from timing
+		// out when there is no activiy on the connection
+		//
+		// We are not setting to 0 as we are supposed to,
+		// because there is a bug in quinn right now.
+		// Hopefully the next version will resolve it.
+		// We also aren't using u64::max_value() here,
+		// as this would yield a panic inside quinn.
+		idle_timeout : 2 << 61 - 1,
+		.. Default::default()
+	}
+}
+
 fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 	let log = get_logger();
 
@@ -41,7 +56,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 	let cert = quinn::Certificate::from_der(&cert_der)?;
 	server_config.set_certificate(quinn::CertificateChain::from_certs(vec![cert]), key)?;
 
-	let mut endpoint = quinn::Endpoint::new();
+	let mut endpoint = EndpointBuilder::new(quinn_config());
 	endpoint.logger(log.clone());
 	endpoint.listen(server_config.build());
 
@@ -114,7 +129,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<(), StrErr> {
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
-	let mut endpoint = quinn::Endpoint::new();
+	let mut endpoint = EndpointBuilder::new(quinn_config());
 	let mut client_config = quinn::ClientConfigBuilder::new();
 
 	client_config.set_protocols(&[b"mehlon"]);
