@@ -37,9 +37,11 @@ fn quinn_config() -> quinn::Config {
 		// We are not setting to 0 as we are supposed to,
 		// because there is a bug in quinn right now.
 		// Hopefully the next version will resolve it.
-		// We also aren't using u64::max_value() here,
-		// as this would yield a panic inside quinn.
-		idle_timeout : 2 << 61 - 1,
+		// 1 << 27 - 1 is the biggest value we can set
+		// idle_timeout to without encountering bugs.
+		// See also:
+		// https://github.com/djc/quinn/issues/210
+		idle_timeout : 1<<27 - 1,
 		.. Default::default()
 	}
 }
