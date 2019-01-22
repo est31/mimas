@@ -76,11 +76,12 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 		tokio_current_thread::spawn(
 			incoming
 				.map_err(move |e| eprintln!("Connection terminated: {}", e))
-				.fold(sender_clone, move |conn_send, stream| {
-					// TODO only regard the first stream as new connection
+				.into_future()
+				// Only regard the first stream as new connection
+				.and_then(move |(stream, _incoming)| {
 					let stream = match stream {
-						NewStream::Uni(_) => return Ok(conn_send),
-						NewStream::Bi(stream) => stream,
+						Some(NewStream::Bi(stream)) => stream,
+						None | Some(NewStream::Uni(_)) => return Ok(()),
 					};
 					let (rdr, wtr) = stream.split();
 					let (msg_stream, rcv, snd) = QuicMsgStream::new();
@@ -89,7 +90,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 						stream : msg_stream,
 						addr,
 					};
-					conn_send.send(conn);
+					sender_clone.send(conn);
 
 					spawn_msg_rcv_task(rdr, snd);
 
@@ -105,8 +106,9 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 						}).map(|_| {})
 					);
 
-					Ok(conn_send)
+					Ok(())
 				})
+				.map_err(move |_e| eprintln!("error"))
 				.map(|_| {}),
 		);
 		Ok(conn_send)
