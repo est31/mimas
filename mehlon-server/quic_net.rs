@@ -79,7 +79,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 				.fold(sender_clone, move |conn_send, stream| {
 					// TODO only regard the first stream as new connection
 					let stream = match stream {
-						NewStream::Uni(_) => panic!("oh no for now I dont want to deal with this"),
+						NewStream::Uni(_) => return Ok(conn_send),
 						NewStream::Bi(stream) => stream,
 					};
 					let (rdr, wtr) = stream.split();
@@ -93,16 +93,19 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 
 					spawn_msg_rcv_task(rdr, snd);
 
-					rcv.fold(wtr, |wtr, msg| {
-						let len_buf = (msg.len() as u64).to_be_bytes();
-						tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-							.map(|(wtr, _msg)| wtr)
-							.and_then(|wtr| {
-								tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-									.map(|(wtr, _msg)| wtr)
-							})
-					}).map(|_| conn_send)
+					tokio_current_thread::spawn(
+						rcv.fold(wtr, |wtr, msg| {
+							let len_buf = (msg.len() as u64).to_be_bytes();
+							tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
+								.map(|(wtr, _msg)| wtr)
+								.and_then(|wtr| {
+									tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
+										.map(|(wtr, _msg)| wtr)
+								})
+						}).map(|_| {})
+					);
 
+					Ok(conn_send)
 				})
 				.map(|_| {}),
 		);
