@@ -154,7 +154,12 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 							tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
 								.map(|(wtr, _msg)| wtr)
 						})
-				}).map(|_| ())
+				})
+				// Gracefully terminate the stream
+				.and_then(|stream| {
+					tokio::io::shutdown(stream)
+						.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
+				})
 			})//.map_err(|e| {eprintln!("Net Error: {:?}", e);})
 		}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
 	).map_err(|_| "error")?;
