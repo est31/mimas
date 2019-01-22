@@ -104,11 +104,11 @@ pub trait MsgStream {
 }
 
 pub struct MsgStreamServerConn<M :MsgStream> {
-	stream :M,
-	addr :SocketAddr,
+	pub(crate) stream :M,
+	pub(crate) addr :SocketAddr,
 }
 pub struct MsgStreamClientConn<M :MsgStream> {
-	stream :M,
+	pub(crate) stream :M,
 }
 
 impl<M :MsgStream> MsgStreamServerConn<M> {
@@ -193,6 +193,7 @@ impl TcpMsgStream {
 		}
 	}
 }
+
 impl MsgStream for TcpMsgStream {
 	fn send_msg(&self, buf :&[u8]) -> Result<(), NetErr> {
 		// Set it to blocking mode for the duration of the write

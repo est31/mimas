@@ -26,7 +26,8 @@ use structopt::StructOpt;
 
 use std::thread;
 use mehlon_server::{Server, StrErr};
-use mehlon_server::generic_net::{TcpClientConn, MpscServerSocket, NetworkClientConn};
+use mehlon_server::generic_net::{MpscServerSocket, NetworkClientConn};
+use mehlon_server::quic_net::QuicClientConn;
 use mehlon_server::config::load_config;
 
 /// Mehlon client
@@ -44,7 +45,7 @@ fn main() -> Result<(), StrErr> {
 	let config = load_config();
 
 	let client_conn :Box<dyn NetworkClientConn>= if let Some(addr) = options.connect.clone() {
-		let client_conn = TcpClientConn::from_socket_addr(addr)?;
+		let client_conn = QuicClientConn::from_socket_addr(addr)?;
 		Box::new(client_conn)
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();

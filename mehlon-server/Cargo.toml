@@ -24,3 +24,13 @@ serde-big-array = "0.1"
 structopt = "0.2"
 fasthash = "0.3"
 toml = "0.4"
+
+webpki = "0.19"
+rustls = { version = "0.15", features = ["dangerous_configuration"] }
+tokio = "0.1.6"
+futures = "0.1.21"
+tokio-current-thread = "0.1"
+quinn = "0.2"
+slog-term = "2"
+slog = "2.2"
+rcgen = "0.2"

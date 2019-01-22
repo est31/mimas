@@ -13,10 +13,21 @@ extern crate serde_big_array;
 extern crate bincode;
 extern crate fasthash;
 extern crate toml;
+extern crate rustls;
+
+extern crate webpki;
+extern crate quinn;
+extern crate slog_term;
+extern crate slog;
+extern crate tokio;
+extern crate tokio_current_thread;
+extern crate futures;
+extern crate rcgen;
 
 pub mod map;
 pub mod mapgen;
 pub mod generic_net;
+pub mod quic_net;
 pub mod config;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
