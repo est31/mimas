@@ -29,8 +29,6 @@ impl rustls::ServerCertVerifier for NullVerifier {
 	}
 }
 
-const LEN_BYTES :usize = 8;
-
 fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 	let log = get_logger();
 
