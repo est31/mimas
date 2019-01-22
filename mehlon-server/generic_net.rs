@@ -142,7 +142,7 @@ impl<M :MsgStream> NetworkServerConn for MsgStreamServerConn<M> {
 	fn send(&self, msg :ServerToClientMsg) -> Result<(), NetErr> {
 		//self.stream.send_msg(&serialize(&msg).unwrap());
 		let buf = &serialize(&msg).unwrap();
-		println!("server send: {} {:?}", buf.len(), &buf[..4]);
+		//println!("server send: {} {:?}", buf.len(), &buf[..4]);
 		let _ :ServerToClientMsg = deserialize(&buf).unwrap();
 		self.stream.send_msg(buf)
 	}
@@ -152,7 +152,7 @@ impl<M :MsgStream> NetworkClientConn for MsgStreamClientConn<M> {
 	fn try_recv(&mut self) -> Result<Option<ServerToClientMsg>, NetErr> {
 		let msg = self.stream.try_recv_msg()?;
 		if let Some(msg) = msg {
-			println!("client recv: {} {:?}", msg.len(), &msg[..4]);
+			//println!("client recv: {} {:?}", msg.len(), &msg[..4]);
 			Ok(Some(deserialize(&msg).unwrap()))
 		} else {
 			Ok(None)
