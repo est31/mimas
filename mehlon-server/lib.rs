@@ -165,7 +165,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			// Don't slow down by the full time that we were too fast,
 			// because then we are guaranteed to undershoot
 			// the FPS target in this frame. That's not our goal!
-			let micros_to_wait = (time_too_fast * 0.4 * 1_000_000.0) as u64;
+			let micros_to_wait = (time_too_fast * 0.7 * 1_000_000.0) as u64;
 			thread::sleep(Duration::from_micros(micros_to_wait));
 		}
 		float_delta
