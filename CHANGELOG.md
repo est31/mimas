@@ -1,5 +1,13 @@
 # Changelog
 
+## Release (Upcoming)
+
+* Added configurability via a `settings.toml` file
+* QUIC based network protocol (using the quinn crate)
+* Mapgen changes:
+  - Macro caves
+  - Desert biome with cactuses
+
 ## Release 0.1 - January 8, 2019
 
 Required Rust version: 1.33.0
