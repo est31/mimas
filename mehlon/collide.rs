@@ -28,6 +28,8 @@ fn overlap_fn<T, F :Fn(T) -> f32>(f :F, a_min :T, a_max :T, b_min :T, b_max :T) 
 	overlap(f(a_min), f(a_max), f(b_min), f(b_max))
 }
 
+/// Returns whether the player collides with the box at position pos
+/// and if yes, returns the normal.
 pub fn collide(player_pos :Vector3<f32>, pos :Vector3<isize>) -> Option<Vector3<f32>> {
 	let pos = pos.map(|v| v as f32);
 	let player_colb_extent = Vector3::new(0.35, 0.35, 0.9);
