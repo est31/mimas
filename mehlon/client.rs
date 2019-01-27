@@ -245,7 +245,7 @@ impl<C :NetworkClientConn> Game<C> {
 			let collision = collide(ppz, pos);
 			if let Some(normal) = collision {
 				let d = delta_pos.dot(&normal);
-				if delta_pos.z < 0.0 {
+				if normal.z > 0.0 {
 					touches_ground = true;
 				}
 				if d < 0.0 {
