@@ -25,6 +25,7 @@ structopt = "0.2"
 fasthash = "0.3"
 toml = "0.4"
 
+# For the networking
 webpki = "0.19"
 rustls = { version = "0.15", features = ["dangerous_configuration"] }
 tokio = "0.1.6"
@@ -34,3 +35,6 @@ quinn = "0.2"
 slog-term = "2"
 slog = "2.2"
 rcgen = "0.2"
+
+# For map storage
+rusqlite = "0.16.0"

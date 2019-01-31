@@ -24,8 +24,11 @@ extern crate tokio_current_thread;
 extern crate futures;
 extern crate rcgen;
 
+extern crate rusqlite;
+
 pub mod map;
 pub mod mapgen;
+pub mod map_storage;
 pub mod generic_net;
 pub mod quic_net;
 pub mod config;
