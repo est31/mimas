@@ -25,6 +25,7 @@ extern crate futures;
 extern crate rcgen;
 
 extern crate rusqlite;
+extern crate libsqlite3_sys;
 
 pub mod map;
 pub mod mapgen;
