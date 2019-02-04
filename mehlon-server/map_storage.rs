@@ -32,6 +32,14 @@ impl SqliteStorageBackend {
 			NO_PARAMS,
 		).unwrap();
 	}
+	fn get_user_version(&mut self) -> Result<u16, StrErr> {
+		let r = self.conn.query_row("PRAGMA user_version;", NO_PARAMS, |v| v.get(0))?;
+		Ok(r)
+	}
+	fn set_user_version(&mut self, version :u16) -> Result<(), StrErr> {
+		self.conn.execute("PRAGMA user_version = ?;", &[&version])?;
+		Ok(())
+	}
 }
 
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
