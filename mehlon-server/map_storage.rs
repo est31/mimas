@@ -15,14 +15,14 @@ impl SqliteStorageBackend {
 	}
 	fn create_tables(&mut self) {
 		self.conn.execute(
-			"CREATE TABLE kvstore (
+			"CREATE TABLE IF NOT EXISTS kvstore (
 				key VARCHAR(16) PRIMARY KEY,
 				content BLOB,
 			)",
 			NO_PARAMS,
 		).unwrap();
 		self.conn.execute(
-			"CREATE TABLE chunks (
+			"CREATE TABLE IF NOT EXISTS chunks (
 				x INTEGER,
 				y INTEGER,
 				z INTEGER,
