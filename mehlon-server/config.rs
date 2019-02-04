@@ -4,12 +4,18 @@ use super::StrErr;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
+	// Server settings
+
 	#[serde(default)]
 	pub mapgen_seed :u64,
 	#[serde(default)]
 	pub mapgen_radius_xy :isize,
 	#[serde(default)]
 	pub mapgen_radius_z :isize,
+	#[serde(default)]
+	pub map_storage_path :Option<String>,
+
+	// Client settings
 
 	#[serde(default)]
 	pub draw_poly_lines :bool,
@@ -27,6 +33,7 @@ impl Default for Config {
 			mapgen_seed : 78,
 			mapgen_radius_xy : 5,
 			mapgen_radius_z : 2,
+			map_storage_path : None,
 
 			draw_poly_lines : false,
 			viewing_range : 128.0,
