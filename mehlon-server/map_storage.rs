@@ -40,6 +40,14 @@ impl SqliteStorageBackend {
 		self.conn.execute("PRAGMA user_version = ?;", &[&version])?;
 		Ok(())
 	}
+	fn get_app_id(&mut self) -> Result<i32, StrErr> {
+		let r = self.conn.query_row("PRAGMA application_id;", NO_PARAMS, |v| v.get(0))?;
+		Ok(r)
+	}
+	fn set_app_id(&mut self, id :i32) -> Result<(), StrErr> {
+		self.conn.execute("PRAGMA application_id = ?;", &[&id])?;
+		Ok(())
+	}
 }
 
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
