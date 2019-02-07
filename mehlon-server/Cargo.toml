@@ -39,3 +39,4 @@ rcgen = "0.2"
 # For map storage
 rusqlite = "0.16.0"
 libsqlite3-sys = "0.11.0"
+byteorder = "1.0"

@@ -89,7 +89,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 	let mca_noise = Noise::new(seeder.gen::<u32>(), mca_f);
 
 	let mut res = MapChunk {
-		data : MapChunkData([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]),
+		data : MapChunkData::fully_air(),
 		generation_phase : GenerationPhase::PhaseOne,
 		tree_spawn_points : Vec::new(),
 	};

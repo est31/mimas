@@ -1,8 +1,9 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension, OpenFlags};
-use map::{MapChunkData, CHUNKSIZE};
+use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
 use std::path::Path;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -100,12 +101,55 @@ impl SqliteStorageBackend {
 	}
 }
 
+fn mapblock_to_number(b :MapBlock) -> u8 {
+	use MapBlock::*;
+	match b {
+		Air => 0,
+		Water => 1,
+		Sand => 2,
+		Ground => 3,
+		Wood => 4,
+		Stone => 5,
+		Leaves => 6,
+		Tree => 7,
+		Cactus => 8,
+		Coal => 9,
+	}
+}
+
+fn number_to_mapblock(b :u8) -> Option<MapBlock> {
+	use MapBlock::*;
+	Some(match b {
+		0 => Air,
+		1 => Water,
+		2 => Sand,
+		3 => Ground,
+		4 => Wood,
+		5 => Stone,
+		6 => Leaves,
+		7 => Tree,
+		8 => Cactus,
+		9 => Coal,
+		_ => return None,
+	})
+}
+
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
-	unimplemented!()
+	let mut r = Vec::new();
+	for b in data.0.iter() {
+		r.write_u8(mapblock_to_number(*b));
+	}
+	r
 }
 
 fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
-	unimplemented!()
+	let mut rdr = data;
+	let mut r = MapChunkData::fully_air();
+	for v in r.0.iter_mut() {
+		let n = rdr.read_u8()?;
+		*v = number_to_mapblock(n).ok_or("invalid block number")?;
+	}
+	Ok(r)
 }
 
 impl StorageBackend for SqliteStorageBackend {
