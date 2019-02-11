@@ -27,6 +27,7 @@ extern crate rcgen;
 extern crate rusqlite;
 extern crate libsqlite3_sys;
 extern crate byteorder;
+extern crate flate2;
 
 pub mod map;
 pub mod mapgen;

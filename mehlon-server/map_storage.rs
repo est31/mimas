@@ -2,8 +2,9 @@ use rusqlite::{Connection, NO_PARAMS, OptionalExtension, OpenFlags};
 use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
-use std::path::Path;
+use std::{io, path::Path};
 use byteorder::{ReadBytesExt, WriteBytesExt};
+use flate2::{Compression, GzBuilder, read::GzDecoder};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -141,10 +142,17 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	for b in data.0.iter() {
 		r.write_u8(mapblock_to_number(*b)).unwrap();
 	}
-	r
+	let rdr :&[u8] = &r;
+	let mut gz_enc = GzBuilder::new().read(rdr, Compression::fast());
+	let mut buffer_compressed = Vec::<u8>::new();
+	io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
+	buffer_compressed
 }
 
 fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
+	let mut gz_dec = GzDecoder::new(data);
+	let mut buffer = Vec::<u8>::new();
+	io::copy(&mut gz_dec, &mut buffer)?;
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
 	if version != 0 {
