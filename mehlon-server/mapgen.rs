@@ -11,6 +11,7 @@ use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
+use map_storage::DynStorageBackend;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum GenerationPhase {
@@ -32,6 +33,7 @@ pub struct MapChunk {
 pub struct MapgenMap {
 	seed :u64,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
+	storage :DynStorageBackend,
 }
 
 impl MapChunk {
@@ -276,10 +278,11 @@ fn spawn_cactus_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 }
 
 impl MapgenMap {
-	pub fn new(seed :u64) -> Self {
+	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
 		MapgenMap {
 			seed,
 			chunks : HashMap::new(),
+			storage,
 		}
 	}
 	pub fn get_chunk_p1(&self, pos :Vector3<isize>) -> Option<&MapChunk> {
@@ -389,8 +392,8 @@ pub struct MapgenThread {
 }
 
 impl MapgenThread {
-	pub fn new(seed :u64) -> Self {
-		let mut mapgen_map = MapgenMap::new(seed);
+	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
+		let mut mapgen_map = MapgenMap::new(seed, storage);
 		let (area_s, area_r) = channel();
 		let (result_s, result_r) = channel();
 		thread::spawn(move || {
@@ -421,7 +424,7 @@ impl MapBackend for MapgenThread {
 }
 
 impl Map<MapgenThread> {
-	pub fn new(seed :u64) -> Self {
-		Map::from_backend(MapgenThread::new(seed))
+	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
+		Map::from_backend(MapgenThread::new(seed, storage))
 	}
 }

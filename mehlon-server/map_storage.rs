@@ -5,6 +5,7 @@ use nalgebra::Vector3;
 use std::{io, path::Path};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use flate2::{Compression, GzBuilder, read::GzDecoder};
+use config::Config;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -204,6 +205,20 @@ impl StorageBackend for NullStorageBackend {
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
 		Ok(None)
 	}
+}
+
+pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
+
+fn sqlite_backend_from_config(config :&Config) -> Option<DynStorageBackend> {
+	let p = config.map_storage_path.as_ref()?;
+	let sqlite_backend = SqliteStorageBackend::open_or_create(p).ok()?;
+	Some(Box::new(sqlite_backend))
+}
+
+pub fn storage_backend_from_config(config :&Config) -> DynStorageBackend {
+	sqlite_backend_from_config(config).unwrap_or_else(|| {
+		Box::new(NullStorageBackend)
+	})
 }
 
 pub trait StorageBackend {
