@@ -194,6 +194,18 @@ impl StorageBackend for SqliteStorageBackend {
 	}
 }
 
+pub struct NullStorageBackend;
+
+impl StorageBackend for NullStorageBackend {
+	fn store_chunk(&mut self, pos :Vector3<isize>,
+			data :&MapChunkData) -> Result<(), StrErr> {
+		Ok(())
+	}
+	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
+		Ok(None)
+	}
+}
+
 pub trait StorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
 			data :&MapChunkData) -> Result<(), StrErr>;
