@@ -9,7 +9,6 @@ use {btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
-use StrErr;
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -328,53 +327,38 @@ impl MapgenMap {
 			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
 
-	fn load_chunks_in_area(&mut self,
-			pos_min :Vector3<isize>, pos_max :Vector3<isize>) -> Result<(), StrErr> {
-
-		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
-		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
-		for x in pos_min.x ..= pos_max.x {
-			for y in pos_min.y ..= pos_max.y {
-				for z in pos_min.z ..= pos_max.z {
-					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
-					if self.chunks.get(&pos).is_some() {
-						continue;
-					}
-					if let Some(data) = self.storage.load_chunk(pos)? {
-						let mut chn = MapChunk {
-							data,
-							generation_phase : GenerationPhase::Done,
-							tree_spawn_points : Vec::new(),
-						};
-						self.chunks.insert(pos, chn);
-					}
-				}
-			}
-		}
-
-		Ok(())
-	}
 
 	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
 			pos_min :Vector3<isize>, pos_max :Vector3<isize>, f :&mut F) {
-		self.load_chunks_in_area(pos_min, pos_max).unwrap();
 
 		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
 		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
 
 		let mut sth_to_generate = false;
-		'o :for x in pos_min.x ..= pos_max.x {
+		for x in pos_min.x ..= pos_max.x {
 			for y in pos_min.y ..= pos_max.y {
 				for z in pos_min.z ..= pos_max.z {
 					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
 					if let Some(c) = self.chunks.get(&pos) {
 						if c.generation_phase != GenerationPhase::Done {
 							sth_to_generate = true;
-							break 'o;
 						}
-					} else {
-						sth_to_generate = true;
-						break 'o;
+						// TODO: once we have NLL, remove the continue, and
+						// remove the /* */ around the else below.
+						// See: https://github.com/rust-lang/rust/issues/57804
+						continue;
+					} /* else */ {
+						if let Some(data) = self.storage.load_chunk(pos).unwrap() {
+							let mut chn = MapChunk {
+								data,
+								generation_phase : GenerationPhase::Done,
+								tree_spawn_points : Vec::new(),
+							};
+							f(pos, &chn.data);
+							self.chunks.insert(pos, chn);
+						} else {
+							sth_to_generate = true;
+						}
 					}
 				}
 			}
