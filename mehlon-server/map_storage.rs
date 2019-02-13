@@ -1,4 +1,5 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension, OpenFlags};
+use rusqlite::types::ToSql;
 use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
@@ -181,16 +182,15 @@ impl StorageBackend for SqliteStorageBackend {
 			data :&MapChunkData) -> Result<(), StrErr> {
 		let pos = pos / CHUNKSIZE;
 		let data = serialize_mapchunk_data(&data);
-		// TODO prepare this statement
-		self.conn.execute_named("INSERT OR REPLACE INTO chunks (x, y, z, content) \
-			VALUES (:x, :y, :z, :content);",
-			&[(":x", &pos.x), (":y", &pos.y), (":z", &pos.z), (":content", &data)])?;
+		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO chunks (x, y, z, content) \
+			VALUES (?, ?, ?, ?);")?;
+		stmt.execute(&[&pos.x as &dyn ToSql, &pos.y, &pos.z, &data])?;
 		Ok(())
 	}
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
 		let pos = pos / CHUNKSIZE;
-		// TODO prepare this statement
-		let data :Option<Vec<u8>> = self.conn.query_row("SELECT content FROM chunks WHERE x=? AND y=? AND z=?",
+		let mut stmt = self.conn.prepare_cached("SELECT content FROM chunks WHERE x=? AND y=? AND z=?")?;
+		let data :Option<Vec<u8>> = stmt.query_row(
 			&[&pos.x, &pos.y, &pos.z],
 			|row| row.get(0)
 		).optional()?;
