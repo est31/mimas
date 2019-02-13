@@ -143,29 +143,31 @@ fn number_to_mapblock(b :u8) -> Option<MapBlock> {
 }
 
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
-	let mut r = Vec::new();
+	let mut blocks = Vec::new();
+	for b in data.0.iter() {
+		blocks.write_u8(mapblock_to_number(*b)).unwrap();
+	}
+	let rdr :&[u8] = &blocks;
+	let mut gz_enc = GzBuilder::new().read(rdr, Compression::fast());
+	let mut r = Vec::<u8>::new();
+
 	// Version
 	r.write_u8(0).unwrap();
-	for b in data.0.iter() {
-		r.write_u8(mapblock_to_number(*b)).unwrap();
-	}
-	let rdr :&[u8] = &r;
-	let mut gz_enc = GzBuilder::new().read(rdr, Compression::fast());
-	let mut buffer_compressed = Vec::<u8>::new();
-	io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
-	buffer_compressed
+	io::copy(&mut gz_enc, &mut r).unwrap();
+	r
 }
 
 fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
-	let mut gz_dec = GzDecoder::new(data);
-	let mut buffer = Vec::<u8>::new();
-	io::copy(&mut gz_dec, &mut buffer)?;
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
 	if version != 0 {
 		// The version is too recent
 		Err(format!("Unsupported map chunk version {}", version))?;
 	}
+	let mut gz_dec = GzDecoder::new(rdr);
+	let mut buffer = Vec::<u8>::new();
+	io::copy(&mut gz_dec, &mut buffer)?;
+	let mut rdr :&[u8] = &buffer;
 	let mut r = MapChunkData::fully_air();
 	for v in r.0.iter_mut() {
 		let n = rdr.read_u8()?;
