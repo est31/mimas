@@ -9,6 +9,7 @@ use {btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
+use StrErr;
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -327,8 +328,37 @@ impl MapgenMap {
 			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
 
+	fn load_chunks_in_area(&mut self,
+			pos_min :Vector3<isize>, pos_max :Vector3<isize>) -> Result<(), StrErr> {
+
+		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
+		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
+		for x in pos_min.x ..= pos_max.x {
+			for y in pos_min.y ..= pos_max.y {
+				for z in pos_min.z ..= pos_max.z {
+					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
+					if self.chunks.get(&pos).is_some() {
+						continue;
+					}
+					if let Some(data) = self.storage.load_chunk(pos)? {
+						let mut chn = MapChunk {
+							data,
+							generation_phase : GenerationPhase::Done,
+							tree_spawn_points : Vec::new(),
+						};
+						self.chunks.insert(pos, chn);
+					}
+				}
+			}
+		}
+
+		Ok(())
+	}
+
 	fn gen_chunks_in_area<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
 			pos_min :Vector3<isize>, pos_max :Vector3<isize>, f :&mut F) {
+		self.load_chunks_in_area(pos_min, pos_max).unwrap();
+
 		let pos_min = pos_min.map(|v| v / CHUNKSIZE);
 		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
 
@@ -378,6 +408,7 @@ impl MapgenMap {
 					let chk = self.chunks.get_mut(&pos).unwrap();
 					if chk.generation_phase != GenerationPhase::Done {
 						chk.generation_phase = GenerationPhase::Done;
+						self.storage.store_chunk(pos, &chk.data).unwrap();
 						f(pos, &chk.data);
 					}
 				}
