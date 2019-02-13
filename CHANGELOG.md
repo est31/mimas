@@ -2,6 +2,7 @@
 
 ## Release (Upcoming)
 
+* Map saving and loading
 * Added configurability via a `settings.toml` file
 * QUIC based network protocol (using the quinn crate)
 * Mapgen changes:
