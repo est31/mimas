@@ -125,7 +125,7 @@ impl MapBackend for ClientBackend {
 			_f :&mut F) {
 		// Do nothing. The server just pushes any chunks.
 	}
-	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData) {
+	fn chunk_changed(&mut self, _pos :Vector3<isize>, _data :MapChunkData) {
 		// Do nothing. The server just pushes any chunks.
 	}
 }
