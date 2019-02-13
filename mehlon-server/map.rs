@@ -97,13 +97,14 @@ pub fn spawn_tree<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>) {
 	spawn_schematic(map, pos, &TREE_SCHEMATIC);
 }
 
-pub struct MapBlockHandle<'a> {
+pub struct MapBlockHandle<'a, B :MapBackend> {
 	pos :Vector3<isize>,
 	chk :&'a mut MapChunkData,
+	backend :&'a mut B,
 	on_change :&'a Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
 }
 
-impl<'a> MapBlockHandle<'a> {
+impl<'a, B :MapBackend> MapBlockHandle<'a, B> {
 	pub fn set(&mut self, b :MapBlock) {
 		let chunk_pos = btchn(self.pos);
 		let pos_in_chunk = btpic(self.pos);
@@ -124,6 +125,9 @@ impl MapBackend for ClientBackend {
 			_f :&mut F) {
 		// Do nothing. The server just pushes any chunks.
 	}
+	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData) {
+		// Do nothing. The server just pushes any chunks.
+	}
 }
 
 pub trait MapBackend {
@@ -131,6 +135,7 @@ pub trait MapBackend {
 			pos_max :Vector3<isize>);
 	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
 			f :&mut F);
+	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData);
 }
 
 impl Map<ClientBackend> {
@@ -158,6 +163,7 @@ impl<B :MapBackend> Map<B> {
 	}
 	pub fn set_chunk(&mut self, pos :Vector3<isize>, data :MapChunkData) {
 		self.chunks.insert(pos, data);
+		self.backend.chunk_changed(pos, data.clone());
 		(self.on_change)(pos, &data);
 	}
 	pub fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
@@ -184,13 +190,15 @@ impl<B :MapBackend> Map<B> {
 		self.get_chunk_mut(chunk_pos)
 			.map(|blk| blk.get_blk_mut(pos_in_chunk))
 	}
-	pub fn get_blk_mut<'s>(&'s mut self, pos :Vector3<isize>) -> Option<MapBlockHandle<'s>> {
+	pub fn get_blk_mut<'s>(&'s mut self, pos :Vector3<isize>) -> Option<MapBlockHandle<'s, B>> {
 		let chunk_pos = btchn(pos);
 		let on_change = &self.on_change;
+		let backend = &mut self.backend;
 		self.chunks.get_mut(&chunk_pos)
-			.map(|chk| MapBlockHandle {
+			.map(move |chk| MapBlockHandle {
 				pos,
 				chk,
+				backend,
 				on_change,
 			})
 	}

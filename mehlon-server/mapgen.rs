@@ -417,8 +417,13 @@ impl MapgenMap {
 	}
 }
 
+pub enum MapgenMsg {
+	ChunkChanged(Vector3<isize>, MapChunkData),
+	GenArea(Vector3<isize>, Vector3<isize>),
+}
+
 pub struct MapgenThread {
-	area_s :Sender<(Vector3<isize>, Vector3<isize>)>,
+	area_s :Sender<MapgenMsg>,
 	result_r :Receiver<(Vector3<isize>, MapChunkData)>,
 }
 
@@ -428,10 +433,17 @@ impl MapgenThread {
 		let (area_s, area_r) = channel();
 		let (result_s, result_r) = channel();
 		thread::spawn(move || {
-			while let Ok((pos_min, pos_max)) = area_r.recv() {
-				mapgen_map.gen_chunks_in_area(pos_min, pos_max, &mut |pos, chk|{
-					result_s.send((pos, chk.clone())).unwrap();
-				})
+			while let Ok(msg) = area_r.recv() {
+				match msg {
+					MapgenMsg::ChunkChanged(pos, data) => {
+						mapgen_map.storage.store_chunk(pos, &data).unwrap();
+					},
+					MapgenMsg::GenArea(pos_min, pos_max) => {
+						mapgen_map.gen_chunks_in_area(pos_min, pos_max, &mut |pos, chk|{
+							result_s.send((pos, chk.clone())).unwrap();
+						})
+					},
+				}
 			}
 		});
 		MapgenThread {
@@ -444,13 +456,16 @@ impl MapgenThread {
 impl MapBackend for MapgenThread {
 	fn gen_chunks_in_area(&mut self, pos_min :Vector3<isize>,
 			pos_max :Vector3<isize>) {
-		self.area_s.send((pos_min, pos_max)).unwrap();
+		self.area_s.send(MapgenMsg::GenArea(pos_min, pos_max)).unwrap();
 	}
 	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
 			f :&mut F) {
 		while let Ok((pos, chk)) = self.result_r.try_recv() {
 			f(pos, &chk);
 		}
+	}
+	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData) {
+		self.area_s.send(MapgenMsg::ChunkChanged(pos, data)).unwrap();
 	}
 }
 
