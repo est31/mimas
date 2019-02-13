@@ -23,9 +23,9 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS kvstore (
-			key VARCHAR(16) PRIMARY KEY,
-			content BLOB,
-		)",
+			kkey VARCHAR(16) PRIMARY KEY,
+			content BLOB
+		);",
 		NO_PARAMS,
 	)?;
 	conn.execute(
@@ -60,7 +60,10 @@ fn get_user_version(conn :&mut Connection) -> Result<u16, StrErr> {
 	Ok(r)
 }
 fn set_user_version(conn :&mut Connection, version :u16) -> Result<(), StrErr> {
-	conn.execute("PRAGMA user_version = ?;", &[&version])?;
+	// Apparently sqlite wants you to be exposed to bobby tables shit
+	// because they don't allow you to use ? or other methods to avoid
+	// string formatting :/.
+	conn.execute(&format!("PRAGMA user_version = {};", version), NO_PARAMS)?;
 	Ok(())
 }
 fn get_app_id(conn :&mut Connection) -> Result<i32, StrErr> {
@@ -68,7 +71,10 @@ fn get_app_id(conn :&mut Connection) -> Result<i32, StrErr> {
 	Ok(r)
 }
 fn set_app_id(conn :&mut Connection, id :i32) -> Result<(), StrErr> {
-	conn.execute("PRAGMA application_id = ?;", &[&id])?;
+	// Apparently sqlite wants you to be exposed to bobby tables shit
+	// because they don't allow you to use ? or other methods to avoid
+	// string formatting :/.
+	conn.execute(&format!("PRAGMA application_id = {};", id), NO_PARAMS)?;
 	Ok(())
 }
 
@@ -174,15 +180,15 @@ impl StorageBackend for SqliteStorageBackend {
 		let pos = pos / CHUNKSIZE;
 		let data = serialize_mapchunk_data(&data);
 		// TODO prepare this statement
-		self.conn.execute_named("UPDATE OR INSERT INTO chunks (x, y, z, content) \
-			VALUES (:x, :y, :z, :content)",
+		self.conn.execute_named("INSERT OR REPLACE INTO chunks (x, y, z, content) \
+			VALUES (:x, :y, :z, :content);",
 			&[(":x", &pos.x), (":y", &pos.y), (":z", &pos.z), (":content", &data)])?;
 		Ok(())
 	}
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
 		let pos = pos / CHUNKSIZE;
 		// TODO prepare this statement
-		let data :Option<Vec<u8>> = self.conn.query_row("SELECT content FROM chunks WHERE x=?,y=?,z=?",
+		let data :Option<Vec<u8>> = self.conn.query_row("SELECT content FROM chunks WHERE x=? AND y=? AND z=?",
 			&[&pos.x, &pos.y, &pos.z],
 			|row| row.get(0)
 		).optional()?;
