@@ -217,7 +217,13 @@ pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
 
 fn sqlite_backend_from_config(config :&Config) -> Option<DynStorageBackend> {
 	let p = config.map_storage_path.as_ref()?;
-	let sqlite_backend = SqliteStorageBackend::open_or_create(p).ok()?;
+	let sqlite_backend = match SqliteStorageBackend::open_or_create(p) {
+		Ok(b) => b,
+		Err(e) => {
+			println!("Error while opening database: {:?}", e);
+			return None;
+		},
+	};
 	Some(Box::new(sqlite_backend))
 }
 
