@@ -85,8 +85,9 @@ fn spawn_schematic<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, schemat
 		for y in pos_min.y ..= pos_max.y {
 			for z in pos_min.z ..= pos_max.z {
 				let p = Vector3::new(x, y, z);
-				if let Some(chn) = map.get_chunk(p) {
+				if let Some(chn) = map.get_chunk(p).cloned() {
 					(map.on_change)(p, &chn);
+					map.backend.chunk_changed(p, chn);
 				}
 			}
 		}
