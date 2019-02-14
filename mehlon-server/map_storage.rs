@@ -197,14 +197,24 @@ impl StorageBackend for SqliteStorageBackend {
 				let mut stmt = self.conn.prepare_cached("COMMIT;")?;
 				stmt.execute(NO_PARAMS)?;
 			}
-			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
-			stmt.execute(NO_PARAMS)?;
 		} else {
 			self.ctr -= 1;
+		}
+		if self.conn.is_autocommit() {
+			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
+			stmt.execute(NO_PARAMS)?;
 		}
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO chunks (x, y, z, content) \
 			VALUES (?, ?, ?, ?);")?;
 		stmt.execute(&[&pos.x as &dyn ToSql, &pos.y, &pos.z, &data])?;
+		Ok(())
+	}
+	fn tick(&mut self) -> Result<(), StrErr> {
+		if !self.conn.is_autocommit() {
+			self.ctr = WRITES_PER_TRANSACTION;
+			let mut stmt = self.conn.prepare_cached("COMMIT;")?;
+			stmt.execute(NO_PARAMS)?;
+		}
 		Ok(())
 	}
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
@@ -228,6 +238,9 @@ pub struct NullStorageBackend;
 impl StorageBackend for NullStorageBackend {
 	fn store_chunk(&mut self, _pos :Vector3<isize>,
 			_data :&MapChunkData) -> Result<(), StrErr> {
+		Ok(())
+	}
+	fn tick(&mut self) -> Result<(), StrErr> {
 		Ok(())
 	}
 	fn load_chunk(&mut self, _pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
@@ -258,5 +271,6 @@ pub fn storage_backend_from_config(config :&Config) -> DynStorageBackend {
 pub trait StorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
 			data :&MapChunkData) -> Result<(), StrErr>;
+	fn tick(&mut self) -> Result<(), StrErr>;
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr>;
 }

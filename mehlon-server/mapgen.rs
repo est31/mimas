@@ -403,6 +403,7 @@ impl MapgenMap {
 
 pub enum MapgenMsg {
 	ChunkChanged(Vector3<isize>, MapChunkData),
+	Tick,
 	GenArea(Vector3<isize>, Vector3<isize>),
 }
 
@@ -421,6 +422,9 @@ impl MapgenThread {
 				match msg {
 					MapgenMsg::ChunkChanged(pos, data) => {
 						mapgen_map.storage.store_chunk(pos, &data).unwrap();
+					},
+					MapgenMsg::Tick => {
+						mapgen_map.storage.tick().unwrap();
 					},
 					MapgenMsg::GenArea(pos_min, pos_max) => {
 						mapgen_map.gen_chunks_in_area(pos_min, pos_max, &mut |pos, chk|{
@@ -447,6 +451,8 @@ impl MapBackend for MapgenThread {
 		while let Ok((pos, chk)) = self.result_r.try_recv() {
 			f(pos, &chk);
 		}
+		// This is called once per tick
+		self.area_s.send(MapgenMsg::Tick).unwrap();
 	}
 	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData) {
 		self.area_s.send(MapgenMsg::ChunkChanged(pos, data)).unwrap();
