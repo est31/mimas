@@ -96,7 +96,7 @@ impl SqliteStorageBackend {
 
 		Ok(Self {
 			conn,
-			ctr : WRITES_PER_TRANSACTION,
+			ctr : 0,
 		})
 	}
 	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self, StrErr> {
