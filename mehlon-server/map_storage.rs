@@ -10,6 +10,7 @@ use config::Config;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
+	ctr :u32,
 }
 
 /// Magic used to identify the mehlon application.
@@ -18,6 +19,12 @@ pub struct SqliteStorageBackend {
 const MEHLON_SQLITE_APP_ID :i32 = 0x84eeae3cu32 as i32;
 
 const USER_VERSION :u16 = 1;
+
+/// We group multiple writes into transactions
+/// as each transaction incurs a time penalty,
+/// which added up, makes having one transaction
+/// per write really slow.
+const WRITES_PER_TRANSACTION :u32 = 50;
 
 fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	set_app_id(conn, MEHLON_SQLITE_APP_ID)?;
@@ -86,8 +93,10 @@ impl SqliteStorageBackend {
 		} else {
 			expect_user_ver(&mut conn)?;
 		}
+
 		Ok(Self {
 			conn,
+			ctr : WRITES_PER_TRANSACTION,
 		})
 	}
 	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self, StrErr> {
@@ -182,6 +191,17 @@ impl StorageBackend for SqliteStorageBackend {
 			data :&MapChunkData) -> Result<(), StrErr> {
 		let pos = pos / CHUNKSIZE;
 		let data = serialize_mapchunk_data(&data);
+		if self.ctr == 0 {
+			self.ctr = WRITES_PER_TRANSACTION;
+			if !self.conn.is_autocommit() {
+				let mut stmt = self.conn.prepare_cached("COMMIT;")?;
+				stmt.execute(NO_PARAMS)?;
+			}
+			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
+			stmt.execute(NO_PARAMS)?;
+		} else {
+			self.ctr -= 1;
+		}
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO chunks (x, y, z, content) \
 			VALUES (?, ?, ?, ?);")?;
 		stmt.execute(&[&pos.x as &dyn ToSql, &pos.y, &pos.z, &data])?;
