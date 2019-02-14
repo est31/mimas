@@ -110,7 +110,7 @@ impl<'a, B :MapBackend> MapBlockHandle<'a, B> {
 		let chunk_pos = btchn(self.pos);
 		let pos_in_chunk = btpic(self.pos);
 		*self.chk.get_blk_mut(pos_in_chunk) = b;
-		self.backend.chunk_changed(self.pos, *self.chk);
+		self.backend.chunk_changed(chunk_pos, *self.chk);
 		(*self.on_change)(chunk_pos, &self.chk);
 	}
 }
