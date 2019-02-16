@@ -335,13 +335,21 @@ impl MapgenMap {
 		let pos_max = pos_max.map(|v| v / CHUNKSIZE);
 
 		let mut sth_to_generate = false;
-		for x in pos_min.x ..= pos_max.x {
-			for y in pos_min.y ..= pos_max.y {
-				for z in pos_min.z ..= pos_max.z {
+
+		let ex = 2;
+		for x in pos_min.x - ex ..= pos_max.x + ex {
+			for y in pos_min.y - ex ..= pos_max.y + ex {
+				for z in pos_min.z - ex ..= pos_max.z + ex {
 					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
 					if let Some(c) = self.chunks.get(&pos) {
-						if c.generation_phase != GenerationPhase::Done {
-							sth_to_generate = true;
+						// TODO use range_contains once it's available
+						// https://github.com/rust-lang/rust/issues/3231
+						if x >= pos_min.x && x < pos_max.x &&
+								y >= pos_min.y && y < pos_max.y &&
+								z >= pos_min.z && z < pos_max.z {
+							if c.generation_phase != GenerationPhase::Done {
+								sth_to_generate = true;
+							}
 						}
 						// TODO: once we have NLL, remove the continue, and
 						// remove the /* */ around the else below.
@@ -357,7 +365,13 @@ impl MapgenMap {
 							f(pos, &chn.data);
 							self.chunks.insert(pos, chn);
 						} else {
-							sth_to_generate = true;
+							// TODO use range_contains once it's available
+							// https://github.com/rust-lang/rust/issues/3231
+							if x >= pos_min.x && x < pos_max.x &&
+									y >= pos_min.y && y < pos_max.y &&
+									z >= pos_min.z && z < pos_max.z {
+								sth_to_generate = true;
+							}
 						}
 					}
 				}
