@@ -19,7 +19,7 @@ pub struct SqliteStorageBackend {
 /// This magic was taken from hexdump -n 32 /dev/urandom output.
 const MEHLON_SQLITE_APP_ID :i32 = 0x84eeae3cu32 as i32;
 
-const USER_VERSION :u16 = 1;
+const USER_VERSION :u16 = 2;
 
 /// We group multiple writes into transactions
 /// as each transaction incurs a time penalty,
@@ -47,6 +47,21 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 		)",
 		NO_PARAMS,
 	)?;
+	migrate_v2(conn)?;
+	Ok(())
+}
+
+fn migrate_v2(conn :&mut Connection) -> Result<(), StrErr> {
+	conn.execute(
+		"CREATE TABLE IF NOT EXISTS player_kvstore (
+			id_src INTEGER,
+			id INTEGER,
+			kkey VARCHAR(16),
+			content BLOB,
+			PRIMARY KEY(id_src, id, kkey)
+		)",
+		NO_PARAMS,
+	)?;
 	Ok(())
 }
 
@@ -57,9 +72,12 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 		Err(format!("expected app id {} but was {}",
 			MEHLON_SQLITE_APP_ID, app_id))?;
 	}
-	if user_version != USER_VERSION {
-		Err(format!("expected user_version {} but was {}",
-			USER_VERSION, user_version))?;
+	if user_version > USER_VERSION {
+		Err(format!("user_version of database {} newer than maximum supported {}",
+			user_version, USER_VERSION))?;
+	} else if user_version < USER_VERSION {
+		migrate_v2(conn)?;
+		set_user_version(conn, USER_VERSION)?;
 	}
 	Ok(())
 }
@@ -246,6 +264,20 @@ impl StorageBackend for SqliteStorageBackend {
 		stmt.execute(&[&key as &dyn ToSql, &content])?;
 		Ok(())
 	}
+	fn get_player_kv(&mut self, id_src :u8, id :u64, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+		let mut stmt = self.conn.prepare_cached("SELECT content FROM player_kvstore WHERE id_src=? AND id=? AND kkey=?")?;
+		let data :Option<Vec<u8>> = stmt.query_row(
+			&[&id_src as &dyn ToSql, &(id as i64), &key],
+			|row| row.get(0)
+		).optional()?;
+		Ok(data)
+	}
+	fn set_player_kv(&mut self, id_src :u8, id :u64, key :&str, content :&[u8]) -> Result<(), StrErr> {
+		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO player_kvstore (id_src, id, kkey, content) \
+			VALUES (?, ?);")?;
+		stmt.execute(&[&id_src as &dyn ToSql, &(id as i64), &key, &content])?;
+		Ok(())
+	}
 }
 
 pub struct NullStorageBackend;
@@ -265,6 +297,12 @@ impl StorageBackend for NullStorageBackend {
 		Ok(None)
 	}
 	fn set_global_kv(&mut self, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
+		Ok(())
+	}
+	fn get_player_kv(&mut self, _id_src :u8, _id :u64, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+		Ok(None)
+	}
+	fn set_player_kv(&mut self, _id_src :u8, _id :u64, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
 		Ok(())
 	}
 }
@@ -300,7 +338,7 @@ fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Conf
 		// Otherwise write our own seed
 		let mapgen_meta = MapgenMetaToml {
 			seed : config.mapgen_seed,
-			mapgen_name : "mgv1",
+			mapgen_name : "mgv1".to_string(),
 		};
 		save_mapgen_meta_toml(backend, &mapgen_meta)?;
 	}
@@ -339,4 +377,6 @@ pub trait StorageBackend {
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr>;
 	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
 	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr>;
+	fn get_player_kv(&mut self, id_src :u8, id :u64, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
+	fn set_player_kv(&mut self, id_src :u8, id :u64, key :&str, content :&[u8]) -> Result<(), StrErr>;
 }
