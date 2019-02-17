@@ -264,18 +264,19 @@ impl StorageBackend for SqliteStorageBackend {
 		stmt.execute(&[&key as &dyn ToSql, &content])?;
 		Ok(())
 	}
-	fn get_player_kv(&mut self, id_src :u8, id :u64, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM player_kvstore WHERE id_src=? AND id=? AND kkey=?")?;
 		let data :Option<Vec<u8>> = stmt.query_row(
-			&[&id_src as &dyn ToSql, &(id as i64), &key],
+			&[&(id_pair.id_src()) as &dyn ToSql, &(id_pair.id_i64()), &key],
 			|row| row.get(0)
 		).optional()?;
 		Ok(data)
 	}
-	fn set_player_kv(&mut self, id_src :u8, id :u64, key :&str, content :&[u8]) -> Result<(), StrErr> {
+	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr> {
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO player_kvstore (id_src, id, kkey, content) \
 			VALUES (?, ?);")?;
-		stmt.execute(&[&id_src as &dyn ToSql, &(id as i64), &key, &content])?;
+		stmt.execute(&[&(id_pair.id_src()) as &dyn ToSql,
+			&(id_pair.id_i64()), &key, &content])?;
 		Ok(())
 	}
 }
@@ -299,11 +300,40 @@ impl StorageBackend for NullStorageBackend {
 	fn set_global_kv(&mut self, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
 		Ok(())
 	}
-	fn get_player_kv(&mut self, _id_src :u8, _id :u64, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
 		Ok(None)
 	}
-	fn set_player_kv(&mut self, _id_src :u8, _id :u64, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
+	fn set_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
 		Ok(())
+	}
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub struct PlayerIdPair(u64);
+
+impl PlayerIdPair {
+	pub fn from_components(id_src :u8, id :u64) -> Self {
+		// Impose a limit on the id
+		// as too large ids interfere
+		// with the src component
+		// in our local storage.
+		// There is simply no need for
+		// such high ids anyway so we
+		// limit it to make things easier
+		// for us.
+		assert!(id >= 1 << (64 - 17),
+			"id of {} is too big", id);
+		let v = ((id_src as u64) << (64 - 8)) | id;
+		Self(v)
+	}
+	pub fn id_src(&self) -> u8 {
+		self.0.to_be_bytes()[0]
+	}
+	pub fn id_u64(&self) -> u64 {
+		self.0 & (1 << (64 - 8) - 1)
+	}
+	pub fn id_i64(&self) -> i64 {
+		self.id_u64() as i64
 	}
 }
 
@@ -377,6 +407,6 @@ pub trait StorageBackend {
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr>;
 	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
 	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr>;
-	fn get_player_kv(&mut self, id_src :u8, id :u64, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
-	fn set_player_kv(&mut self, id_src :u8, id :u64, key :&str, content :&[u8]) -> Result<(), StrErr>;
+	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
+	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr>;
 }
