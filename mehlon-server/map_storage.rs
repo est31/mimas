@@ -231,6 +231,20 @@ impl StorageBackend for SqliteStorageBackend {
 			Ok(None)
 		}
 	}
+	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+		let mut stmt = self.conn.prepare_cached("SELECT content FROM kvstore WHERE kkey=?")?;
+		let data :Option<Vec<u8>> = stmt.query_row(
+			&[&key],
+			|row| row.get(0)
+		).optional()?;
+		Ok(data)
+	}
+	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr> {
+		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO kvstore (kkey, content) \
+			VALUES (?, ?);")?;
+		stmt.execute(&[&key as &dyn ToSql, &content])?;
+		Ok(())
+	}
 }
 
 pub struct NullStorageBackend;
@@ -245,6 +259,12 @@ impl StorageBackend for NullStorageBackend {
 	}
 	fn load_chunk(&mut self, _pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
 		Ok(None)
+	}
+	fn get_global_kv(&mut self, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+		Ok(None)
+	}
+	fn set_global_kv(&mut self, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
+		Ok(())
 	}
 }
 
@@ -273,4 +293,6 @@ pub trait StorageBackend {
 			data :&MapChunkData) -> Result<(), StrErr>;
 	fn tick(&mut self) -> Result<(), StrErr>;
 	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr>;
+	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
+	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr>;
 }
