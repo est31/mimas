@@ -3,10 +3,11 @@ use rusqlite::types::ToSql;
 use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
-use std::{io, path::Path};
+use std::{str, io, path::Path};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use flate2::{Compression, GzBuilder, read::GzDecoder};
 use config::Config;
+use toml::{from_str, to_string};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -268,12 +269,55 @@ impl StorageBackend for NullStorageBackend {
 	}
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct MapgenMetaToml {
+	seed :u64,
+	mapgen_name :String,
+}
+
+fn load_mapgen_meta_toml<B :StorageBackend>(backend :&mut B) -> Result<Option<MapgenMetaToml>, StrErr> {
+	let mapgen_meta_arr = if let Some(v) = backend.get_global_kv("mapgen_meta")? {
+		v
+	} else {
+		return Ok(None);
+	};
+	let mapgen_meta_str = str::from_utf8(&mapgen_meta_arr)?;
+	let mapgen_meta = from_str(mapgen_meta_str)?;
+	Ok(Some(mapgen_meta))
+}
+
+fn save_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, m :&MapgenMetaToml) -> Result<(), StrErr> {
+	let mapgen_meta_str = to_string(m)?;
+	backend.set_global_kv("mapgen_meta", mapgen_meta_str.as_bytes())?;
+	Ok(())
+}
+
+fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Config) -> Result<(), StrErr> {
+	if let Some(mapgen_meta) = load_mapgen_meta_toml(backend)? {
+		// If a seed already exists, use it
+		config.mapgen_seed = mapgen_meta.seed;
+	} else {
+		// Otherwise write our own seed
+		let mapgen_meta = MapgenMetaToml {
+			seed : config.mapgen_seed,
+			mapgen_name : "mgv1",
+		};
+		save_mapgen_meta_toml(backend, &mapgen_meta)?;
+	}
+	Ok(())
+}
+
 pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
 
-fn sqlite_backend_from_config(config :&Config) -> Option<DynStorageBackend> {
-	let p = config.map_storage_path.as_ref()?;
+fn sqlite_backend_from_config(config :&mut Config) -> Option<DynStorageBackend> {
+	// TODO: once we have NLL, remove the "cloned" below
+	// See: https://github.com/rust-lang/rust/issues/57804
+	let p = config.map_storage_path.as_ref().cloned()?;
 	let sqlite_backend = match SqliteStorageBackend::open_or_create(p) {
-		Ok(b) => b,
+		Ok(mut b) => {
+			manage_mapgen_meta_toml(&mut b, config).unwrap();
+			b
+		},
 		Err(e) => {
 			println!("Error while opening database: {:?}", e);
 			return None;
@@ -282,7 +326,7 @@ fn sqlite_backend_from_config(config :&Config) -> Option<DynStorageBackend> {
 	Some(Box::new(sqlite_backend))
 }
 
-pub fn storage_backend_from_config(config :&Config) -> DynStorageBackend {
+pub fn storage_backend_from_config(config :&mut Config) -> DynStorageBackend {
 	sqlite_backend_from_config(config).unwrap_or_else(|| {
 		Box::new(NullStorageBackend)
 	})

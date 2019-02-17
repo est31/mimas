@@ -113,8 +113,8 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S, config :Config) -> Self {
-		let backend = map_storage::storage_backend_from_config(&config);
+	pub fn new(srv_socket :S, mut config :Config) -> Self {
+		let backend = map_storage::storage_backend_from_config(&mut config);
 		let mut map = ServerMap::new(config.mapgen_seed, backend);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
