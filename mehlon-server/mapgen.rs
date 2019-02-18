@@ -9,6 +9,7 @@ use {btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
+use map_storage::PlayerIdPair;
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -419,6 +420,7 @@ pub enum MapgenMsg {
 	ChunkChanged(Vector3<isize>, MapChunkData),
 	Tick,
 	GenArea(Vector3<isize>, Vector3<isize>),
+	SetPlayerKv(PlayerIdPair, String, Vec<u8>),
 }
 
 pub struct MapgenThread {
@@ -445,6 +447,9 @@ impl MapgenThread {
 							result_s.send((pos, chk.clone())).unwrap();
 						})
 					},
+					MapgenMsg::SetPlayerKv(id_pair, key, content) => {
+						mapgen_map.storage.set_player_kv(id_pair, &key, &content).unwrap();
+					},
 				}
 			}
 		});
@@ -470,6 +475,9 @@ impl MapBackend for MapgenThread {
 	}
 	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData) {
 		self.area_s.send(MapgenMsg::ChunkChanged(pos, data)).unwrap();
+	}
+	fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>) {
+		self.area_s.send(MapgenMsg::SetPlayerKv(id, key.to_owned(), value)).unwrap();
 	}
 }
 

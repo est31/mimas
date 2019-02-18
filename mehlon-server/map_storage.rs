@@ -318,6 +318,9 @@ impl StorageBackend for NullStorageBackend {
 pub struct PlayerIdPair(u64);
 
 impl PlayerIdPair {
+	pub fn singleplayer() -> Self {
+		Self::from_components(0, 0)
+	}
 	pub fn from_components(id_src :u8, id :u64) -> Self {
 		// Impose a limit on the id
 		// as too large ids interfere
@@ -379,6 +382,53 @@ fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Conf
 		save_mapgen_meta_toml(backend, &mapgen_meta)?;
 	}
 	Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlayerPosition {
+	x :f32,
+	y :f32,
+	z :f32,
+	pitch :f32,
+	yaw :f32,
+}
+
+impl Default for PlayerPosition {
+	fn default() -> Self {
+		Self {
+			x : 60.0,
+			y : 40.0,
+			z : 20.0,
+			pitch : 45.0,
+			yaw : 0.0,
+		}
+	}
+}
+
+impl PlayerPosition {
+	pub fn from_pos(pos :Vector3<f32>) -> Self {
+		Self {
+			x : pos.x,
+			y : pos.y,
+			z : pos.z,
+			pitch : 45.0,
+			yaw : 0.0,
+		}
+	}
+	pub fn pos(&self) -> Vector3<f32> {
+		Vector3::new(self.x, self.y, self.z)
+	}
+}
+
+pub fn load_player_position(backend :&mut (impl StorageBackend + ?Sized), id_pair :PlayerIdPair) -> Result<Option<PlayerPosition>, StrErr> {
+	let buf = if let Some(v) = backend.get_player_kv(id_pair, "position")? {
+		v
+	} else {
+		return Ok(None);
+	};
+	let serialized_str = str::from_utf8(&buf)?;
+	let deserialized = from_str(serialized_str)?;
+	Ok(Some(deserialized))
 }
 
 pub type DynStorageBackend = Box<dyn StorageBackend + Send>;

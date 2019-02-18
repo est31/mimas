@@ -177,6 +177,9 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
 				match msg {
+					ServerToClientMsg::SetPos(p) => {
+						self.camera.pos = p;
+					},
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);
 					},

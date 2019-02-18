@@ -46,6 +46,7 @@ use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
+use map_storage::{PlayerIdPair, load_player_position, PlayerPosition};
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -57,6 +58,7 @@ pub enum ClientToServerMsg {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ServerToClientMsg {
+	SetPos(Vector3<f32>),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
 }
@@ -104,9 +106,13 @@ impl<C: NetworkServerConn> Player<C> {
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
 	config :Config,
+	// This is a temporary hack as it only works for
+	// singleplayer
+	new_player_spawn_pos :PlayerPosition,
 	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
+	last_pos_storage_time :Instant,
 	last_fps :f32,
 
 	map :ServerMap,
@@ -114,7 +120,10 @@ pub struct Server<S :NetworkServerSocket> {
 
 impl<S :NetworkServerSocket> Server<S> {
 	pub fn new(srv_socket :S, mut config :Config) -> Self {
-		let backend = map_storage::storage_backend_from_config(&mut config);
+		let mut backend = map_storage::storage_backend_from_config(&mut config);
+		let player_pos = load_player_position(&mut *backend, PlayerIdPair::singleplayer())
+			.unwrap()
+			.unwrap_or_default();
 		let mut map = ServerMap::new(config.mapgen_seed, backend);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
@@ -136,9 +145,11 @@ impl<S :NetworkServerSocket> Server<S> {
 		let srv = Server {
 			srv_socket,
 			config,
+			new_player_spawn_pos : player_pos,
 			players,
 
 			last_frame_time : Instant::now(),
+			last_pos_storage_time : Instant::now(),
 			last_fps : 0.0,
 			map,
 		};
@@ -229,6 +240,24 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		Ok(())
 	}
+	fn store_player_positions(&mut self) -> Result<(), StrErr> {
+		// This limiting makes sure we don't store the player positions
+		// too often as that would mean too much wear on the hdd
+		// and cause massive mapgen thread lag.
+		const INTERVAL_MILLIS :u128 = 1_500;
+		let now = Instant::now();
+		if (now - self.last_pos_storage_time).as_millis() < INTERVAL_MILLIS {
+			return Ok(());
+		}
+		self.last_pos_storage_time = now;
+		let players = self.players.clone();
+		for player in players.borrow().iter() {
+			let serialized_str = toml::to_string(&PlayerPosition::from_pos(player.pos))?;
+			self.map.set_player_kv(PlayerIdPair::singleplayer(),
+				"position", serialized_str.into());
+		}
+		Ok(())
+	}
 	fn send_chunks_to_players(&mut self) {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
@@ -277,6 +306,9 @@ impl<S :NetworkServerSocket> Server<S> {
 			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Some(conn) = self.srv_socket.try_open_conn() {
+				let msg = ServerToClientMsg::SetPos(self.new_player_spawn_pos.pos());
+				// TODO get rid of unwrap
+				conn.send(msg).unwrap();
 				let player_count = {
 					let mut players = self.players.borrow_mut();
 					players.push(Player::from_conn(conn));
@@ -288,6 +320,8 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.handle_chat_msg(msg);
 				}
 			}
+			self.store_player_positions().unwrap();
+
 			let msgs = self.get_msgs();
 
 			for msg in msgs {

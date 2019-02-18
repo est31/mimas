@@ -1,6 +1,7 @@
 use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
+use map_storage::PlayerIdPair;
 
 use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenThread};
 
@@ -130,6 +131,9 @@ impl MapBackend for ClientBackend {
 	fn chunk_changed(&mut self, _pos :Vector3<isize>, _data :MapChunkData) {
 		// Do nothing. The server just pushes any chunks.
 	}
+	fn set_player_kv(&mut self, _id :PlayerIdPair, _key :&str, _value :Vec<u8>) {
+		// Do nothing. There is no storage on the client.
+	}
 }
 
 pub trait MapBackend {
@@ -138,6 +142,7 @@ pub trait MapBackend {
 	fn run_for_generated_chunks<F :FnMut(Vector3<isize>, &MapChunkData)>(&mut self,
 			f :&mut F);
 	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData);
+	fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>);
 }
 
 impl Map<ClientBackend> {
@@ -203,5 +208,8 @@ impl<B :MapBackend> Map<B> {
 				backend,
 				on_change,
 			})
+	}
+	pub fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>) {
+		self.backend.set_player_kv(id, key, value);
 	}
 }
