@@ -136,6 +136,22 @@ impl SqliteStorageBackend {
 			Err(v) => Err(v)?,
 		}
 	}
+	fn maybe_begin_commit(&mut self) -> Result<(), StrErr> {
+		if self.ctr == 0 {
+			self.ctr = WRITES_PER_TRANSACTION;
+			if !self.conn.is_autocommit() {
+				let mut stmt = self.conn.prepare_cached("COMMIT;")?;
+				stmt.execute(NO_PARAMS)?;
+			}
+		} else {
+			self.ctr -= 1;
+		}
+		if self.conn.is_autocommit() {
+			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
+			stmt.execute(NO_PARAMS)?;
+		}
+		Ok(())
+	}
 }
 
 fn mapblock_to_number(b :MapBlock) -> u8 {
@@ -210,19 +226,7 @@ impl StorageBackend for SqliteStorageBackend {
 			data :&MapChunkData) -> Result<(), StrErr> {
 		let pos = pos / CHUNKSIZE;
 		let data = serialize_mapchunk_data(&data);
-		if self.ctr == 0 {
-			self.ctr = WRITES_PER_TRANSACTION;
-			if !self.conn.is_autocommit() {
-				let mut stmt = self.conn.prepare_cached("COMMIT;")?;
-				stmt.execute(NO_PARAMS)?;
-			}
-		} else {
-			self.ctr -= 1;
-		}
-		if self.conn.is_autocommit() {
-			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
-			stmt.execute(NO_PARAMS)?;
-		}
+		self.maybe_begin_commit()?;
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO chunks (x, y, z, content) \
 			VALUES (?, ?, ?, ?);")?;
 		stmt.execute(&[&pos.x as &dyn ToSql, &pos.y, &pos.z, &data])?;
@@ -259,6 +263,7 @@ impl StorageBackend for SqliteStorageBackend {
 		Ok(data)
 	}
 	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr> {
+		self.maybe_begin_commit()?;
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO kvstore (kkey, content) \
 			VALUES (?, ?);")?;
 		stmt.execute(&[&key as &dyn ToSql, &content])?;
@@ -273,6 +278,7 @@ impl StorageBackend for SqliteStorageBackend {
 		Ok(data)
 	}
 	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr> {
+		self.maybe_begin_commit()?;
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO player_kvstore (id_src, id, kkey, content) \
 			VALUES (?, ?, ?, ?);")?;
 		stmt.execute(&[&(id_pair.id_src()) as &dyn ToSql,
