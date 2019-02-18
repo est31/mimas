@@ -321,7 +321,7 @@ impl PlayerIdPair {
 		// such high ids anyway so we
 		// limit it to make things easier
 		// for us.
-		assert!(id >= 1 << (64 - 17),
+		assert!(id < 1 << (64 - 17),
 			"id of {} is too big", id);
 		let v = ((id_src as u64) << (64 - 8)) | id;
 		Self(v)
