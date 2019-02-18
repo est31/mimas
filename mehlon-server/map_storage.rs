@@ -274,7 +274,7 @@ impl StorageBackend for SqliteStorageBackend {
 	}
 	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr> {
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO player_kvstore (id_src, id, kkey, content) \
-			VALUES (?, ?);")?;
+			VALUES (?, ?, ?, ?);")?;
 		stmt.execute(&[&(id_pair.id_src()) as &dyn ToSql,
 			&(id_pair.id_i64()), &key, &content])?;
 		Ok(())
