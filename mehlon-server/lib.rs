@@ -87,15 +87,17 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 
 struct Player<C: NetworkServerConn> {
 	conn :C,
+	ids :PlayerIdPair,
 	pos :Vector3<f32>,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
 
 impl<C: NetworkServerConn> Player<C> {
-	pub fn from_conn(conn :C) -> Self {
+	pub fn from_conn_id(conn :C, ids :PlayerIdPair) -> Self {
 		Player {
 			conn,
+			ids,
 			pos : Vector3::new(0.0, 0.0, 0.0),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
@@ -253,8 +255,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let players = self.players.clone();
 		for player in players.borrow().iter() {
 			let serialized_str = toml::to_string(&PlayerPosition::from_pos(player.pos))?;
-			self.map.set_player_kv(PlayerIdPair::singleplayer(),
-				"position", serialized_str.into());
+			self.map.set_player_kv(player.ids, "position", serialized_str.into());
 		}
 		Ok(())
 	}
@@ -311,7 +312,12 @@ impl<S :NetworkServerSocket> Server<S> {
 				conn.send(msg).unwrap();
 				let player_count = {
 					let mut players = self.players.borrow_mut();
-					players.push(Player::from_conn(conn));
+					// TODO don't always assume singleplayer
+					// for the id here. Implementing proper
+					// multi-id support needs thoughts
+					// on the login protocol.
+					let id = PlayerIdPair::singleplayer();
+					players.push(Player::from_conn_id(conn, id));
 					players.len()
 				};
 				// In singleplayer, don't spam messages about players joining
