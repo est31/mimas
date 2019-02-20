@@ -275,7 +275,7 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
-		if self.camera.fast_mode {
+		if self.camera.fast_speed() {
 			const FAST_DELTA :f32 = 40.0;
 			delta_pos *= FAST_DELTA;
 		} else {
@@ -708,6 +708,7 @@ struct Camera {
 	right_pressed :bool,
 	backward_pressed :bool,
 
+	fast_pressed :bool,
 	fast_mode :bool,
 	noclip_mode :bool,
 	fly_mode :bool,
@@ -735,6 +736,7 @@ impl Camera {
 			right_pressed : false,
 			backward_pressed : false,
 
+			fast_pressed : false,
 			fast_mode : false,
 			noclip_mode : false,
 			fly_mode : true,
@@ -768,6 +770,9 @@ impl Camera {
 			glutin::VirtualKeyCode::Space => b = Some(&mut self.up_pressed),
 			glutin::VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
 		_ => (),
+		}
+		if key == glutin::VirtualKeyCode::E {
+			self.fast_pressed = input.state == glutin::ElementState::Pressed;
 		}
 		if key == glutin::VirtualKeyCode::K {
 			if input.state == glutin::ElementState::Pressed {
@@ -829,6 +834,9 @@ impl Camera {
 		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -MAX_PITCH, MAX_PITCH);
 		self.yaw += factor * delta.x as f32;
 		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
+	}
+	fn fast_speed(&self) -> bool {
+		self.fast_mode || self.fast_pressed
 	}
 
 	fn direction(&self) -> Point3<f32> {
