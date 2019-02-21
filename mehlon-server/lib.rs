@@ -279,7 +279,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		println!("Command: {}", msg);
 		let mut it = msg[1..].split(" ");
 		let command = it.next().unwrap();
-		let params = it.collect::<Vec<&str>>();
+		let _params = it.collect::<Vec<&str>>();
 		match command {
 			"spawn" => {
 				// TODO only move the player themselves to spawn, not all players
