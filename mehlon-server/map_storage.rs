@@ -1,5 +1,5 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension, OpenFlags};
-use rusqlite::types::ToSql;
+use rusqlite::types::{Value, ToSql};
 use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
@@ -256,11 +256,11 @@ impl StorageBackend for SqliteStorageBackend {
 	}
 	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM kvstore WHERE kkey=?")?;
-		let data :Option<Vec<u8>> = stmt.query_row(
+		let data :Option<Value> = stmt.query_row(
 			&[&key],
 			|row| row.get(0)
 		).optional()?;
-		Ok(data)
+		Ok(value_to_vec(data)?)
 	}
 	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr> {
 		self.maybe_begin_commit()?;
@@ -271,11 +271,11 @@ impl StorageBackend for SqliteStorageBackend {
 	}
 	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM player_kvstore WHERE id_src=? AND id=? AND kkey=?")?;
-		let data :Option<Vec<u8>> = stmt.query_row(
+		let data :Option<Value> = stmt.query_row(
 			&[&(id_pair.id_src()) as &dyn ToSql, &(id_pair.id_i64()), &key],
 			|row| row.get(0)
 		).optional()?;
-		Ok(data)
+		Ok(value_to_vec(data)?)
 	}
 	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr> {
 		self.maybe_begin_commit()?;
@@ -285,6 +285,24 @@ impl StorageBackend for SqliteStorageBackend {
 			&(id_pair.id_i64()), &key, &content])?;
 		Ok(())
 	}
+}
+
+// Sqlite has a thing called "affinity" for its types, see also [1].
+// Due to this affinity, if stored with a third party program
+// like sqlitebrowser, some entries might end up to be of type Text
+// even though they are in a column of type Blob.
+// As we explicitly want to support the use case where you
+// edit entries in sqlitebrowser or other programs,
+// we'll have to support reading in the Text format,
+// while also supporting the Blob format for possibly binary data.
+// [1]: https://www.sqlite.org/datatype3.html
+fn value_to_vec(v :Option<Value>) -> Result<Option<Vec<u8>>, StrErr> {
+	Ok(match v {
+		Some(Value::Text(s)) => Some(s.into_bytes()),
+		Some(Value::Blob(b)) => Some(b),
+		Some(_) => return Err("SQL column entry type mismatch: Blob or String required.".into()),
+		None => None,
+	})
 }
 
 pub struct NullStorageBackend;
