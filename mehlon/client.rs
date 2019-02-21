@@ -559,8 +559,13 @@ impl<C :NetworkClientConn> Game<C> {
 						let ev = if let Some(ref mut w) = self.chat_window {
 							w.handle_character(ch)
 						} else {
-							if ch == 't' {
-								self.chat_window = Some(ChatWindow::new());
+							if ch == 't' || ch == '/' {
+								let mut chwin = if ch == '/' {
+									ChatWindow::with_text("/".to_owned())
+								} else {
+									ChatWindow::new()
+								};
+								self.chat_window = Some(chwin);
 								self.check_grab_change();
 							}
 							ChatWindowEvent::None

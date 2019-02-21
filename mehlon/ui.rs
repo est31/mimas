@@ -75,8 +75,11 @@ pub enum ChatWindowEvent {
 
 impl ChatWindow {
 	pub fn new() -> Self {
+		Self::with_text("".to_owned())
+	}
+	pub fn with_text(text :String) -> Self {
 		ChatWindow {
-			text : String::from(""),
+			text,
 		}
 	}
 	pub fn text(&self) -> &str {
