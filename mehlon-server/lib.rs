@@ -275,6 +275,31 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	fn handle_command(&mut self, msg :String) {
+		println!("Command: {}", msg);
+		let mut it = msg[1..].split(" ");
+		let command = it.next().unwrap();
+		let params = it.collect::<Vec<&str>>();
+		match command {
+			"spawn" => {
+				// TODO only move the player themselves to spawn, not all players
+				let players = self.players.clone();
+				let msg = ServerToClientMsg::SetPos(PlayerPosition::default().pos());
+				let mut players_to_remove = Vec::new();
+				for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
+					if player.conn.send(msg.clone()).is_err() {
+						players_to_remove.push(idx);
+					}
+				}
+				close_connections(&players_to_remove, &mut *players.borrow_mut());
+			},
+			_ => {
+				// TODO only send this to the player invoking the command,
+				// TODO not all players
+				self.handle_chat_msg(format!("Unknown command {}", command));
+			},
+		}
+	}
 	fn handle_chat_msg(&mut self, msg :String) {
 		println!("Chat: {}", msg);
 		let players = self.players.clone();
@@ -345,7 +370,11 @@ impl<S :NetworkServerSocket> Server<S> {
 					},
 					SetPos(_p) => unreachable!(),
 					Chat(m) => {
-						self.handle_chat_msg(m);
+						if m.starts_with('/') {
+							self.handle_command(m);
+						} else {
+							self.handle_chat_msg(m);
+						}
 					},
 				}
 			}
