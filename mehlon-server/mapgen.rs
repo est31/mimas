@@ -82,8 +82,10 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 	// Tree pcg
 	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
 	// Coal noise
-	let cf = 0.033951;
+	let cf = 0.083951;
 	let cnoise = Noise::new(seeder.gen::<u32>(), cf);
+	// Coal pcg
+	let mut cpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
 	// Cave noise
 	let ca_f = 0.052951;
 	let ca_noise = Noise::new(seeder.gen::<u32>(), ca_f);
@@ -107,8 +109,15 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 					for z in 0 .. el {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
 						let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
-						if cnoise.get_3d(p3) > 0.8 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
+						let coal_limit = if pos.z + z < -100 {
+							0.5
+						} else {
+							0.8
+						};
+						if cnoise.get_3d(p3) > coal_limit {
+							if cpcg.gen::<f64>() > 0.6 {
+								*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
+							}
 						}
 						// Generate caves,
 						// but make sure that there is a distance
