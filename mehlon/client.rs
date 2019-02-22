@@ -150,7 +150,7 @@ impl<C :NetworkClientConn> Game<C> {
 		} else {
 			// At the beginning float_delta can be zero
 			// and 1/0 would fuck up the last_fps value
-			0.0
+			900.0
 		};
 		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
 		self.last_fps = fps;
