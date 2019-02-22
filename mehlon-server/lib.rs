@@ -164,17 +164,17 @@ impl<S :NetworkServerSocket> Server<S> {
 		self.last_frame_time = cur_time;
 
 		const EPS :f32 = 0.1;
+		const FPS_TGT :f32 = 60.0;
 		let fps_cur_term = if float_delta > 0.0 {
 			1.0 / float_delta
 		} else {
 			// At the beginning float_delta can be zero
 			// and 1/0 would fuck up the last_fps value
-			0.0
+			FPS_TGT * 100.0
 		};
 		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
 		self.last_fps = fps;
 
-		const FPS_TGT :f32 = 60.0;
 		// If we exceed our target FPS by a too high
 		// amount, slow a little bit down
 		// to avoid 100% CPU
