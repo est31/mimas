@@ -169,7 +169,10 @@ impl<S :NetworkServerSocket> Server<S> {
 			1.0 / float_delta
 		} else {
 			// At the beginning float_delta can be zero
-			// and 1/0 would fuck up the last_fps value
+			// and 1/0 would fuck up the last_fps value.
+			// Also, a value of 0.0 would mean that FPS
+			// limiting couldn't kick in. Thus, set
+			// it to something highly above the target.
 			FPS_TGT * 100.0
 		};
 		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
