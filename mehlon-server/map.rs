@@ -19,6 +19,7 @@ pub enum MapBlock {
 	Tree,
 	Cactus,
 	Coal,
+	IronOre,
 }
 
 impl Default for MapBlock {
@@ -38,7 +39,8 @@ impl MapBlock {
 			MapBlock::Tree |
 			MapBlock::Leaves |
 			MapBlock::Cactus |
-			MapBlock::Coal => true,
+			MapBlock::Coal |
+			MapBlock::IronOre => true,
 			_ => false
 		}
 	}

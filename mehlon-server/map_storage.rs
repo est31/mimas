@@ -167,6 +167,7 @@ fn mapblock_to_number(b :MapBlock) -> u8 {
 		Tree => 7,
 		Cactus => 8,
 		Coal => 9,
+		IronOre => 10,
 	}
 }
 
@@ -183,6 +184,7 @@ fn number_to_mapblock(b :u8) -> Option<MapBlock> {
 		7 => Tree,
 		8 => Cactus,
 		9 => Coal,
+		10 => IronOre,
 		_ => return None,
 	})
 }
