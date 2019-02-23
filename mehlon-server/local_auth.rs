@@ -18,19 +18,17 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_name_id_map (
-			id INTEGER,
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name VARCHAR(16),
 			lcname VARCHAR(16),
-			PRIMARY KEY(id_src, id),
 			UNIQUE(lcname)
 		)",
 		NO_PARAMS,
 	)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
-			id INTEGER,
-			pwhash BLOB,
-			PRIMARY KEY(id_src, id)
+			id INTEGER PRIMARY KEY,
+			pwhash BLOB
 		)",
 		NO_PARAMS,
 	)?;
