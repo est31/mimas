@@ -49,6 +49,7 @@ use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, load_player_position, PlayerPosition};
+use local_auth::SqliteLocalAuth;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -111,6 +112,7 @@ pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
 	is_singleplayer :bool,
 	config :Config,
+	auth_back :Option<SqliteLocalAuth>,
 	// This is a temporary hack as it only works for
 	// singleplayer
 	new_player_spawn_pos :PlayerPosition,
@@ -125,11 +127,12 @@ pub struct Server<S :NetworkServerSocket> {
 
 impl<S :NetworkServerSocket> Server<S> {
 	pub fn new(srv_socket :S, singleplayer :bool, mut config :Config) -> Self {
-		let mut backend = map_storage::storage_backend_from_config(&mut config);
-		let player_pos = load_player_position(&mut *backend, PlayerIdPair::singleplayer())
+		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
+		let (mut storage_back, auth_back) = backends;
+		let player_pos = load_player_position(&mut *storage_back, PlayerIdPair::singleplayer())
 			.unwrap()
 			.unwrap_or_default();
-		let mut map = ServerMap::new(config.mapgen_seed, backend);
+		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
 		let playersc = players.clone();
@@ -151,6 +154,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			srv_socket,
 			is_singleplayer : singleplayer,
 			config,
+			auth_back,
 			new_player_spawn_pos : player_pos,
 			players,
 

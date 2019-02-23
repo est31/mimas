@@ -10,6 +10,7 @@ use config::Config;
 use toml::{from_str, to_string};
 use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
+use local_auth::SqliteLocalAuth;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -418,11 +419,12 @@ pub fn load_player_position(backend :&mut (impl StorageBackend + ?Sized), id_pai
 
 pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
 
-fn sqlite_backend_from_config(config :&mut Config) -> Option<DynStorageBackend> {
+fn sqlite_backend_from_config(config :&mut Config, auth_needed :bool)
+		-> Option<(DynStorageBackend, Option<SqliteLocalAuth>)> {
 	// TODO: once we have NLL, remove the "cloned" below
 	// See: https://github.com/rust-lang/rust/issues/57804
 	let p = config.map_storage_path.as_ref().cloned()?;
-	let sqlite_backend = match SqliteStorageBackend::open_or_create(p) {
+	let sqlite_backend = match SqliteStorageBackend::open_or_create(&p) {
 		Ok(mut b) => {
 			manage_mapgen_meta_toml(&mut b, config).unwrap();
 			b
@@ -432,12 +434,31 @@ fn sqlite_backend_from_config(config :&mut Config) -> Option<DynStorageBackend> 
 			return None;
 		},
 	};
-	Some(Box::new(sqlite_backend))
+	let storage_backend = Box::new(sqlite_backend);
+	let p_config = Path::new(&p);
+	let p_auth = p_config.with_file_name(p_config.file_stem()
+			.and_then(|v| v.to_str()).unwrap_or("").to_owned()
+		+ "-auth.sqlite");
+	let local_auth = if auth_needed {
+		Some(SqliteLocalAuth::open_or_create(p_auth).unwrap())
+	} else {
+		None
+	};
+
+	Some((storage_backend, local_auth))
 }
 
-pub fn storage_backend_from_config(config :&mut Config) -> DynStorageBackend {
-	sqlite_backend_from_config(config).unwrap_or_else(|| {
-		Box::new(NullStorageBackend)
+pub fn backends_from_config(config :&mut Config, auth_needed :bool)
+		-> (DynStorageBackend, Option<SqliteLocalAuth>) {
+	sqlite_backend_from_config(config, auth_needed).unwrap_or_else(|| {
+		let storage_backend = Box::new(NullStorageBackend);
+		let local_auth = if auth_needed {
+			let local_auth_conn = Connection::open_in_memory().unwrap();
+			Some(SqliteLocalAuth::from_conn(local_auth_conn, true).unwrap())
+		} else {
+			None
+		};
+		(storage_backend, local_auth)
 	})
 }
 
