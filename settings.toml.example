@@ -1,0 +1,22 @@
+# The seed used to generate the map
+# mapgen_seed = 78
+
+# The radius of how far away from the player
+# to generate maps
+# mapgen_radius_xy = 5
+# mapgen_radius_z = 2
+
+#
+# draw_poly_lines = false
+
+# How far away of the player to still
+# render stuff
+# viewing_range = 128
+
+# Fog near/far values
+# fog_near = 40
+# fog_far = 60
+
+# If present, map storage is enabled,
+# and it's stored into the specified path
+# map_storage_path = "map.sqlite"
