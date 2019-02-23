@@ -3,6 +3,7 @@ use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use std::path::Path;
 use StrErr;
+use map_storage::PlayerIdPair;
 
 /// Magic used to identify the mehlon application.
 ///
@@ -22,6 +23,15 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 			lcname VARCHAR(16),
 			PRIMARY KEY(id_src, id),
 			UNIQUE(lcname)
+		)",
+		NO_PARAMS,
+	)?;
+	conn.execute(
+		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
+			id_src INTEGER,
+			id INTEGER,
+			BLOB,
+			PRIMARY KEY(id_src, id)
 		)",
 		NO_PARAMS,
 	)?;
@@ -48,6 +58,18 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 
 pub struct SqliteLocalAuth {
 	conn :Connection,
+}
+
+pub struct PlayerPwHash {
+	pub data :Vec<u8>,
+}
+
+pub trait AuthBackend {
+	fn get_player_id(&mut self, name :&str) -> Result<Option<PlayerIdPair>, StrErr>;
+	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr>;
+	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr>;
+	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr>;
+	fn add_player(&mut self, name :&str, pwh: PlayerPwHash) -> Result<(), StrErr>;
 }
 
 impl SqliteLocalAuth {
