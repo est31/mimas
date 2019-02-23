@@ -18,7 +18,6 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_name_id_map (
-			id_src INTEGER,
 			id INTEGER,
 			name VARCHAR(16),
 			lcname VARCHAR(16),
@@ -29,7 +28,6 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
-			id_src INTEGER,
 			id INTEGER,
 			pwhash BLOB,
 			PRIMARY KEY(id_src, id)
@@ -66,7 +64,7 @@ pub struct PlayerPwHash {
 }
 
 pub trait AuthBackend {
-	fn get_player_id(&mut self, name :&str) -> Result<Option<PlayerIdPair>, StrErr>;
+	fn get_player_id(&mut self, name :&str, src :u8) -> Result<Option<PlayerIdPair>, StrErr>;
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr>;
 	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr>;
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr>;
@@ -92,20 +90,21 @@ impl SqliteLocalAuth {
 }
 
 impl AuthBackend for SqliteLocalAuth {
-	fn get_player_id(&mut self, name :&str) -> Result<Option<PlayerIdPair>, StrErr> {
+	fn get_player_id(&mut self, name :&str, src :u8)
+			-> Result<Option<PlayerIdPair>, StrErr> {
 		let name_lower = name.to_lowercase();
-		let mut stmt = self.conn.prepare_cached("SELECT id_src, id FROM player_name_id_map WHERE name=?")?;
-		let pair :Option<(u8, i64)> = stmt.query_row(
-			&[&name_lower], |row| (row.get(0), row.get(1))
+		let mut stmt = self.conn.prepare_cached("SELECT id FROM player_name_id_map WHERE name=?")?;
+		let id :Option<i64> = stmt.query_row(
+			&[&name_lower], |row| row.get(0)
 		).optional()?;
-		Ok(pair.map(|pair| {
-			PlayerIdPair::from_components(pair.0, pair.1 as u64)
+		Ok(id.map(|id| {
+			PlayerIdPair::from_components(src, id as u64)
 		})
 	}
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
-		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id_src=? AND id=?")?;
+		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id=?")?;
 		let name :Option<String> = stmt.query_row(
-			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
+			&[&(id.id_src()) as &dyn ToSql],
 			|row| row.get(0)
 		).optional()?;
 		Ok(name)
