@@ -51,7 +51,7 @@ fn main() -> Result<(), StrErr> {
 		let (server_socket, client_conn) = MpscServerSocket::new();
 		let config = config.clone();
 		thread::spawn(move || {
-			let mut server = Server::new(server_socket, config);
+			let mut server = Server::new(server_socket, true, config);
 			server.run_loop();
 		});
 		Box::new(client_conn)

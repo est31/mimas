@@ -28,7 +28,7 @@ fn main() -> Result<(), StrErr> {
 		QuicServerSocket::new()?
 	};
 	let config = load_config();
-	let mut server = Server::new(server_socket, config);
+	let mut server = Server::new(server_socket, false, config);
 	server.run_loop();
 
 	Ok(())

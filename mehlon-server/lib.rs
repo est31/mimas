@@ -109,6 +109,7 @@ impl<C: NetworkServerConn> Player<C> {
 
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
+	is_singleplayer :bool,
 	config :Config,
 	// This is a temporary hack as it only works for
 	// singleplayer
@@ -123,7 +124,7 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S, mut config :Config) -> Self {
+	pub fn new(srv_socket :S, singleplayer :bool, mut config :Config) -> Self {
 		let mut backend = map_storage::storage_backend_from_config(&mut config);
 		let player_pos = load_player_position(&mut *backend, PlayerIdPair::singleplayer())
 			.unwrap()
@@ -148,6 +149,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 		let srv = Server {
 			srv_socket,
+			is_singleplayer : singleplayer,
 			config,
 			new_player_spawn_pos : player_pos,
 			players,
@@ -351,7 +353,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					players.len()
 				};
 				// In singleplayer, don't spam messages about players joining
-				if player_count > 1 {
+				if !self.is_singleplayer {
 					let msg = format!("New player joined. Amount of players: {}", player_count);
 					self.handle_chat_msg(msg);
 				}
