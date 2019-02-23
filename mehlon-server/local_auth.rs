@@ -118,9 +118,20 @@ impl AuthBackend for SqliteLocalAuth {
 		}))
 	}
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
-		unimplemented!()
+		let mut stmt = self.conn.prepare_cached("UPDATE player_pw_hashes SET pwhash=? WHERE id_src=? AND id=?")?;
+		stmt.execute(&[&pwh.data as &dyn ToSql, &(id.id_src()), &(id.id_i64())])?;
+		Ok(())
 	}
 	fn add_player(&mut self, name :&str, pwh: PlayerPwHash) -> Result<(), StrErr> {
-		unimplemented!()
+		let name_lower = name.to_lowercase();
+		let mut stmt = self.conn.prepare_cached("INSERT INTO player_name_id_map (name, lcname) \
+			VALUES (?, ?);")?;
+		stmt.execute(&[&name as &dyn ToSql, &name_lower])?;
+		let mut stmt = self.conn.prepare_cached("SELECT id FROM player_name_id_map WHERE name=?")?;
+		let id :i64 = stmt.query_row(&[&name], |row| row.get(0))?;
+		let mut stmt = self.conn.prepare_cached("INSERT INTO player_pw_hashes (id, pwhash) \
+			VALUES (?, ?);")?;
+		stmt.execute(&[&id as &dyn ToSql, &pwh.data])?;
+		Ok(())
 	}
 }
