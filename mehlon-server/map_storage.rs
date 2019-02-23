@@ -8,6 +8,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use flate2::{Compression, GzBuilder, read::GzDecoder};
 use config::Config;
 use toml::{from_str, to_string};
+use sqlite_generic::{get_user_version, set_user_version,
+	get_app_id, set_app_id};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -79,29 +81,6 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 		migrate_v2(conn)?;
 		set_user_version(conn, USER_VERSION)?;
 	}
-	Ok(())
-}
-
-fn get_user_version(conn :&mut Connection) -> Result<u16, StrErr> {
-	let r = conn.query_row("PRAGMA user_version;", NO_PARAMS, |v| v.get(0))?;
-	Ok(r)
-}
-fn set_user_version(conn :&mut Connection, version :u16) -> Result<(), StrErr> {
-	// Apparently sqlite wants you to be exposed to bobby tables shit
-	// because they don't allow you to use ? or other methods to avoid
-	// string formatting :/.
-	conn.execute(&format!("PRAGMA user_version = {};", version), NO_PARAMS)?;
-	Ok(())
-}
-fn get_app_id(conn :&mut Connection) -> Result<i32, StrErr> {
-	let r = conn.query_row("PRAGMA application_id;", NO_PARAMS, |v| v.get(0))?;
-	Ok(r)
-}
-fn set_app_id(conn :&mut Connection, id :i32) -> Result<(), StrErr> {
-	// Apparently sqlite wants you to be exposed to bobby tables shit
-	// because they don't allow you to use ? or other methods to avoid
-	// string formatting :/.
-	conn.execute(&format!("PRAGMA application_id = {};", id), NO_PARAMS)?;
 	Ok(())
 }
 
