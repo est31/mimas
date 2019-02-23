@@ -89,3 +89,21 @@ impl SqliteLocalAuth {
 		Ok(Self::from_conn(conn, freshly_created)?)
 	}
 }
+
+impl AuthBackend for SqliteLocalAuth {
+	fn get_player_id(&mut self, name :&str) -> Result<Option<PlayerIdPair>, StrErr> {
+		unimplemented!()
+	}
+	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
+		unimplemented!()
+	}
+	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr> {
+		unimplemented!()
+	}
+	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
+		unimplemented!()
+	}
+	fn add_player(&mut self, name :&str, pwh: PlayerPwHash) -> Result<(), StrErr> {
+		unimplemented!()
+	}
+}
