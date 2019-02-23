@@ -6,11 +6,11 @@ use super::StrErr;
 pub struct Config {
 	// Server settings
 
-	#[serde(default)]
+	#[serde(default = "mapgen_seed_default")]
 	pub mapgen_seed :u64,
-	#[serde(default)]
+	#[serde(default = "mapgen_radius_xy_default")]
 	pub mapgen_radius_xy :isize,
-	#[serde(default)]
+	#[serde(default = "mapgen_radius_z_default")]
 	pub mapgen_radius_z :isize,
 	#[serde(default)]
 	pub map_storage_path :Option<String>,
@@ -19,13 +19,23 @@ pub struct Config {
 
 	#[serde(default)]
 	pub draw_poly_lines :bool,
-	#[serde(default)]
+	#[serde(default = "viewing_range_default")]
 	pub viewing_range :f32,
-	#[serde(default)]
+	#[serde(default = "fog_near_default")]
 	pub fog_near :f32,
-	#[serde(default)]
+	#[serde(default = "fog_far_default")]
 	pub fog_far :f32,
 }
+
+// Long-term missing feature of serde
+// https://github.com/serde-rs/serde/issues/368
+
+fn mapgen_seed_default() -> u64 { 78 }
+fn mapgen_radius_xy_default() -> isize { 5 }
+fn mapgen_radius_z_default() -> isize { 2 }
+fn viewing_range_default() -> f32 { 128.0 }
+fn fog_near_default() -> f32 { 40.0 }
+fn fog_far_default() -> f32 { 60.0 }
 
 impl Default for Config {
 	fn default() -> Self {
