@@ -286,7 +286,7 @@ impl<C :NetworkClientConn> Game<C> {
 			delta_pos += self.camera.velocity;
 		}
 		delta_pos = delta_pos * time_delta;
-		if !self.camera.noclip_mode {
+		if !self.camera.is_noclip() {
 			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
 		}
 		self.camera.pos += delta_pos;
@@ -842,6 +842,9 @@ impl Camera {
 	}
 	fn fast_speed(&self) -> bool {
 		self.fast_mode || self.fast_pressed
+	}
+	fn is_noclip(&self) -> bool {
+		self.noclip_mode && self.fly_mode
 	}
 
 	fn direction(&self) -> Point3<f32> {
