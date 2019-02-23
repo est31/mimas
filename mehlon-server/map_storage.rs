@@ -1,4 +1,4 @@
-use rusqlite::{Connection, NO_PARAMS, OptionalExtension, OpenFlags};
+use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
 use map::{MapChunkData, MapBlock, CHUNKSIZE};
 use StrErr;
@@ -9,7 +9,7 @@ use flate2::{Compression, GzBuilder, read::GzDecoder};
 use config::Config;
 use toml::{from_str, to_string};
 use sqlite_generic::{get_user_version, set_user_version,
-	get_app_id, set_app_id};
+	get_app_id, set_app_id, open_or_create_db};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -98,22 +98,8 @@ impl SqliteStorageBackend {
 		})
 	}
 	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self, StrErr> {
-		// SQLite doesn't tell us whether a newly opened sqlite file has been
-		// existing on disk previously, or just been created.
-		// Thus, we need to do two calls: first one which doesn't auto-create,
-		// then one which does.
-
-		let conn = Connection::open_with_flags(path.clone(), OpenFlags::SQLITE_OPEN_READ_WRITE);
-		match conn {
-			Ok(conn) => Ok(Self::from_conn(conn, false)?),
-			Err(rusqlite::Error::SqliteFailure(e, _))
-					if e.code == libsqlite3_sys::ErrorCode::CannotOpen => {
-				println!("cannot open");
-				let conn = Connection::open(path)?;
-				Ok(Self::from_conn(conn, true)?)
-			},
-			Err(v) => Err(v)?,
-		}
+		let (conn, freshly_created) = open_or_create_db(path)?;
+		Ok(Self::from_conn(conn, freshly_created)?)
 	}
 	fn maybe_begin_commit(&mut self) -> Result<(), StrErr> {
 		if self.ctr == 0 {
