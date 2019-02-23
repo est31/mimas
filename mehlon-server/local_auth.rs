@@ -1,4 +1,5 @@
-use rusqlite::{Connection, NO_PARAMS};
+use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
+use rusqlite::types::ToSql;
 use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use std::path::Path;
@@ -30,7 +31,7 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
 			id_src INTEGER,
 			id INTEGER,
-			BLOB,
+			pwhash BLOB,
 			PRIMARY KEY(id_src, id)
 		)",
 		NO_PARAMS,
@@ -92,13 +93,32 @@ impl SqliteLocalAuth {
 
 impl AuthBackend for SqliteLocalAuth {
 	fn get_player_id(&mut self, name :&str) -> Result<Option<PlayerIdPair>, StrErr> {
-		unimplemented!()
+		let name_lower = name.to_lowercase();
+		let mut stmt = self.conn.prepare_cached("SELECT id_src, id FROM player_name_id_map WHERE name=?")?;
+		let pair :Option<(u8, i64)> = stmt.query_row(
+			&[&name_lower], |row| (row.get(0), row.get(1))
+		).optional()?;
+		Ok(pair.map(|pair| {
+			PlayerIdPair::from_components(pair.0, pair.1 as u64)
+		})
 	}
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
-		unimplemented!()
+		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id_src=? AND id=?")?;
+		let name :Option<String> = stmt.query_row(
+			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
+			|row| row.get(0)
+		).optional()?;
+		Ok(name)
 	}
 	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr> {
-		unimplemented!()
+		let mut stmt = self.conn.prepare_cached("SELECT pwhash FROM player_pw_hashes WHERE id_src=? AND id=?")?;
+		let pwh :Option<Vec<u8>> = stmt.query_row(
+			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
+			|row| row.get(0)
+		).optional()?;
+		Ok(pwh.map(|p| PlayerPwHash {
+			data : p,
+		}))
 	}
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
 		unimplemented!()
