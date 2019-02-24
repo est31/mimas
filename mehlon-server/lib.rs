@@ -275,7 +275,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			self.add_player(conn, id, nick);
 		}
 	}
-	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
+	fn get_msgs(&mut self) -> Vec<(PlayerIdPair, ClientToServerMsg)> {
 		let mut msgs = Vec::new();
 		let mut players = self.players.borrow_mut();
 		let mut conns_to_close = Vec::new();
@@ -287,7 +287,7 @@ impl<S :NetworkServerSocket> Server<S> {
 						player.pos = p;
 					},
 					Ok(Some(msg)) => {
-						msgs.push(msg);
+						msgs.push((*id, msg));
 					},
 					Ok(None) => break,
 					Err(NetErr::ConnectionClosed) => {
@@ -446,7 +446,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 			let msgs = self.get_msgs();
 
-			for msg in msgs {
+			for (id, msg) in msgs {
 				use ClientToServerMsg::*;
 				match msg {
 					LogIn(_) => {
@@ -468,6 +468,10 @@ impl<S :NetworkServerSocket> Server<S> {
 						if m.starts_with('/') {
 							self.handle_command(m);
 						} else {
+							let m = {
+								let nick = &self.players.borrow()[&id].nick;
+								format!("<{}> {}", nick, m)
+							};
 							self.handle_chat_msg(m);
 						}
 					},
