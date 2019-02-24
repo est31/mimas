@@ -93,16 +93,18 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 struct Player<C: NetworkServerConn> {
 	conn :C,
 	ids :PlayerIdPair,
+	nick :String,
 	pos :Vector3<f32>,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
 
 impl<C: NetworkServerConn> Player<C> {
-	pub fn from_conn_id(conn :C, ids :PlayerIdPair) -> Self {
+	pub fn from_conn_id_nick(conn :C, ids :PlayerIdPair, nick :String) -> Self {
 		Player {
 			conn,
 			ids,
+			nick,
 			pos : Vector3::new(0.0, 0.0, 0.0),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
@@ -270,7 +272,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 			};
 
-			self.add_player(conn, id);
+			self.add_player(conn, id, nick);
 		}
 	}
 	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
@@ -358,18 +360,19 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
-	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair) {
+	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String) {
 		let player_count = {
 			let msg = ServerToClientMsg::SetPos(self.new_player_spawn_pos.pos());
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 			let mut players = self.players.borrow_mut();
-			players.push(Player::from_conn_id(conn, id));
+			players.push(Player::from_conn_id_nick(conn, id, nick.clone()));
 			players.len()
 		};
 		// In singleplayer, don't spam messages about players joining
 		if !self.is_singleplayer {
-			let msg = format!("New player joined. Amount of players: {}", player_count);
+			let msg = format!("New player {} joined. Amount of players: {}",
+				nick, player_count);
 			self.handle_chat_msg(msg);
 		}
 	}
@@ -432,7 +435,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			while let Some(conn) = self.srv_socket.try_open_conn() {
 				if self.is_singleplayer {
 					let id = PlayerIdPair::singleplayer();
-					self.add_player(conn, id);
+					self.add_player(conn, id, "singleplayer".to_owned());
 				} else {
 					let mut uap = self.unauthenticated_players.borrow_mut();
 					uap.push(conn);
