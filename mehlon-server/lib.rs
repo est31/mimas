@@ -43,7 +43,7 @@ use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
 use std::thread;
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
@@ -121,7 +121,7 @@ pub struct Server<S :NetworkServerSocket> {
 	// singleplayer
 	new_player_spawn_pos :PlayerPosition,
 	unauthenticated_players :Rc<RefCell<Vec<S::Conn>>>,
-	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
+	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
 	last_pos_storage_time :Instant,
@@ -140,17 +140,17 @@ impl<S :NetworkServerSocket> Server<S> {
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
 		let unauthenticated_players = Rc::new(RefCell::new(Vec::<S::Conn>::new()));
-		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
+		let players = Rc::new(RefCell::new(HashMap::<_, Player<S::Conn>>::new()));
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			let mut players = playersc.borrow_mut();
 			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk);
 			let mut conns_to_close = Vec::new();
-			for (idx, player) in players.iter_mut().enumerate() {
+			for (id, player) in players.iter_mut() {
 				player.sent_chunks.insert(chunk_pos);
 				match player.conn.send(msg.clone()) {
 					Ok(_) => (),
-					Err(_) => conns_to_close.push(idx),
+					Err(_) => conns_to_close.push(*id),
 				}
 			}
 			close_connections(&conns_to_close, &mut *players);
@@ -279,7 +279,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let mut msgs = Vec::new();
 		let mut players = self.players.borrow_mut();
 		let mut conns_to_close = Vec::new();
-		for (idx, player) in players.iter_mut().enumerate() {
+		for (id, player) in players.iter_mut() {
 			loop {
 				let msg = player.conn.try_recv();
 				match msg {
@@ -292,12 +292,12 @@ impl<S :NetworkServerSocket> Server<S> {
 					Ok(None) => break,
 					Err(NetErr::ConnectionClosed) => {
 						println!("Client connection closed.");
-						conns_to_close.push(idx);
+						conns_to_close.push(*id);
 						break;
 					},
 					Err(_) => {
 						println!("Client connection error.");
-						conns_to_close.push(idx);
+						conns_to_close.push(*id);
 						break;
 					},
 				}
@@ -338,7 +338,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		self.last_pos_storage_time = now;
 		let players = self.players.clone();
-		for player in players.borrow().iter() {
+		for (_, player) in players.borrow().iter() {
 			let serialized_str = toml::to_string(&PlayerPosition::from_pos(player.pos))?;
 			self.map.set_player_kv(player.ids, "position", serialized_str.into());
 		}
@@ -347,7 +347,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn send_chunks_to_players(&mut self) {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
-		for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
+		for (id, player) in players.borrow_mut().iter_mut() {
 			let isize_pos = player.pos.map(|v| v as isize);
 			let player_pos_chn = btchn(isize_pos);
 			if player.last_chunk_pos == player_pos_chn {
@@ -355,7 +355,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			}
 			player.last_chunk_pos = player_pos_chn;
 			if self.send_chunks_to_player(player).is_err() {
-				players_to_remove.push(idx);
+				players_to_remove.push(*id);
 			}
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
@@ -366,7 +366,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 			let mut players = self.players.borrow_mut();
-			players.push(Player::from_conn_id_nick(conn, id, nick.clone()));
+			players.insert(id, Player::from_conn_id_nick(conn, id, nick.clone()));
 			players.len()
 		};
 		// In singleplayer, don't spam messages about players joining
@@ -387,9 +387,9 @@ impl<S :NetworkServerSocket> Server<S> {
 				let players = self.players.clone();
 				let msg = ServerToClientMsg::SetPos(PlayerPosition::default().pos());
 				let mut players_to_remove = Vec::new();
-				for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
+				for (id, player) in players.borrow_mut().iter_mut() {
 					if player.conn.send(msg.clone()).is_err() {
-						players_to_remove.push(idx);
+						players_to_remove.push(*id);
 					}
 				}
 				close_connections(&players_to_remove, &mut *players.borrow_mut());
@@ -405,10 +405,10 @@ impl<S :NetworkServerSocket> Server<S> {
 		println!("Chat: {}", msg);
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
-		for (idx, player) in players.borrow_mut().iter_mut().enumerate() {
+		for (id, player) in players.borrow_mut().iter_mut() {
 			let msg = ServerToClientMsg::Chat(msg.clone());
 			if player.conn.send(msg).is_err() {
-				players_to_remove.push(idx);
+				players_to_remove.push(*id);
 			}
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
@@ -416,7 +416,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	pub fn run_loop(&mut self) {
 		loop {
 			let positions = self.players.borrow().iter()
-				.map(|player| {
+				.map(|(_, player)| {
 					(btchn(player.pos.map(|v| v as isize)), player.last_chunk_pos)
 				})
 				.filter(|(cp, lcp)| cp != lcp)
@@ -481,10 +481,10 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 }
 
-fn close_connections(conns_to_close :&[usize], connections :&mut Vec<impl Sized>) {
-	for (skew, idx) in conns_to_close.iter().enumerate() {
+fn close_connections(conns_to_close :&[PlayerIdPair], connections :&mut HashMap<PlayerIdPair, impl Sized>) {
+	for id in conns_to_close.iter() {
 		println!("closing connection");
-		connections.remove(idx - skew);
+		connections.remove(&id);
 	}
 }
 
