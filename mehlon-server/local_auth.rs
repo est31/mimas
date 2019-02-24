@@ -66,7 +66,8 @@ pub trait AuthBackend {
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr>;
 	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr>;
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr>;
-	fn add_player(&mut self, name :&str, pwh: PlayerPwHash) -> Result<(), StrErr>;
+	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
+		-> Result<PlayerIdPair, StrErr>;
 }
 
 impl SqliteLocalAuth {
@@ -122,7 +123,8 @@ impl AuthBackend for SqliteLocalAuth {
 		stmt.execute(&[&pwh.data as &dyn ToSql, &(id.id_src()), &(id.id_i64())])?;
 		Ok(())
 	}
-	fn add_player(&mut self, name :&str, pwh: PlayerPwHash) -> Result<(), StrErr> {
+	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
+			-> Result<PlayerIdPair, StrErr> {
 		let name_lower = name.to_lowercase();
 		let mut stmt = self.conn.prepare_cached("INSERT INTO player_name_id_map (name, lcname) \
 			VALUES (?, ?);")?;
@@ -132,6 +134,7 @@ impl AuthBackend for SqliteLocalAuth {
 		let mut stmt = self.conn.prepare_cached("INSERT INTO player_pw_hashes (id, pwhash) \
 			VALUES (?, ?);")?;
 		stmt.execute(&[&id as &dyn ToSql, &pwh.data])?;
-		Ok(())
+		let id_pair = PlayerIdPair::from_components(id_src, id as u64);
+		Ok(id_pair)
 	}
 }
