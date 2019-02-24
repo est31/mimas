@@ -49,10 +49,12 @@ use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, load_player_position, PlayerPosition};
-use local_auth::SqliteLocalAuth;
+use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash};
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
+	LogIn(String),
+
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
 	SetPos(Vector3<f32>),
@@ -116,6 +118,7 @@ pub struct Server<S :NetworkServerSocket> {
 	// This is a temporary hack as it only works for
 	// singleplayer
 	new_player_spawn_pos :PlayerPosition,
+	unauthenticated_players :Rc<RefCell<Vec<S::Conn>>>,
 	players :Rc<RefCell<Vec<Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -134,6 +137,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			.unwrap_or_default();
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
+		let unauthenticated_players = Rc::new(RefCell::new(Vec::<S::Conn>::new()));
 		let players = Rc::new(RefCell::new(Vec::<Player<S::Conn>>::new()));
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
@@ -156,6 +160,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			config,
 			auth_back,
 			new_player_spawn_pos : player_pos,
+			unauthenticated_players,
 			players,
 
 			last_frame_time : Instant::now(),
@@ -200,6 +205,73 @@ impl<S :NetworkServerSocket> Server<S> {
 			thread::sleep(Duration::from_micros(micros_to_wait));
 		}
 		float_delta
+	}
+	fn handle_auth_msgs(&mut self) {
+		// I'm not proud of how painstakingly ugly this
+		// code is, but it works around the borrow checker
+		// issues.
+		let mut players_to_add = Vec::new();
+		{
+			let mut upl = self.unauthenticated_players.borrow_mut();
+			let mut conns_to_remove = Vec::new();
+			enum Verdict {
+				AddAsPlayer(String),
+				Close,
+			}
+			for (idx, conn) in upl.iter_mut().enumerate() {
+				loop {
+					let msg = conn.try_recv();
+					match msg {
+						Ok(Some(ClientToServerMsg::LogIn(nick))) => {
+							conns_to_remove.push((idx, Verdict::AddAsPlayer(nick)));
+							break;
+						},
+						Ok(Some(_msg)) => {
+							// invalid, close the connection.
+							conns_to_remove.push((idx, Verdict::Close));
+						},
+						Ok(None) => break,
+						Err(NetErr::ConnectionClosed) => {
+							println!("Client connection closed.");
+							conns_to_remove.push((idx, Verdict::Close));
+							break;
+						},
+						Err(_) => {
+							println!("Client connection error.");
+							conns_to_remove.push((idx, Verdict::Close));
+							break;
+						},
+					}
+				}
+			}
+			for (skew, (idx, verd)) in conns_to_remove.into_iter().enumerate() {
+				println!("closing connection");
+				let conn = upl.remove(idx - skew);
+				match verd {
+					Verdict::AddAsPlayer(nick) => {
+						players_to_add.push((nick, conn));
+					},
+					Verdict::Close => (),
+				}
+			}
+		}
+		for (nick, conn) in players_to_add.into_iter() {
+			let id = {
+				let mut la = self.auth_back.as_mut().unwrap();
+				let id_opt = la.get_player_id(&nick, 1).unwrap();
+				if let Some(id) = id_opt {
+					id
+				} else {
+					let pwh = PlayerPwHash {
+						data : Vec::new(),
+					};
+					let id = la.add_player(&nick, pwh, 1).unwrap();
+					id
+				}
+			};
+
+			self.add_player(conn, id);
+		}
 	}
 	fn get_msgs(&mut self) -> Vec<ClientToServerMsg> {
 		let mut msgs = Vec::new();
@@ -286,6 +358,21 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair) {
+		let player_count = {
+			let msg = ServerToClientMsg::SetPos(self.new_player_spawn_pos.pos());
+			// TODO get rid of unwrap
+			conn.send(msg).unwrap();
+			let mut players = self.players.borrow_mut();
+			players.push(Player::from_conn_id(conn, id));
+			players.len()
+		};
+		// In singleplayer, don't spam messages about players joining
+		if !self.is_singleplayer {
+			let msg = format!("New player joined. Amount of players: {}", player_count);
+			self.handle_chat_msg(msg);
+		}
+	}
 	fn handle_command(&mut self, msg :String) {
 		println!("Command: {}", msg);
 		let mut it = msg[1..].split(" ");
@@ -343,25 +430,15 @@ impl<S :NetworkServerSocket> Server<S> {
 			let _float_delta = self.update_fps();
 			let exit = false;
 			while let Some(conn) = self.srv_socket.try_open_conn() {
-				let msg = ServerToClientMsg::SetPos(self.new_player_spawn_pos.pos());
-				// TODO get rid of unwrap
-				conn.send(msg).unwrap();
-				let player_count = {
-					let mut players = self.players.borrow_mut();
-					// TODO don't always assume singleplayer
-					// for the id here. Implementing proper
-					// multi-id support needs thoughts
-					// on the login protocol.
+				if self.is_singleplayer {
 					let id = PlayerIdPair::singleplayer();
-					players.push(Player::from_conn_id(conn, id));
-					players.len()
-				};
-				// In singleplayer, don't spam messages about players joining
-				if !self.is_singleplayer {
-					let msg = format!("New player joined. Amount of players: {}", player_count);
-					self.handle_chat_msg(msg);
+					self.add_player(conn, id);
+				} else {
+					let mut uap = self.unauthenticated_players.borrow_mut();
+					uap.push(conn);
 				}
 			}
+			self.handle_auth_msgs();
 			self.store_player_positions().unwrap();
 
 			let msgs = self.get_msgs();
@@ -369,6 +446,10 @@ impl<S :NetworkServerSocket> Server<S> {
 			for msg in msgs {
 				use ClientToServerMsg::*;
 				match msg {
+					LogIn(_) => {
+						// Invalid at this state. Ignore.
+						// TODO maybe issue a warning in the log? idk
+					},
 					SetBlock(p, b) => {
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {
 							hdl.set(b);
