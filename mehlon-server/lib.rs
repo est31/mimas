@@ -225,6 +225,8 @@ impl<S :NetworkServerSocket> Server<S> {
 					let msg = conn.try_recv();
 					match msg {
 						Ok(Some(ClientToServerMsg::LogIn(nick))) => {
+							// TODO: check whether nick already exists and deny if yes
+							// TODO: check whethr nick contains illegal characters
 							conns_to_remove.push((idx, Verdict::AddAsPlayer(nick)));
 							break;
 						},
@@ -376,23 +378,22 @@ impl<S :NetworkServerSocket> Server<S> {
 			self.handle_chat_msg(msg);
 		}
 	}
-	fn handle_command(&mut self, msg :String) {
+	fn handle_command(&mut self, issuer_id :PlayerIdPair, msg :String) {
 		println!("Command: {}", msg);
 		let mut it = msg[1..].split(" ");
 		let command = it.next().unwrap();
 		let _params = it.collect::<Vec<&str>>();
 		match command {
 			"spawn" => {
-				// TODO only move the player themselves to spawn, not all players
 				let players = self.players.clone();
 				let msg = ServerToClientMsg::SetPos(PlayerPosition::default().pos());
-				let mut players_to_remove = Vec::new();
-				for (id, player) in players.borrow_mut().iter_mut() {
-					if player.conn.send(msg.clone()).is_err() {
-						players_to_remove.push(*id);
-					}
+				let remove_player = {
+					let player = &players.borrow_mut()[&issuer_id];
+					player.conn.send(msg.clone()).is_err()
+				};
+				if remove_player {
+					close_connections(&[issuer_id], &mut *players.borrow_mut());
 				}
-				close_connections(&players_to_remove, &mut *players.borrow_mut());
 			},
 			_ => {
 				// TODO only send this to the player invoking the command,
@@ -466,7 +467,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					SetPos(_p) => unreachable!(),
 					Chat(m) => {
 						if m.starts_with('/') {
-							self.handle_command(m);
+							self.handle_command(id, m);
 						} else {
 							let m = {
 								let nick = &self.players.borrow()[&id].nick;
