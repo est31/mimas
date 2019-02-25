@@ -63,6 +63,7 @@ pub enum ClientToServerMsg {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ServerToClientMsg {
+	LogInFail(String),
 	SetPos(Vector3<f32>),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
@@ -218,6 +219,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			let mut conns_to_remove = Vec::new();
 			enum Verdict {
 				AddAsPlayer(String),
+				LogInFail(String),
 				Close,
 			}
 			for (idx, conn) in upl.iter_mut().enumerate() {
@@ -225,9 +227,26 @@ impl<S :NetworkServerSocket> Server<S> {
 					let msg = conn.try_recv();
 					match msg {
 						Ok(Some(ClientToServerMsg::LogIn(nick))) => {
-							// TODO: check whether nick already exists and deny if yes
-							// TODO: check whethr nick contains illegal characters
-							conns_to_remove.push((idx, Verdict::AddAsPlayer(nick)));
+							// TODO use range_contains once it becomes
+							// available
+							// https://github.com/rust-lang/rust/issues/32311
+
+							// Check that the nick uses valid characters
+							let nick_has_valid_chars = nick
+								.bytes()
+								.all(|b|
+									(b >= b'0' && b <= b'9') ||
+									(b >= b'a' && b <= b'z') ||
+									(b >= b'A' && b <= b'Z') ||
+									(b == b'-' || b == b'_'));
+							let verdict = if nick_has_valid_chars {
+								Verdict::AddAsPlayer(nick)
+							} else {
+								Verdict::LogInFail("Invalid characters in nick".to_string())
+							};
+							// TODO: check whether the same nick is already present on the server
+
+							conns_to_remove.push((idx, verdict));
 							break;
 						},
 						Ok(Some(_msg)) => {
@@ -254,6 +273,9 @@ impl<S :NetworkServerSocket> Server<S> {
 				match verd {
 					Verdict::AddAsPlayer(nick) => {
 						players_to_add.push((nick, conn));
+					},
+					Verdict::LogInFail(reason) => {
+						let _ = conn.send(ServerToClientMsg::LogInFail(reason));
 					},
 					Verdict::Close => (),
 				}

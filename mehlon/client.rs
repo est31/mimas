@@ -162,7 +162,7 @@ impl<C :NetworkClientConn> Game<C> {
 	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
-		loop {
+		'game_main_loop :loop {
 			gen_chunks_around(&mut self.map,
 				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
@@ -177,6 +177,10 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
 				match msg {
+					ServerToClientMsg::LogInFail(reason) => {
+						println!("Log-In failed. Reason: {}", reason);
+						break 'game_main_loop;
+					},
 					ServerToClientMsg::SetPos(p) => {
 						self.camera.pos = p;
 					},
