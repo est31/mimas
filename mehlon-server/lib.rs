@@ -255,11 +255,15 @@ impl<S :NetworkServerSocket> Server<S> {
 							};
 
 							let verdict = if nick_has_valid_chars {
-								Verdict::AddAsPlayer(nick, id)
+								// Check whether the same nick is already present on the server
+								if !self.players.borrow().get(&id).is_some() {
+									Verdict::AddAsPlayer(nick, id)
+								} else {
+									Verdict::LogInFail("Player already logged in".to_string())
+								}
 							} else {
 								Verdict::LogInFail("Invalid characters in nick".to_string())
 							};
-							// TODO: check whether the same nick is already present on the server
 
 							conns_to_remove.push((idx, verdict));
 							break;
