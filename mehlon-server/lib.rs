@@ -218,7 +218,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			let mut upl = self.unauthenticated_players.borrow_mut();
 			let mut conns_to_remove = Vec::new();
 			enum Verdict {
-				AddAsPlayer(String),
+				AddAsPlayer(String, PlayerIdPair),
 				LogInFail(String),
 				Close,
 			}
@@ -239,8 +239,23 @@ impl<S :NetworkServerSocket> Server<S> {
 									(b >= b'a' && b <= b'z') ||
 									(b >= b'A' && b <= b'Z') ||
 									(b == b'-' || b == b'_'));
+
+							let id = {
+								let mut la = self.auth_back.as_mut().unwrap();
+								let id_opt = la.get_player_id(&nick, 1).unwrap();
+								if let Some(id) = id_opt {
+									id
+								} else {
+									let pwh = PlayerPwHash {
+										data : Vec::new(),
+									};
+									let id = la.add_player(&nick, pwh, 1).unwrap();
+									id
+								}
+							};
+
 							let verdict = if nick_has_valid_chars {
-								Verdict::AddAsPlayer(nick)
+								Verdict::AddAsPlayer(nick, id)
 							} else {
 								Verdict::LogInFail("Invalid characters in nick".to_string())
 							};
@@ -271,8 +286,8 @@ impl<S :NetworkServerSocket> Server<S> {
 				println!("closing connection");
 				let conn = upl.remove(idx - skew);
 				match verd {
-					Verdict::AddAsPlayer(nick) => {
-						players_to_add.push((nick, conn));
+					Verdict::AddAsPlayer(nick, id) => {
+						players_to_add.push((conn, id, nick));
 					},
 					Verdict::LogInFail(reason) => {
 						let _ = conn.send(ServerToClientMsg::LogInFail(reason));
@@ -281,21 +296,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 			}
 		}
-		for (nick, conn) in players_to_add.into_iter() {
-			let id = {
-				let mut la = self.auth_back.as_mut().unwrap();
-				let id_opt = la.get_player_id(&nick, 1).unwrap();
-				if let Some(id) = id_opt {
-					id
-				} else {
-					let pwh = PlayerPwHash {
-						data : Vec::new(),
-					};
-					let id = la.add_player(&nick, pwh, 1).unwrap();
-					id
-				}
-			};
-
+		for (conn, id, nick) in players_to_add.into_iter() {
 			self.add_player(conn, id, nick);
 		}
 	}
