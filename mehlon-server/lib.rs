@@ -210,93 +210,89 @@ impl<S :NetworkServerSocket> Server<S> {
 		float_delta
 	}
 	fn handle_auth_msgs(&mut self) {
-		// I'm not proud of how painstakingly ugly this
-		// code is, but it works around the borrow checker
-		// issues.
+		// TODO actually do password based auth
 		let mut players_to_add = Vec::new();
-		{
-			let mut conns_to_remove = Vec::new();
-			enum Verdict {
-				AddAsPlayer(String, PlayerIdPair),
-				LogInFail(String),
-				Close,
-			}
-			for (idx, conn) in self.unauthenticated_players.iter_mut().enumerate() {
-				loop {
-					let msg = conn.try_recv();
-					match msg {
-						Ok(Some(ClientToServerMsg::LogIn(nick))) => {
-							// TODO use range_contains once it becomes
-							// available
-							// https://github.com/rust-lang/rust/issues/32311
+		let mut conns_to_remove = Vec::new();
+		enum Verdict {
+			AddAsPlayer(String, PlayerIdPair),
+			LogInFail(String),
+			Close,
+		}
+		for (idx, conn) in self.unauthenticated_players.iter_mut().enumerate() {
+			loop {
+				let msg = conn.try_recv();
+				match msg {
+					Ok(Some(ClientToServerMsg::LogIn(nick))) => {
+						// TODO use range_contains once it becomes
+						// available
+						// https://github.com/rust-lang/rust/issues/32311
 
-							// Check that the nick uses valid characters
-							let nick_has_valid_chars = nick
-								.bytes()
-								.all(|b|
-									(b >= b'0' && b <= b'9') ||
-									(b >= b'a' && b <= b'z') ||
-									(b >= b'A' && b <= b'Z') ||
-									(b == b'-' || b == b'_'));
+						// Check that the nick uses valid characters
+						let nick_has_valid_chars = nick
+							.bytes()
+							.all(|b|
+								(b >= b'0' && b <= b'9') ||
+								(b >= b'a' && b <= b'z') ||
+								(b >= b'A' && b <= b'Z') ||
+								(b == b'-' || b == b'_'));
 
-							let id = {
-								let mut la = self.auth_back.as_mut().unwrap();
-								let id_opt = la.get_player_id(&nick, 1).unwrap();
-								if let Some(id) = id_opt {
-									id
-								} else {
-									let pwh = PlayerPwHash {
-										data : Vec::new(),
-									};
-									let id = la.add_player(&nick, pwh, 1).unwrap();
-									id
-								}
-							};
-
-							let verdict = if nick_has_valid_chars {
-								// Check whether the same nick is already present on the server
-								if !self.players.borrow().get(&id).is_some() {
-									Verdict::AddAsPlayer(nick, id)
-								} else {
-									Verdict::LogInFail("Player already logged in".to_string())
-								}
+						let id = {
+							let mut la = self.auth_back.as_mut().unwrap();
+							let id_opt = la.get_player_id(&nick, 1).unwrap();
+							if let Some(id) = id_opt {
+								id
 							} else {
-								Verdict::LogInFail("Invalid characters in nick".to_string())
-							};
+								let pwh = PlayerPwHash {
+									data : Vec::new(),
+								};
+								let id = la.add_player(&nick, pwh, 1).unwrap();
+								id
+							}
+						};
 
-							conns_to_remove.push((idx, verdict));
-							break;
-						},
-						Ok(Some(_msg)) => {
-							// invalid, close the connection.
-							conns_to_remove.push((idx, Verdict::Close));
-						},
-						Ok(None) => break,
-						Err(NetErr::ConnectionClosed) => {
-							println!("Client connection closed.");
-							conns_to_remove.push((idx, Verdict::Close));
-							break;
-						},
-						Err(_) => {
-							println!("Client connection error.");
-							conns_to_remove.push((idx, Verdict::Close));
-							break;
-						},
-					}
+						let verdict = if nick_has_valid_chars {
+							// Check whether the same nick is already present on the server
+							if !self.players.borrow().get(&id).is_some() {
+								Verdict::AddAsPlayer(nick, id)
+							} else {
+								Verdict::LogInFail("Player already logged in".to_string())
+							}
+						} else {
+							Verdict::LogInFail("Invalid characters in nick".to_string())
+						};
+
+						conns_to_remove.push((idx, verdict));
+						break;
+					},
+					Ok(Some(_msg)) => {
+						// invalid, close the connection.
+						conns_to_remove.push((idx, Verdict::Close));
+					},
+					Ok(None) => break,
+					Err(NetErr::ConnectionClosed) => {
+						println!("Client connection closed.");
+						conns_to_remove.push((idx, Verdict::Close));
+						break;
+					},
+					Err(_) => {
+						println!("Client connection error.");
+						conns_to_remove.push((idx, Verdict::Close));
+						break;
+					},
 				}
 			}
-			for (skew, (idx, verd)) in conns_to_remove.into_iter().enumerate() {
-				println!("closing connection");
-				let conn = self.unauthenticated_players.remove(idx - skew);
-				match verd {
-					Verdict::AddAsPlayer(nick, id) => {
-						players_to_add.push((conn, id, nick));
-					},
-					Verdict::LogInFail(reason) => {
-						let _ = conn.send(ServerToClientMsg::LogInFail(reason));
-					},
-					Verdict::Close => (),
-				}
+		}
+		for (skew, (idx, verd)) in conns_to_remove.into_iter().enumerate() {
+			println!("closing connection");
+			let conn = self.unauthenticated_players.remove(idx - skew);
+			match verd {
+				Verdict::AddAsPlayer(nick, id) => {
+					players_to_add.push((conn, id, nick));
+				},
+				Verdict::LogInFail(reason) => {
+					let _ = conn.send(ServerToClientMsg::LogInFail(reason));
+				},
+				Verdict::Close => (),
 			}
 		}
 		for (conn, id, nick) in players_to_add.into_iter() {
