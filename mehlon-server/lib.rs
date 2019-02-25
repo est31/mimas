@@ -121,7 +121,7 @@ pub struct Server<S :NetworkServerSocket> {
 	// This is a temporary hack as it only works for
 	// singleplayer
 	new_player_spawn_pos :PlayerPosition,
-	unauthenticated_players :Rc<RefCell<Vec<S::Conn>>>,
+	unauthenticated_players :Vec<S::Conn>,
 	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -140,7 +140,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			.unwrap_or_default();
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
-		let unauthenticated_players = Rc::new(RefCell::new(Vec::<S::Conn>::new()));
+		let unauthenticated_players = Vec::<S::Conn>::new();
 		let players = Rc::new(RefCell::new(HashMap::<_, Player<S::Conn>>::new()));
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
@@ -215,14 +215,13 @@ impl<S :NetworkServerSocket> Server<S> {
 		// issues.
 		let mut players_to_add = Vec::new();
 		{
-			let mut upl = self.unauthenticated_players.borrow_mut();
 			let mut conns_to_remove = Vec::new();
 			enum Verdict {
 				AddAsPlayer(String, PlayerIdPair),
 				LogInFail(String),
 				Close,
 			}
-			for (idx, conn) in upl.iter_mut().enumerate() {
+			for (idx, conn) in self.unauthenticated_players.iter_mut().enumerate() {
 				loop {
 					let msg = conn.try_recv();
 					match msg {
@@ -288,7 +287,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			}
 			for (skew, (idx, verd)) in conns_to_remove.into_iter().enumerate() {
 				println!("closing connection");
-				let conn = upl.remove(idx - skew);
+				let conn = self.unauthenticated_players.remove(idx - skew);
 				match verd {
 					Verdict::AddAsPlayer(nick, id) => {
 						players_to_add.push((conn, id, nick));
@@ -465,8 +464,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					let id = PlayerIdPair::singleplayer();
 					self.add_player(conn, id, "singleplayer".to_owned());
 				} else {
-					let mut uap = self.unauthenticated_players.borrow_mut();
-					uap.push(conn);
+					self.unauthenticated_players.push(conn);
 				}
 			}
 			self.handle_auth_msgs();
