@@ -98,7 +98,7 @@ impl AuthBackend for SqliteLocalAuth {
 		).optional()?;
 		Ok(id.map(|id| {
 			PlayerIdPair::from_components(src, id as u64)
-		})
+		}))
 	}
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id=?")?;
