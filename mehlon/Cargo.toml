@@ -8,7 +8,7 @@ name = "mehlon"
 path = "main.rs"
 
 [dependencies]
-nalgebra = "0.16"
+nalgebra = "0.17"
 num-traits = "0.2"
 frustum_query = "0.1"
 glium = "0.23"
