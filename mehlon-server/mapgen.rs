@@ -382,7 +382,7 @@ impl MapgenMap {
 						continue;
 					} /* else */ {
 						if let Some(data) = self.storage.load_chunk(pos).unwrap() {
-							let mut chn = MapChunk {
+							let chn = MapChunk {
 								data,
 								generation_phase : GenerationPhase::Done,
 								tree_spawn_points : Vec::new(),

@@ -564,7 +564,7 @@ impl<C :NetworkClientConn> Game<C> {
 							w.handle_character(ch)
 						} else {
 							if ch == 't' || ch == '/' {
-								let mut chwin = if ch == '/' {
+								let chwin = if ch == '/' {
 									ChatWindow::with_text("/".to_owned())
 								} else {
 									ChatWindow::new()

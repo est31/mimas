@@ -237,7 +237,7 @@ impl<S :NetworkServerSocket> Server<S> {
 								(b == b'-' || b == b'_'));
 
 						let id = {
-							let mut la = self.auth_back.as_mut().unwrap();
+							let la = self.auth_back.as_mut().unwrap();
 							let id_opt = la.get_player_id(&nick, 1).unwrap();
 							if let Some(id) = id_opt {
 								id

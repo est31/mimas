@@ -79,7 +79,7 @@ impl MapChunkData {
 
 fn spawn_schematic<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, schematic :&Schematic) {
 	for (bpos, mb) in schematic.items.iter() {
-		let mut blk = map.get_blk_mut_no_upd(pos + bpos).unwrap();
+		let blk = map.get_blk_mut_no_upd(pos + bpos).unwrap();
 		*blk = *mb;
 	}
 	let pos_min = btchn(pos + schematic.aabb_min);
