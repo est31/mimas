@@ -223,17 +223,13 @@ impl<S :NetworkServerSocket> Server<S> {
 				let msg = conn.try_recv();
 				match msg {
 					Ok(Some(ClientToServerMsg::LogIn(nick))) => {
-						// TODO use range_contains once it becomes
-						// available
-						// https://github.com/rust-lang/rust/issues/32311
-
 						// Check that the nick uses valid characters
 						let nick_has_valid_chars = nick
 							.bytes()
 							.all(|b|
-								(b >= b'0' && b <= b'9') ||
-								(b >= b'a' && b <= b'z') ||
-								(b >= b'A' && b <= b'Z') ||
+								(b'0' ..= b'9').contains(&b) ||
+								(b'a' ..= b'z').contains(&b) ||
+								(b'A' ..= b'Z').contains(&b) ||
 								(b == b'-' || b == b'_'));
 
 						let id = {

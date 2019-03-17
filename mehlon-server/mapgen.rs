@@ -367,11 +367,9 @@ impl MapgenMap {
 				for z in pos_min.z - ex ..= pos_max.z + ex {
 					let pos = Vector3::new(x, y, z) * CHUNKSIZE;
 					if let Some(c) = self.chunks.get(&pos) {
-						// TODO use range_contains once it's available
-						// https://github.com/rust-lang/rust/issues/32311
-						if x >= pos_min.x && x < pos_max.x &&
-								y >= pos_min.y && y < pos_max.y &&
-								z >= pos_min.z && z < pos_max.z {
+						if (pos_min.x .. pos_max.x).contains(&x) &&
+								(pos_min.y .. pos_max.y).contains(&y) &&
+								(pos_min.z .. pos_max.z).contains(&z) {
 							if c.generation_phase != GenerationPhase::Done {
 								sth_to_generate = true;
 							}
@@ -390,11 +388,9 @@ impl MapgenMap {
 							f(pos, &chn.data);
 							self.chunks.insert(pos, chn);
 						} else {
-							// TODO use range_contains once it's available
-							// https://github.com/rust-lang/rust/issues/32311
-							if x >= pos_min.x && x < pos_max.x &&
-									y >= pos_min.y && y < pos_max.y &&
-									z >= pos_min.z && z < pos_max.z {
+							if (pos_min.x .. pos_max.x).contains(&x) &&
+									(pos_min.y .. pos_max.y).contains(&y) &&
+									(pos_min.z .. pos_max.z).contains(&z) {
 								sth_to_generate = true;
 							}
 						}
