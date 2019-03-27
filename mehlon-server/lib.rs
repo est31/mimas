@@ -232,6 +232,12 @@ impl<S :NetworkServerSocket> Server<S> {
 								(b'A' ..= b'Z').contains(&b) ||
 								(b == b'-' || b == b'_'));
 
+						if !nick_has_valid_chars {
+							let verdict = Verdict::LogInFail("Invalid characters in nick".to_string());
+							conns_to_remove.push((idx, verdict));
+							break;
+						}
+
 						let id = {
 							let la = self.auth_back.as_mut().unwrap();
 							let id_opt = la.get_player_id(&nick, 1).unwrap();
@@ -246,15 +252,11 @@ impl<S :NetworkServerSocket> Server<S> {
 							}
 						};
 
-						let verdict = if nick_has_valid_chars {
-							// Check whether the same nick is already present on the server
-							if !self.players.borrow().get(&id).is_some() {
-								Verdict::AddAsPlayer(nick, id)
-							} else {
-								Verdict::LogInFail("Player already logged in".to_string())
-							}
+						// Check whether the same nick is already present on the server
+						let verdict = if !self.players.borrow().get(&id).is_some() {
+							Verdict::AddAsPlayer(nick, id)
 						} else {
-							Verdict::LogInFail("Invalid characters in nick".to_string())
+							Verdict::LogInFail("Player already logged in".to_string())
 						};
 
 						conns_to_remove.push((idx, verdict));
