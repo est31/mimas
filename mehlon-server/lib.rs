@@ -220,6 +220,12 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		for (idx, conn) in self.unauthenticated_players.iter_mut().enumerate() {
 			loop {
+				macro_rules! verdict {
+					($e:expr) => {
+						conns_to_remove.push((idx, $e));
+						break;
+					};
+				}
 				let msg = conn.try_recv();
 				match msg {
 					Ok(Some(ClientToServerMsg::LogIn(nick))) => {
@@ -233,9 +239,7 @@ impl<S :NetworkServerSocket> Server<S> {
 								(b == b'-' || b == b'_'));
 
 						if !nick_has_valid_chars {
-							let verdict = Verdict::LogInFail("Invalid characters in nick".to_string());
-							conns_to_remove.push((idx, verdict));
-							break;
+							verdict!(Verdict::LogInFail("Invalid characters in nick".to_string()));
 						}
 
 						let id = {
@@ -253,29 +257,24 @@ impl<S :NetworkServerSocket> Server<S> {
 						};
 
 						// Check whether the same nick is already present on the server
-						let verdict = if !self.players.borrow().get(&id).is_some() {
-							Verdict::AddAsPlayer(nick, id)
+						if !self.players.borrow().get(&id).is_some() {
+							verdict!(Verdict::AddAsPlayer(nick, id));
 						} else {
-							Verdict::LogInFail("Player already logged in".to_string())
+							verdict!(Verdict::LogInFail("Player already logged in".to_string()));
 						};
-
-						conns_to_remove.push((idx, verdict));
-						break;
 					},
 					Ok(Some(_msg)) => {
 						// invalid, close the connection.
-						conns_to_remove.push((idx, Verdict::Close));
+						verdict!(Verdict::Close);
 					},
 					Ok(None) => break,
 					Err(NetErr::ConnectionClosed) => {
 						println!("Client connection closed.");
-						conns_to_remove.push((idx, Verdict::Close));
-						break;
+						verdict!(Verdict::Close);
 					},
 					Err(_) => {
 						println!("Client connection error.");
-						conns_to_remove.push((idx, Verdict::Close));
-						break;
+						verdict!(Verdict::Close);
 					},
 				}
 			}
