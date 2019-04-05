@@ -248,9 +248,7 @@ impl<S :NetworkServerSocket> Server<S> {
 							if let Some(id) = id_opt {
 								id
 							} else {
-								let pwh = PlayerPwHash {
-									data : Vec::new(),
-								};
+								let pwh = PlayerPwHash::deserialize(Vec::new()).unwrap();
 								let id = la.add_player(&nick, pwh, 1).unwrap();
 								id
 							}

@@ -58,7 +58,18 @@ pub struct SqliteLocalAuth {
 }
 
 pub struct PlayerPwHash {
-	pub data :Vec<u8>,
+	data :Vec<u8>,
+}
+
+impl PlayerPwHash {
+	pub fn deserialize(data :Vec<u8>) -> Result<Self, StrErr> {
+		Ok(PlayerPwHash {
+			data,
+		})
+	}
+	pub fn serialize(&self) -> &[u8] {
+		&self.data
+	}
 }
 
 pub trait AuthBackend {
@@ -114,13 +125,15 @@ impl AuthBackend for SqliteLocalAuth {
 			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
 			|row| row.get(0)
 		).optional()?;
-		Ok(pwh.map(|p| PlayerPwHash {
-			data : p,
-		}))
+		Ok(if let Some(p) = pwh {
+			Some(PlayerPwHash::deserialize(p)?)
+		} else {
+			None
+		})
 	}
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
 		let mut stmt = self.conn.prepare_cached("UPDATE player_pw_hashes SET pwhash=? WHERE id_src=? AND id=?")?;
-		stmt.execute(&[&pwh.data as &dyn ToSql, &(id.id_src()), &(id.id_i64())])?;
+		stmt.execute(&[&pwh.serialize() as &dyn ToSql, &(id.id_src()), &(id.id_i64())])?;
 		Ok(())
 	}
 	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
@@ -133,7 +146,7 @@ impl AuthBackend for SqliteLocalAuth {
 		let id :i64 = stmt.query_row(&[&name], |row| row.get(0))?;
 		let mut stmt = self.conn.prepare_cached("INSERT INTO player_pw_hashes (id, pwhash) \
 			VALUES (?, ?);")?;
-		stmt.execute(&[&id as &dyn ToSql, &pwh.data])?;
+		stmt.execute(&[&id as &dyn ToSql, &pwh.serialize()])?;
 		let id_pair = PlayerIdPair::from_components(id_src, id as u64);
 		Ok(id_pair)
 	}
