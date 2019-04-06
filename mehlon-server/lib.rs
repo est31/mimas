@@ -434,7 +434,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		};
 		// In singleplayer, don't spam messages about players joining
 		if !self.is_singleplayer {
-			let msg = format!("New player {} joined. Amount of players: {}",
+			let msg = format!("New player {} joined. Number of players: {}",
 				nick, player_count);
 			self.handle_chat_msg(msg);
 		}
