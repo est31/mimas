@@ -28,7 +28,7 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
 			id INTEGER PRIMARY KEY,
-			pwhash BLOB
+			pwhash VARCHAR(16)
 		)",
 		NO_PARAMS,
 	)?;
@@ -58,17 +58,17 @@ pub struct SqliteLocalAuth {
 }
 
 pub struct PlayerPwHash {
-	data :Vec<u8>,
+	data :String,
 }
 
 impl PlayerPwHash {
-	pub fn deserialize(data :Vec<u8>) -> Result<Self, StrErr> {
+	pub fn deserialize(data :String) -> Result<Self, StrErr> {
 		Ok(PlayerPwHash {
 			data,
 		})
 	}
-	pub fn serialize(&self) -> &[u8] {
-		&self.data
+	pub fn serialize(&self) -> String {
+		self.data.clone()
 	}
 }
 
@@ -121,7 +121,7 @@ impl AuthBackend for SqliteLocalAuth {
 	}
 	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT pwhash FROM player_pw_hashes WHERE id_src=? AND id=?")?;
-		let pwh :Option<Vec<u8>> = stmt.query_row(
+		let pwh :Option<String> = stmt.query_row(
 			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
 			|row| row.get(0)
 		).optional()?;
