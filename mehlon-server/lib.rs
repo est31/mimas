@@ -256,23 +256,21 @@ impl<S :NetworkServerSocket> Server<S> {
 							verdict!(Verdict::LogInFail("Invalid characters in nick".to_string()));
 						}
 
-						let id = {
-							let la = self.auth_back.as_mut().unwrap();
-							let id_opt = la.get_player_id(&nick, 1).unwrap();
-							if let Some(id) = id_opt {
-								if let Some(pwh) = la.get_player_pwh(id).unwrap() {
-									let params = pwh.params().clone();
-									conn.send(ServerToClientMsg::HashParams(params));
-									*state = AuthState::WaitingForHash(nick, id, pwh);
-								} else {
-									verdict!(Verdict::LogInFail("No password hash stored on server".to_string()));
-								}
+						let la = self.auth_back.as_mut().unwrap();
+						let id_opt = la.get_player_id(&nick, 1).unwrap();
+						if let Some(id) = id_opt {
+							if let Some(pwh) = la.get_player_pwh(id).unwrap() {
+								let params = pwh.params().clone();
+								conn.send(ServerToClientMsg::HashParams(params));
+								*state = AuthState::WaitingForHash(nick, id, pwh);
 							} else {
-								// New user
-								*state = AuthState::NewUser(nick);
-								conn.send(ServerToClientMsg::HashEnrollment);
+								verdict!(Verdict::LogInFail("No password hash stored on server".to_string()));
 							}
-						};
+						} else {
+							// New user
+							*state = AuthState::NewUser(nick);
+							conn.send(ServerToClientMsg::HashEnrollment);
+						}
 					},
 					Ok(Some(ClientToServerMsg::SendHash(pwh))) => {
 						match state {
