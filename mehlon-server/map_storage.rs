@@ -325,10 +325,21 @@ impl PlayerIdPair {
 		self.0.to_be_bytes()[0]
 	}
 	pub fn id_u64(&self) -> u64 {
-		self.0 & (1 << (64 - 8) - 1)
+		self.0 & ((1 << (64 - 8)) - 1)
 	}
 	pub fn id_i64(&self) -> i64 {
 		self.id_u64() as i64
+	}
+}
+
+#[cfg(test)]
+#[test]
+fn test_player_id_pair() {
+	for i in 0 .. 32 {
+		for j in 0 .. 32 {
+			let id = PlayerIdPair::from_components(i, j);
+			assert_eq!((id.id_src(), id.id_u64()), (i, j));
+		}
 	}
 }
 
