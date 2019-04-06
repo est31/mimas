@@ -114,15 +114,15 @@ impl AuthBackend for SqliteLocalAuth {
 	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
 		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id=?")?;
 		let name :Option<String> = stmt.query_row(
-			&[&(id.id_src()) as &dyn ToSql],
+			&[&(id.id_i64())],
 			|row| row.get(0)
 		).optional()?;
 		Ok(name)
 	}
 	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr> {
-		let mut stmt = self.conn.prepare_cached("SELECT pwhash FROM player_pw_hashes WHERE id_src=? AND id=?")?;
+		let mut stmt = self.conn.prepare_cached("SELECT pwhash FROM player_pw_hashes WHERE id=?")?;
 		let pwh :Option<String> = stmt.query_row(
-			&[&(id.id_src()) as &dyn ToSql, &(id.id_i64())],
+			&[&(id.id_i64())],
 			|row| row.get(0)
 		).optional()?;
 		Ok(if let Some(p) = pwh {
@@ -132,8 +132,8 @@ impl AuthBackend for SqliteLocalAuth {
 		})
 	}
 	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
-		let mut stmt = self.conn.prepare_cached("UPDATE player_pw_hashes SET pwhash=? WHERE id_src=? AND id=?")?;
-		stmt.execute(&[&pwh.serialize() as &dyn ToSql, &(id.id_src()), &(id.id_i64())])?;
+		let mut stmt = self.conn.prepare_cached("UPDATE player_pw_hashes SET pwhash=? WHERE id=?")?;
+		stmt.execute(&[&pwh.serialize() as &dyn ToSql, &(id.id_i64())])?;
 		Ok(())
 	}
 	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
