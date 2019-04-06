@@ -17,6 +17,7 @@ use collide::collide;
 
 use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
+use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
@@ -45,6 +46,7 @@ pub struct Game<C :NetworkClientConn> {
 	srv_conn :C,
 
 	config :Config,
+	nick_pw :Option<(String, String)>,
 
 	meshres_r :MeshResReceiver,
 
@@ -76,7 +78,7 @@ pub struct Game<C :NetworkClientConn> {
 
 impl<C :NetworkClientConn> Game<C> {
 	pub fn new(events_loop :&glutin::EventsLoop,
-			srv_conn :C, config :Config) -> Self {
+			srv_conn :C, config :Config, nick_pw :Option<(String, String)>) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_title("Mehlon");
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
@@ -112,6 +114,7 @@ impl<C :NetworkClientConn> Game<C> {
 			srv_conn,
 
 			config,
+			nick_pw,
 
 			meshres_r,
 
@@ -177,6 +180,28 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
 				match msg {
+					ServerToClientMsg::HashEnrollment => {
+						if let Some((ref _nick, ref pw)) = self.nick_pw {
+							// choose params and send hash to server
+							let params = HashParams::random();
+							let pwh = PlayerPwHash::hash_password(pw, params).unwrap();
+							let msg = ClientToServerMsg::SendHash(pwh);
+							let _ = self.srv_conn.send(msg);
+							println!("enrolling hash");
+						} else {
+							eprintln!("Error: received hash enrollment msg.");
+						}
+					},
+					ServerToClientMsg::HashParams(params) => {
+						if let Some((ref _nick, ref pw)) = self.nick_pw {
+							let pwh = PlayerPwHash::hash_password(pw, params).unwrap();
+							let msg = ClientToServerMsg::SendHash(pwh);
+							let _ = self.srv_conn.send(msg);
+							println!("sending hash");
+						} else {
+							eprintln!("Error: received hash params msg.");
+						}
+					},
 					ServerToClientMsg::LogInFail(reason) => {
 						println!("Log-In failed. Reason: {}", reason);
 						break 'game_main_loop;

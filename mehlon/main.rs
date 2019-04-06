@@ -41,18 +41,27 @@ struct Options {
 	/// Use the specified nick
 	#[structopt(long = "nick")]
 	nick :Option<String>,
+
+	/// Use the specified password
+	#[structopt(long = "password")]
+	pw :Option<String>,
 }
 
 fn main() -> Result<(), StrErr> {
 
 	let options = Options::from_args();
 	let config = load_config();
+	let mut nick_pw = None;
 
 	let client_conn :Box<dyn NetworkClientConn>= if let Some(addr) = options.connect.clone() {
 		let client_conn = QuicClientConn::from_socket_addr(addr)?;
 		let nick = options.nick.unwrap_or_else(|| {
 			panic!("No nick specified but needed to connect to server.");
 		});
+		let pw = options.pw.unwrap_or_else(|| {
+			panic!("No password specified but needed to connect to server.");
+		});
+		nick_pw = Some((nick.clone(), pw));
 		let _ = client_conn.send(ClientToServerMsg::LogIn(nick));
 		Box::new(client_conn)
 	} else {
@@ -66,7 +75,7 @@ fn main() -> Result<(), StrErr> {
 	};
 
 	let mut events_loop = glutin::EventsLoop::new();
-	let mut game = Game::new(&events_loop, client_conn, config);
+	let mut game = Game::new(&events_loop, client_conn, config, nick_pw);
 
 	game.run_loop(&mut events_loop);
 

@@ -2,7 +2,9 @@ use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::ToSql;
 use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
+use argon2::Config;
 use std::path::Path;
+use rand::Rng;
 use StrErr;
 use map_storage::PlayerIdPair;
 
@@ -57,18 +59,84 @@ pub struct SqliteLocalAuth {
 	conn :Connection,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct PlayerPwHash {
-	data :String,
+	params :HashParams,
+	hash :Vec<u8>,
 }
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct HashParams {
+	salt :Vec<u8>,
+}
+
+const PARAMS :&str = "$argon2id$v=19$m=4096,t=4,p=1$";
 
 impl PlayerPwHash {
 	pub fn deserialize(data :String) -> Result<Self, StrErr> {
-		Ok(PlayerPwHash {
-			data,
-		})
+		if !data.starts_with(PARAMS) {
+			Err("Deserialization of player pw hash params not implemented yet!")?;
+		}
+		let salt_hash = &data[PARAMS.len()..];
+		match salt_hash.split("$").collect::<Vec<_>>()[..] {
+			[salt_enc, hash_enc] => Ok(PlayerPwHash {
+				params : HashParams {
+					salt : base64::decode(salt_enc)?,
+				},
+				hash : base64::decode(hash_enc)?,
+			}),
+			_ => Err("player pw hash lacks salt or hash")?,
+		}
 	}
 	pub fn serialize(&self) -> String {
-		self.data.clone()
+		let mut s = "".to_string();
+		self.params.serialize(&mut s);
+		s += "$";
+		s += &base64::encode(&self.hash);
+		return s;
+	}
+	pub fn params(&self) -> &HashParams {
+		&self.params
+	}
+	pub fn hash_password(pw :&str, params :HashParams) -> Result<Self, StrErr> {
+		let hash = {
+			let config = params.get_argon2_config();
+
+			argon2::hash_raw(pw.as_bytes(), &params.salt, &config)?
+		};
+
+		Ok(Self {
+			params,
+			hash,
+		})
+	}
+}
+
+impl HashParams {
+	pub fn random() -> Self {
+		let mut rng = rand::thread_rng();
+		let mut salt = vec![0; 8];
+		rng.fill(&mut salt[..]);
+		HashParams {
+			salt,
+		}
+	}
+	fn serialize(&self, s :&mut String) {
+		*s += PARAMS;
+		*s += &base64::encode(&self.salt);
+	}
+	fn get_argon2_config(&self) -> Config {
+		Config {
+			ad : &[],
+			hash_length : 32,
+			lanes : 1,
+			mem_cost : 4096,
+			secret : &[],
+			thread_mode : argon2::ThreadMode::Sequential,
+			time_cost : 4,
+			variant : argon2::Variant::Argon2id,
+			version : argon2::Version::Version13,
+		}
 	}
 }
 

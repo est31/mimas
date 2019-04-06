@@ -14,6 +14,7 @@ extern crate bincode;
 extern crate fasthash;
 extern crate toml;
 extern crate rustls;
+extern crate argon2;
 
 extern crate webpki;
 extern crate quinn;
@@ -28,6 +29,7 @@ extern crate rusqlite;
 extern crate libsqlite3_sys;
 extern crate byteorder;
 extern crate flate2;
+extern crate base64;
 
 pub mod map;
 pub mod mapgen;
@@ -49,11 +51,12 @@ use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, load_player_position, PlayerPosition};
-use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash};
+use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
 	LogIn(String),
+	SendHash(PlayerPwHash),
 
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
@@ -63,10 +66,20 @@ pub enum ClientToServerMsg {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ServerToClientMsg {
+	HashEnrollment,
+	HashParams(HashParams),
 	LogInFail(String),
+
 	SetPos(Vector3<f32>),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
+}
+
+#[derive(Clone, PartialEq, Eq)]
+enum AuthState {
+	Unauthenticated,
+	NewUser(String),
+	WaitingForHash(String, PlayerIdPair, PlayerPwHash),
 }
 
 #[derive(Debug)]
@@ -121,7 +134,7 @@ pub struct Server<S :NetworkServerSocket> {
 	// This is a temporary hack as it only works for
 	// singleplayer
 	new_player_spawn_pos :PlayerPosition,
-	unauthenticated_players :Vec<S::Conn>,
+	unauthenticated_players :Vec<(S::Conn, AuthState)>,
 	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -140,7 +153,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			.unwrap_or_default();
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
-		let unauthenticated_players = Vec::<S::Conn>::new();
+		let unauthenticated_players = Vec::<_>::new();
 		let players = Rc::new(RefCell::new(HashMap::<_, Player<S::Conn>>::new()));
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
@@ -210,7 +223,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		float_delta
 	}
 	fn handle_auth_msgs(&mut self) {
-		// TODO actually do password based auth
+		// TODO do SRP based auth or spake2 or sth
 		let mut players_to_add = Vec::new();
 		let mut conns_to_remove = Vec::new();
 		enum Verdict {
@@ -218,7 +231,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			LogInFail(String),
 			Close,
 		}
-		for (idx, conn) in self.unauthenticated_players.iter_mut().enumerate() {
+		for (idx, (conn, state)) in
+				self.unauthenticated_players.iter_mut().enumerate() {
 			loop {
 				macro_rules! verdict {
 					($e:expr) => {
@@ -246,24 +260,56 @@ impl<S :NetworkServerSocket> Server<S> {
 							let la = self.auth_back.as_mut().unwrap();
 							let id_opt = la.get_player_id(&nick, 1).unwrap();
 							if let Some(id) = id_opt {
-								id
+								if let Some(pwh) = la.get_player_pwh(id).unwrap() {
+									let params = pwh.params().clone();
+									conn.send(ServerToClientMsg::HashParams(params));
+									*state = AuthState::WaitingForHash(nick, id, pwh);
+								} else {
+									verdict!(Verdict::LogInFail("No password hash stored on server".to_string()));
+								}
 							} else {
-								let pwh = PlayerPwHash::deserialize(String::new()).unwrap();
-								let id = la.add_player(&nick, pwh, 1).unwrap();
-								id
+								// New user
+								*state = AuthState::NewUser(nick);
+								conn.send(ServerToClientMsg::HashEnrollment);
 							}
 						};
-
-						// Check whether the same nick is already present on the server
-						if !self.players.borrow().get(&id).is_some() {
-							verdict!(Verdict::AddAsPlayer(nick, id));
-						} else {
-							verdict!(Verdict::LogInFail("Player already logged in".to_string()));
-						};
+					},
+					Ok(Some(ClientToServerMsg::SendHash(pwh))) => {
+						match state {
+							AuthState::NewUser(nick) => {
+								let la = self.auth_back.as_mut().unwrap();
+								let id = la.add_player(&nick, pwh, 1).unwrap();
+								// Check whether the same nick is already present on the server
+								let verdict = if !self.players.borrow().get(&id).is_some() {
+									Verdict::AddAsPlayer(nick.to_string(), id)
+								} else {
+									Verdict::LogInFail("Player already logged in".to_string())
+								};
+								verdict!(verdict);
+							},
+							AuthState::WaitingForHash(nick, id, pwh_wanted) => {
+								let verdict = if pwh_wanted == &pwh {
+									// Check whether the same nick is already present on the server
+									if !self.players.borrow().get(&id).is_some() {
+										Verdict::AddAsPlayer(nick.to_string(), *id)
+									} else {
+										Verdict::LogInFail("Player already logged in".to_string())
+									}
+								} else {
+									Verdict::LogInFail("Wrong password".to_string())
+								};
+								verdict!(verdict);
+							},
+							_ => {
+								verdict!(Verdict::LogInFail("Wrong auth state".to_string()));
+							},
+						}
 					},
 					Ok(Some(_msg)) => {
-						// invalid, close the connection.
-						verdict!(Verdict::Close);
+						// Ignore all other msgs
+						// TODO Maybe in the future, the client can be made
+						// to not send messages to the server
+						// while auth is still ongoing
 					},
 					Ok(None) => break,
 					Err(NetErr::ConnectionClosed) => {
@@ -279,7 +325,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		for (skew, (idx, verd)) in conns_to_remove.into_iter().enumerate() {
 			println!("closing connection");
-			let conn = self.unauthenticated_players.remove(idx - skew);
+			let (conn, _state) = self.unauthenticated_players.remove(idx - skew);
 			match verd {
 				Verdict::AddAsPlayer(nick, id) => {
 					players_to_add.push((conn, id, nick));
@@ -455,7 +501,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					let id = PlayerIdPair::singleplayer();
 					self.add_player(conn, id, "singleplayer".to_owned());
 				} else {
-					self.unauthenticated_players.push(conn);
+					self.unauthenticated_players.push((conn, AuthState::Unauthenticated));
 				}
 			}
 			self.handle_auth_msgs();
@@ -467,6 +513,10 @@ impl<S :NetworkServerSocket> Server<S> {
 				use ClientToServerMsg::*;
 				match msg {
 					LogIn(_) => {
+						// Invalid at this state. Ignore.
+						// TODO maybe issue a warning in the log? idk
+					},
+					SendHash(_h) => {
 						// Invalid at this state. Ignore.
 						// TODO maybe issue a warning in the log? idk
 					},

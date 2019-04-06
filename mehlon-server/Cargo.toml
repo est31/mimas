@@ -24,6 +24,7 @@ serde-big-array = "0.1"
 structopt = "0.2"
 fasthash = "0.3"
 toml = "0.4"
+rust-argon2 = "0.4"
 
 # For the networking
 webpki = "0.19"
@@ -41,3 +42,4 @@ rusqlite = "0.17"
 libsqlite3-sys = "0.13"
 byteorder = "1.0"
 flate2 = "1.0"
+base64 = "0.10.1"
