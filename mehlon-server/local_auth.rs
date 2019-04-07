@@ -105,7 +105,10 @@ impl PlayerPwHash {
 		let hash = {
 			let config = params.get_argon2_config();
 
-			argon2::hash_raw(pw.as_bytes(), &params.salt, &config)?
+			//let i = std::time::Instant::now();
+			let hash = argon2::hash_raw(pw.as_bytes(), &params.salt, &config)?;
+			//println!("hashing took {:?}", (std::time::Instant::now() - i));
+			hash
 		};
 
 		Ok(Self {
