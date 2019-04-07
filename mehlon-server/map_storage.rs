@@ -404,16 +404,25 @@ impl Default for PlayerPosition {
 
 impl PlayerPosition {
 	pub fn from_pos(pos :Vector3<f32>) -> Self {
+		Self::from_pos_pitch_yaw(pos, 45.0, 0.0)
+	}
+	pub fn from_pos_pitch_yaw(pos :Vector3<f32>, pitch :f32, yaw :f32) -> Self {
 		Self {
 			x : pos.x,
 			y : pos.y,
 			z : pos.z,
-			pitch : 45.0,
-			yaw : 0.0,
+			pitch,
+			yaw,
 		}
 	}
 	pub fn pos(&self) -> Vector3<f32> {
 		Vector3::new(self.x, self.y, self.z)
+	}
+	pub fn pitch(&self) -> f32 {
+		self.pitch
+	}
+	pub fn yaw(&self) -> f32 {
+		self.yaw
 	}
 	pub fn deserialize(buf :&[u8]) -> Result<Self, StrErr> {
 		let serialized_str = str::from_utf8(buf)?;

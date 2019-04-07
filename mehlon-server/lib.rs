@@ -68,7 +68,7 @@ pub enum ClientToServerMsg {
 
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
-	SetPos(Vector3<f32>),
+	SetPos(PlayerPosition),
 	Chat(String),
 }
 
@@ -78,7 +78,7 @@ pub enum ServerToClientMsg {
 	HashParamsBpub(HashParams, Vec<u8>),
 	LogInFail(String),
 
-	SetPos(Vector3<f32>),
+	SetPos(PlayerPosition),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
 }
@@ -115,7 +115,7 @@ struct Player<C: NetworkServerConn> {
 	conn :C,
 	ids :PlayerIdPair,
 	nick :String,
-	pos :Vector3<f32>,
+	pos :PlayerPosition,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
@@ -126,10 +126,13 @@ impl<C: NetworkServerConn> Player<C> {
 			conn,
 			ids,
 			nick,
-			pos : Vector3::new(0.0, 0.0, 0.0),
+			pos : PlayerPosition::default(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
+	}
+	fn pos(&self) -> Vector3<f32> {
+		self.pos.pos()
 	}
 }
 
@@ -452,7 +455,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		msgs
 	}
 	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) -> Result<(), NetErr> {
-		let isize_pos = player.pos.map(|v| v as isize);
+		let isize_pos = player.pos().map(|v| v as isize);
 		let (pmin, pmax) = chunk_positions_around(isize_pos, 6, 3);
 		let pmin = pmin / CHUNKSIZE;
 		let pmax = pmax / CHUNKSIZE;
@@ -484,7 +487,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		self.last_pos_storage_time = now;
 		let players = self.players.clone();
 		for (_, player) in players.borrow().iter() {
-			let serialized_str = toml::to_string(&PlayerPosition::from_pos(player.pos))?;
+			let serialized_str = toml::to_string(&player.pos)?;
 			self.map.set_player_kv(player.ids, "position", serialized_str.into());
 		}
 		Ok(())
@@ -493,7 +496,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
 		for (id, player) in players.borrow_mut().iter_mut() {
-			let isize_pos = player.pos.map(|v| v as isize);
+			let isize_pos = player.pos().map(|v| v as isize);
 			let player_pos_chn = btchn(isize_pos);
 			if player.last_chunk_pos == player_pos_chn {
 				continue;
@@ -512,7 +515,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String, pos :PlayerPosition) {
 		let player_count = {
-			let msg = ServerToClientMsg::SetPos(pos.pos());
+			let msg = ServerToClientMsg::SetPos(pos);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 			let mut players = self.players.borrow_mut();
@@ -534,7 +537,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		match command {
 			"spawn" => {
 				let players = self.players.clone();
-				let msg = ServerToClientMsg::SetPos(PlayerPosition::default().pos());
+				let msg = ServerToClientMsg::SetPos(PlayerPosition::default());
 				let remove_player = {
 					let player = &players.borrow_mut()[&issuer_id];
 					player.conn.send(msg.clone()).is_err()
@@ -578,7 +581,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		loop {
 			let positions = self.players.borrow().iter()
 				.map(|(_, player)| {
-					(btchn(player.pos.map(|v| v as isize)), player.last_chunk_pos)
+					(btchn(player.pos.pos().map(|v| v as isize)), player.last_chunk_pos)
 				})
 				.filter(|(cp, lcp)| cp != lcp)
 				.map(|(cp, _lcp)| cp)

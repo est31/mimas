@@ -23,6 +23,7 @@ use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
 use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
+use mehlon_server::map_storage::PlayerPosition;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
@@ -196,7 +197,9 @@ impl<C :NetworkClientConn> Game<C> {
 			self.handle_mouse_buttons(float_delta);
 			if !self.in_background() {
 				self.movement(float_delta);
-				let msg = ClientToServerMsg::SetPos(self.camera.pos);
+				let pos = PlayerPosition::from_pos_pitch_yaw(self.camera.pos,
+					self.camera.pitch, self.camera.yaw);
+				let msg = ClientToServerMsg::SetPos(pos);
 				let _ = self.srv_conn.send(msg);
 
 			}
@@ -237,7 +240,9 @@ impl<C :NetworkClientConn> Game<C> {
 						break 'game_main_loop;
 					},
 					ServerToClientMsg::SetPos(p) => {
-						self.camera.pos = p;
+						self.camera.pos = p.pos();
+						self.camera.pitch = p.pitch();
+						self.camera.yaw = p.yaw();
 					},
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);
