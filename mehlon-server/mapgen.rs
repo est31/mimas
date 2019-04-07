@@ -57,46 +57,55 @@ fn pos_hash(pos :Vector3<isize>) -> u64 {
 }
 
 fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
-	let mut seeder = Pcg32::new(seed.wrapping_add(24), seed.wrapping_add(400));
+	macro_rules! s {
+		($e:expr) => {
+			s!($e, u32)
+		};
+		($e:expr, $t:ident) => {{
+			let mut seeder = Pcg32::new(seed, u64::from_be_bytes(*$e));
+			let seed :$t= seeder.gen::<$t>();
+			seed
+		}};
+	}
 	// Basic chunk noise
 	let f = 0.02356;
-	let noise = NoiseMag::new(seeder.gen::<u32>(), f, 8.3);
+	let noise = NoiseMag::new(s!(b"chn-base"), f, 8.3);
 	// Macro noise
 	let mf = 0.0018671;
-	let mnoise = NoiseMag::new(seeder.gen::<u32>(), mf, 23.27713);
+	let mnoise = NoiseMag::new(s!(b"chn-mcro"), mf, 23.27713);
 	// Super macro noise
 	let smf = 0.00043571;
-	let smnoise = NoiseMag::new(seeder.gen::<u32>(), smf, 137.479131);
+	let smnoise = NoiseMag::new(s!(b"chn-smcr"), smf, 137.479131);
 	// Tree noise
 	let tf = 0.0088971;
-	let tnoise = Noise::new(seeder.gen::<u32>(), tf);
+	let tnoise = Noise::new(s!(b"trenoise"), tf);
 	// Macro tree noise
 	let mtf = 0.00093952;
-	let mtnoise = Noise::new(seeder.gen::<u32>(), mtf);
+	let mtnoise = Noise::new(s!(b"mtrnoise"), mtf);
 	// Biome noise
 	let bf = 0.0023881;
-	let binoise = NoiseMag::new(seeder.gen::<u32>(), bf, 0.4);
+	let binoise = NoiseMag::new(s!(b"biom-bas"), bf, 0.4);
 	// Macro biome noise
 	let mbf = 0.00113881;
-	let mbinoise = NoiseMag::new(seeder.gen::<u32>(), mbf, 0.6);
+	let mbinoise = NoiseMag::new(s!(b"biom-mac"), mbf, 0.6);
 	// Tree pcg
-	let mut tpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
+	let mut tpcg = Pcg32::new(s!(b"pcg-tree", u64), pos_hash(pos));
 	// Coal noise
 	let cf = 0.083951;
-	let cnoise = Noise::new(seeder.gen::<u32>(), cf);
+	let cnoise = Noise::new(s!(b"noi-coal"), cf);
 	// Coal pcg
-	let mut cpcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
+	let mut cpcg = Pcg32::new(s!(b"pcg-coal", u64), pos_hash(pos));
 	// Iron noise
 	let iff = 0.063951;
-	let inoise = Noise::new(seeder.gen::<u32>(), iff);
+	let inoise = Noise::new(s!(b"noi-iron"), iff);
 	// Iron pcg
-	let mut ipcg = Pcg32::new(seeder.gen::<u64>(), pos_hash(pos));
+	let mut ipcg = Pcg32::new(s!(b"pcg-iron", u64), pos_hash(pos));
 	// Cave noise
 	let ca_f = 0.052951;
-	let ca_noise = Noise::new(seeder.gen::<u32>(), ca_f);
+	let ca_noise = Noise::new(s!(b"nois-cav"), ca_f);
 	// Macro cave noise
 	let mca_f = 0.0094951;
-	let mca_noise = Noise::new(seeder.gen::<u32>(), mca_f);
+	let mca_noise = Noise::new(s!(b"mnoi-cav"), mca_f);
 
 	let mut res = MapChunk {
 		data : MapChunkData::fully_air(),
