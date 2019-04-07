@@ -484,9 +484,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 			},
 			_ => {
-				// TODO only send this to the player invoking the command,
-				// TODO not all players
-				self.handle_chat_msg(format!("Unknown command {}", command));
+				self.chat_msg_for(issuer_id, format!("Unknown command {}", command));
 			},
 		}
 	}
@@ -495,6 +493,20 @@ impl<S :NetworkServerSocket> Server<S> {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
 		for (id, player) in players.borrow_mut().iter_mut() {
+			let msg = ServerToClientMsg::Chat(msg.clone());
+			if player.conn.send(msg).is_err() {
+				players_to_remove.push(*id);
+			}
+		}
+		close_connections(&players_to_remove, &mut *players.borrow_mut());
+	}
+	fn chat_msg_for(&mut self, for_id :PlayerIdPair, msg :String) {
+		let players = self.players.clone();
+		let mut players_to_remove = Vec::new();
+		for (id, player) in players.borrow_mut().iter_mut() {
+			if *id != for_id {
+				continue;
+			}
 			let msg = ServerToClientMsg::Chat(msg.clone());
 			if player.conn.send(msg).is_err() {
 				players_to_remove.push(*id);
