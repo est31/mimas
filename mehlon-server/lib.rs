@@ -335,7 +335,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			}
 		}
 		for (conn, id, nick) in players_to_add.into_iter() {
-			self.add_player(conn, id, nick);
+			let pos = self.new_player_spawn_pos;
+			self.add_player(conn, id, nick, pos);
 		}
 	}
 	fn get_msgs(&mut self) -> Vec<(PlayerIdPair, ClientToServerMsg)> {
@@ -423,9 +424,9 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
-	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String) {
+	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String, pos :PlayerPosition) {
 		let player_count = {
-			let msg = ServerToClientMsg::SetPos(self.new_player_spawn_pos.pos());
+			let msg = ServerToClientMsg::SetPos(pos.pos());
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 			let mut players = self.players.borrow_mut();
@@ -497,7 +498,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			while let Some(conn) = self.srv_socket.try_open_conn() {
 				if self.is_singleplayer {
 					let id = PlayerIdPair::singleplayer();
-					self.add_player(conn, id, "singleplayer".to_owned());
+					let pos = self.new_player_spawn_pos;
+					self.add_player(conn, id, "singleplayer".to_owned(), pos);
 				} else {
 					self.unauthenticated_players.push((conn, AuthState::Unauthenticated));
 				}

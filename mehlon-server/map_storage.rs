@@ -381,7 +381,7 @@ fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Conf
 	Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct PlayerPosition {
 	x :f32,
 	y :f32,
