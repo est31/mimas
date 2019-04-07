@@ -50,7 +50,7 @@ use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
-use map_storage::{PlayerIdPair, load_player_position, PlayerPosition};
+use map_storage::{PlayerIdPair, PlayerPosition};
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 
 #[derive(Serialize, Deserialize)]
@@ -131,10 +131,8 @@ pub struct Server<S :NetworkServerSocket> {
 	is_singleplayer :bool,
 	config :Config,
 	auth_back :Option<SqliteLocalAuth>,
-	// This is a temporary hack as it only works for
-	// singleplayer
-	new_player_spawn_pos :PlayerPosition,
 	unauthenticated_players :Vec<(S::Conn, AuthState)>,
+	players_waiting_for_kv :HashMap<PlayerIdPair, (S::Conn, String)>,
 	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -147,10 +145,7 @@ pub struct Server<S :NetworkServerSocket> {
 impl<S :NetworkServerSocket> Server<S> {
 	pub fn new(srv_socket :S, singleplayer :bool, mut config :Config) -> Self {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
-		let (mut storage_back, auth_back) = backends;
-		let player_pos = load_player_position(&mut *storage_back, PlayerIdPair::singleplayer())
-			.unwrap()
-			.unwrap_or_default();
+		let (storage_back, auth_back) = backends;
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
 
 		let unauthenticated_players = Vec::<_>::new();
@@ -175,8 +170,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			is_singleplayer : singleplayer,
 			config,
 			auth_back,
-			new_player_spawn_pos : player_pos,
 			unauthenticated_players,
+			players_waiting_for_kv : HashMap::new(),
 			players,
 
 			last_frame_time : Instant::now(),
@@ -335,7 +330,33 @@ impl<S :NetworkServerSocket> Server<S> {
 			}
 		}
 		for (conn, id, nick) in players_to_add.into_iter() {
-			let pos = self.new_player_spawn_pos;
+			self.add_player_waiting(conn, id, nick);
+		}
+	}
+	fn handle_players_waiting_for_kv(&mut self) {
+		let mut players_to_add = Vec::new();
+		// TODO with NLL, these {} become unneccessary
+		// See: https://github.com/rust-lang/rust/issues/57804
+		{
+			let pwfk = &mut self.players_waiting_for_kv;
+			self.map.run_for_kv_results(&mut |id, _payload, key, value| {
+				if key != "position" {
+					return;
+				}
+				if let Some((conn, nick)) = pwfk.remove(&id) {
+					let pos = if let Some(buf) = value {
+						PlayerPosition::deserialize(&buf)
+							.ok()
+							.unwrap_or_else(PlayerPosition::default)
+					} else {
+						// No value could be found
+						PlayerPosition::default()
+					};
+					players_to_add.push((conn, id, nick, pos));
+				}
+			});
+		}
+		for (conn, id, nick, pos) in players_to_add {
 			self.add_player(conn, id, nick, pos);
 		}
 	}
@@ -424,6 +445,11 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	fn add_player_waiting(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String) {
+		const PAYLOAD :u32 = 0;
+		self.map.get_player_kv(id, "position", PAYLOAD);
+		self.players_waiting_for_kv.insert(id, (conn, nick));
+	}
 	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String, pos :PlayerPosition) {
 		let player_count = {
 			let msg = ServerToClientMsg::SetPos(pos.pos());
@@ -498,13 +524,13 @@ impl<S :NetworkServerSocket> Server<S> {
 			while let Some(conn) = self.srv_socket.try_open_conn() {
 				if self.is_singleplayer {
 					let id = PlayerIdPair::singleplayer();
-					let pos = self.new_player_spawn_pos;
-					self.add_player(conn, id, "singleplayer".to_owned(), pos);
+					self.add_player_waiting(conn, id, "singleplayer".to_owned());
 				} else {
 					self.unauthenticated_players.push((conn, AuthState::Unauthenticated));
 				}
 			}
 			self.handle_auth_msgs();
+			self.handle_players_waiting_for_kv();
 			self.store_player_positions().unwrap();
 
 			let msgs = self.get_msgs();

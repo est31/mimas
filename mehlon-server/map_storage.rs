@@ -422,15 +422,6 @@ impl PlayerPosition {
 	}
 }
 
-pub fn load_player_position(backend :&mut (impl StorageBackend + ?Sized), id_pair :PlayerIdPair) -> Result<Option<PlayerPosition>, StrErr> {
-	if let Some(buf) = backend.get_player_kv(id_pair, "position")? {
-		let deserialized = PlayerPosition::deserialize(&buf)?;
-		Ok(Some(deserialized))
-	} else {
-		Ok(None)
-	}
-}
-
 pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
 
 fn sqlite_backend_from_config(config :&mut Config, auth_needed :bool)
