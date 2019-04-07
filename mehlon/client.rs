@@ -14,6 +14,10 @@ use std::thread;
 use std::sync::mpsc::{channel, Receiver};
 use frustum_query::frustum::Frustum;
 use collide::collide;
+use srp::client::SrpClient;
+use srp::groups::G_4096;
+use sha2::Sha256;
+use rand::RngCore;
 
 use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
@@ -42,11 +46,16 @@ const FRAGMENT_SHADER_SRC :&str = include_str!("fragment-shader.glsl");
 
 const KENPIXEL :&[u8] = include_bytes!("../assets/kenney-pixel.ttf");
 
+enum AuthState {
+	WaitingForBpub(String, SrpClient<'static, Sha256>),
+	Authenticated,
+}
+
 pub struct Game<C :NetworkClientConn> {
 	srv_conn :C,
 
 	config :Config,
-	nick_pw :Option<(String, String)>,
+	auth_state :AuthState,
 
 	meshres_r :MeshResReceiver,
 
@@ -103,6 +112,19 @@ impl<C :NetworkClientConn> Game<C> {
 			meshgen_s.send((chunk_pos, *chunk)).unwrap();
 		}));
 
+		let auth_state = if let Some((nick, pw)) = nick_pw {
+			// Start doing the login
+			let mut a = [0; 64];
+			let mut rng = rand::rngs::OsRng::new().unwrap();
+			rng.fill_bytes(&mut a);
+			let client = SrpClient::new(&a, &G_4096);
+			let a_pub = client.get_a_pub();
+			let _ = srv_conn.send(ClientToServerMsg::LogIn(nick, a_pub));
+			AuthState::WaitingForBpub(pw, client)
+		} else {
+			AuthState::Authenticated
+		};
+
 		// This ensures that the mesh generation thread puts higher priority onto positions
 		// close to the player at the beginning.
 		gen_chunks_around(&mut map, camera.pos.map(|v| v as isize), 1, 1);
@@ -114,7 +136,7 @@ impl<C :NetworkClientConn> Game<C> {
 			srv_conn,
 
 			config,
-			nick_pw,
+			auth_state,
 
 			meshres_r,
 
@@ -181,7 +203,7 @@ impl<C :NetworkClientConn> Game<C> {
 			while let Ok(Some(msg)) = self.srv_conn.try_recv() {
 				match msg {
 					ServerToClientMsg::HashEnrollment => {
-						if let Some((ref _nick, ref pw)) = self.nick_pw {
+						if let AuthState::WaitingForBpub(ref pw, ref _srp_client) = self.auth_state {
 							// choose params and send hash to server
 							let params = HashParams::random();
 							let pwh = PlayerPwHash::hash_password(pw, params).unwrap();
@@ -192,10 +214,18 @@ impl<C :NetworkClientConn> Game<C> {
 							eprintln!("Error: received hash enrollment msg.");
 						}
 					},
-					ServerToClientMsg::HashParams(params) => {
-						if let Some((ref _nick, ref pw)) = self.nick_pw {
-							let pwh = PlayerPwHash::hash_password(pw, params).unwrap();
-							let msg = ClientToServerMsg::SendHash(pwh);
+					ServerToClientMsg::HashParamsBpub(params, b_pub) => {
+						// TODO this is a hack, we unconditionally set the state to
+						// authenticated because we need to put *something* there,
+						// however we might not end up authenticated at all if we fail.
+						// But we *need* to use mem::replace otherwise we couldn't
+						// move out the client which is needed by the process_reply function.
+						let state = std::mem::replace(&mut self.auth_state, AuthState::Authenticated);
+						if let AuthState::WaitingForBpub(pw, srp_client) = state {
+							let pwh = PlayerPwHash::hash_password(&pw, params).unwrap();
+							// TODO get rid of unwrap
+							let verifier = srp_client.process_reply(&pwh.hash(), &b_pub).unwrap();
+							let msg = ClientToServerMsg::SendM1(verifier.get_proof().to_vec());
 							let _ = self.srv_conn.send(msg);
 							println!("sending hash");
 						} else {

@@ -95,6 +95,9 @@ impl PlayerPwHash {
 		s += &base64::encode(&self.hash);
 		return s;
 	}
+	pub fn hash(&self) -> &[u8] {
+		&self.hash
+	}
 	pub fn params(&self) -> &HashParams {
 		&self.params
 	}

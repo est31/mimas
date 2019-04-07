@@ -24,6 +24,8 @@ extern crate tokio;
 extern crate tokio_current_thread;
 extern crate futures;
 extern crate rcgen;
+extern crate srp;
+extern crate sha2;
 
 extern crate rusqlite;
 extern crate libsqlite3_sys;
@@ -52,11 +54,17 @@ use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, PlayerPosition};
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
+use srp::server::{SrpServer, UserRecord};
+use srp::client::SrpClient;
+use srp::groups::G_4096;
+use sha2::Sha256;
+use rand::RngCore;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
-	LogIn(String),
-	SendHash(PlayerPwHash),
+	LogIn(String, Vec<u8>),
+	SendHash(PlayerPwHash), // TODO temporary to try it out
+	SendM1(Vec<u8>),
 
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
@@ -67,7 +75,7 @@ pub enum ClientToServerMsg {
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ServerToClientMsg {
 	HashEnrollment,
-	HashParams(HashParams),
+	HashParamsBpub(HashParams, Vec<u8>),
 	LogInFail(String),
 
 	SetPos(Vector3<f32>),
@@ -75,11 +83,10 @@ pub enum ServerToClientMsg {
 	Chat(String),
 }
 
-#[derive(Clone, PartialEq, Eq)]
 enum AuthState {
 	Unauthenticated,
 	NewUser(String),
-	WaitingForHash(String, PlayerIdPair, PlayerPwHash),
+	WaitingForM1(String, PlayerIdPair, SrpServer<Sha256>),
 }
 
 #[derive(Debug)]
@@ -237,7 +244,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 				let msg = conn.try_recv();
 				match msg {
-					Ok(Some(ClientToServerMsg::LogIn(nick))) => {
+					Ok(Some(ClientToServerMsg::LogIn(nick, a_pub))) => {
 						// Check that the nick uses valid characters
 						let nick_has_valid_chars = nick
 							.bytes()
@@ -256,8 +263,54 @@ impl<S :NetworkServerSocket> Server<S> {
 						if let Some(id) = id_opt {
 							if let Some(pwh) = la.get_player_pwh(id).unwrap() {
 								let params = pwh.params().clone();
-								conn.send(ServerToClientMsg::HashParams(params));
-								*state = AuthState::WaitingForHash(nick, id, pwh);
+								let verifier = {
+									// Note that by computing the verifier on the server side
+									// we don't do SRP as intended. SRP wants you to compute
+									// the verifier from the password key on the client side, only
+									// giving the server the verifier, which is also only
+									// useful for that very purpose. Our design gives the
+									// server direct access to the password key.
+									// This brings the disadvantage that if e.g. the server
+									// database gets compromised, clients could use those keys
+									// to log into the server. However, there are two disadvantages
+									// to the recommended SRP approach:
+									// * First, for the G_4096 group used right now,
+									//   the keys are quite long, about 690 characters in base64.
+									//   Compare that to the 58 characters in base64 for the "bare"
+									//   argon2 hash.
+									// * Second, the keys are bound to the very group used.
+									//   If one day we decided to migrate off SRP e.g. to spake2
+									//   or use a different SRP group (e.g. a more secure one),
+									//   we'd have to do complex protocol redesigns.
+									// The algorithm SPAKE2 has the same disadvantage as our chosen
+									// approach. Here, too, a server compromise would allow the
+									// bad guys to authenticate as that user, but like with our
+									// approach that's only fixed to the specific seed stored on
+									// the server.
+									// This disadvantage in fact has motivated SPAKE2+, which is
+									// probably our long term replacement for SRP. But our
+									// current situation is easiest to migrate away from.
+
+									// TODO hopefully upstream gives us a more convenient function
+									// than having to go through the client.
+									// https://github.com/RustCrypto/PAKEs/issues/17
+									let srp_client = SrpClient::<Sha256>::new(&[], &*G_4096);
+									srp_client.get_password_verifier(pwh.hash())
+								};
+								let user_record = UserRecord {
+									username : &[],
+									salt : &[],
+									verifier : &verifier,
+								};
+
+								let mut b = [0; 64];
+								let mut rng = rand::rngs::OsRng::new().unwrap();
+								rng.fill_bytes(&mut b);
+
+								let srp_server = SrpServer::new(&user_record, &a_pub, &b, &*G_4096).unwrap();
+								let b_pub = srp_server.get_b_pub();
+								conn.send(ServerToClientMsg::HashParamsBpub(params, b_pub));
+								*state = AuthState::WaitingForM1(nick, id, srp_server);
 							} else {
 								verdict!(Verdict::LogInFail("No password hash stored on server".to_string()));
 							}
@@ -280,8 +333,15 @@ impl<S :NetworkServerSocket> Server<S> {
 								};
 								verdict!(verdict);
 							},
-							AuthState::WaitingForHash(nick, id, pwh_wanted) => {
-								let verdict = if pwh_wanted == &pwh {
+							_ => {
+								verdict!(Verdict::LogInFail("Wrong auth state".to_string()));
+							},
+						}
+					},
+					Ok(Some(ClientToServerMsg::SendM1(m1))) => {
+						match state {
+							AuthState::WaitingForM1(nick, id, srp_server) => {
+								let verdict = if srp_server.verify(&m1).is_ok() {
 									// Check whether the same nick is already present on the server
 									if !self.players.borrow().get(&id).is_some() {
 										Verdict::AddAsPlayer(nick.to_string(), *id)
@@ -550,11 +610,9 @@ impl<S :NetworkServerSocket> Server<S> {
 			for (id, msg) in msgs {
 				use ClientToServerMsg::*;
 				match msg {
-					LogIn(_) => {
-						// Invalid at this state. Ignore.
-						// TODO maybe issue a warning in the log? idk
-					},
-					SendHash(_h) => {
+					LogIn(..) |
+					SendHash(_) |
+					SendM1(..) => {
 						// Invalid at this state. Ignore.
 						// TODO maybe issue a warning in the log? idk
 					},

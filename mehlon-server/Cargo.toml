@@ -36,6 +36,8 @@ quinn = "0.2"
 slog-term = "2"
 slog = "2.2"
 rcgen = "0.2"
+srp = "0.4"
+sha2 = "0.8"
 
 # For map storage
 rusqlite = "0.17"

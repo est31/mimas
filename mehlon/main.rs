@@ -10,6 +10,8 @@ extern crate frustum_query;
 extern crate rand_pcg;
 extern crate rand;
 extern crate structopt;
+extern crate srp;
+extern crate sha2;
 
 extern crate mehlon_server;
 extern crate mehlon_meshgen;
@@ -25,7 +27,7 @@ use client::Game;
 use structopt::StructOpt;
 
 use std::thread;
-use mehlon_server::{Server, StrErr, ClientToServerMsg};
+use mehlon_server::{Server, StrErr};
 use mehlon_server::generic_net::{MpscServerSocket, NetworkClientConn};
 use mehlon_server::quic_net::QuicClientConn;
 use mehlon_server::config::load_config;
@@ -62,7 +64,6 @@ fn main() -> Result<(), StrErr> {
 			panic!("No password specified but needed to connect to server.");
 		});
 		nick_pw = Some((nick.clone(), pw));
-		let _ = client_conn.send(ClientToServerMsg::LogIn(nick));
 		Box::new(client_conn)
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();

@@ -19,5 +19,7 @@ glium-glyph = "0.3"
 rand_pcg = "0.1.1"
 rand = "0.6.0"
 structopt = "0.2"
+srp = "0.4"
+sha2 = "0.8"
 mehlon-server = { path = "../mehlon-server" }
 mehlon-meshgen = { path = "../mehlon-meshgen" }
