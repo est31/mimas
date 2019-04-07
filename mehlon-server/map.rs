@@ -136,6 +136,13 @@ impl MapBackend for ClientBackend {
 	fn set_player_kv(&mut self, _id :PlayerIdPair, _key :&str, _value :Vec<u8>) {
 		// Do nothing. There is no storage on the client.
 	}
+	fn get_player_kv(&mut self, _id: PlayerIdPair, _key :&str, _data :u32) {
+		// Do nothing. There is no storage on the client.
+	}
+	fn run_for_kv_results<F :FnMut(PlayerIdPair, u32, String, Option<Vec<u8>>)>(
+			&mut self, _f :&mut F) {
+		// Do nothing. There is no storage on the client.
+	}
 }
 
 pub trait MapBackend {
@@ -145,6 +152,9 @@ pub trait MapBackend {
 			f :&mut F);
 	fn chunk_changed(&mut self, pos :Vector3<isize>, data :MapChunkData);
 	fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>);
+	fn get_player_kv(&mut self, id: PlayerIdPair, key :&str, data :u32);
+	fn run_for_kv_results<F :FnMut(PlayerIdPair, u32, String, Option<Vec<u8>>)>(
+		&mut self, f :&mut F);
 }
 
 impl Map<ClientBackend> {
@@ -213,5 +223,11 @@ impl<B :MapBackend> Map<B> {
 	}
 	pub fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>) {
 		self.backend.set_player_kv(id, key, value);
+	}
+	pub fn get_player_kv(&mut self, id: PlayerIdPair, key :&str, payload :u32) {
+		self.backend.get_player_kv(id, key, payload);
+	}
+	pub fn run_for_kv_results<F :FnMut(PlayerIdPair, u32, String, Option<Vec<u8>>)>(&mut self, f :&mut F) {
+		self.backend.run_for_kv_results(f);
 	}
 }

@@ -441,11 +441,13 @@ pub enum MapgenMsg {
 	Tick,
 	GenArea(Vector3<isize>, Vector3<isize>),
 	SetPlayerKv(PlayerIdPair, String, Vec<u8>),
+	GetPlayerKv(PlayerIdPair, String, u32),
 }
 
 pub struct MapgenThread {
 	area_s :Sender<MapgenMsg>,
 	result_r :Receiver<(Vector3<isize>, MapChunkData)>,
+	result_kv_r :Receiver<(PlayerIdPair, u32, String, Option<Vec<u8>>)>,
 }
 
 impl MapgenThread {
@@ -453,6 +455,7 @@ impl MapgenThread {
 		let mut mapgen_map = MapgenMap::new(seed, storage);
 		let (area_s, area_r) = channel();
 		let (result_s, result_r) = channel();
+		let (result_kv_s, result_kv_r) = channel();
 		thread::spawn(move || {
 			while let Ok(msg) = area_r.recv() {
 				match msg {
@@ -470,12 +473,17 @@ impl MapgenThread {
 					MapgenMsg::SetPlayerKv(id_pair, key, content) => {
 						mapgen_map.storage.set_player_kv(id_pair, &key, &content).unwrap();
 					},
+					MapgenMsg::GetPlayerKv(id, key, payload) => {
+						let res = mapgen_map.storage.get_player_kv(id, &key).unwrap();
+						result_kv_s.send((id, payload, key, res)).unwrap();
+					},
 				}
 			}
 		});
 		MapgenThread {
 			area_s,
 			result_r,
+			result_kv_r,
 		}
 	}
 }
@@ -498,6 +506,14 @@ impl MapBackend for MapgenThread {
 	}
 	fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>) {
 		self.area_s.send(MapgenMsg::SetPlayerKv(id, key.to_owned(), value)).unwrap();
+	}
+	fn get_player_kv(&mut self, id: PlayerIdPair, key :&str, payload :u32) {
+		self.area_s.send(MapgenMsg::GetPlayerKv(id, key.to_owned(), payload)).unwrap();
+	}
+	fn run_for_kv_results<F :FnMut(PlayerIdPair, u32, String, Option<Vec<u8>>)>(&mut self, f :&mut F) {
+		while let Ok((id, payload, key, value)) = self.result_kv_r.try_recv() {
+			f(id, payload, key, value);
+		}
 	}
 }
 
