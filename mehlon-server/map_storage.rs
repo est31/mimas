@@ -415,17 +415,20 @@ impl PlayerPosition {
 	pub fn pos(&self) -> Vector3<f32> {
 		Vector3::new(self.x, self.y, self.z)
 	}
+	pub fn deserialize(buf :&[u8]) -> Result<Self, StrErr> {
+		let serialized_str = str::from_utf8(buf)?;
+		let deserialized = from_str(serialized_str)?;
+		Ok(deserialized)
+	}
 }
 
 pub fn load_player_position(backend :&mut (impl StorageBackend + ?Sized), id_pair :PlayerIdPair) -> Result<Option<PlayerPosition>, StrErr> {
-	let buf = if let Some(v) = backend.get_player_kv(id_pair, "position")? {
-		v
+	if let Some(buf) = backend.get_player_kv(id_pair, "position")? {
+		let deserialized = PlayerPosition::deserialize(&buf)?;
+		Ok(Some(deserialized))
 	} else {
-		return Ok(None);
-	};
-	let serialized_str = str::from_utf8(&buf)?;
-	let deserialized = from_str(serialized_str)?;
-	Ok(Some(deserialized))
+		Ok(None)
+	}
 }
 
 pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
