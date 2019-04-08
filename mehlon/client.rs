@@ -1,6 +1,7 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
+use glutin::dpi::LogicalPosition;
 use glutin::KeyboardInput;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
@@ -67,7 +68,7 @@ pub struct Game<C :NetworkClientConn> {
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	item_in_hand :MapBlock,
 
-	last_pos :Option<winit::dpi::LogicalPosition>,
+	last_pos :Option<LogicalPosition>,
 
 	last_frame_time :Instant,
 	last_fps :f32,
@@ -257,7 +258,7 @@ impl<C :NetworkClientConn> Game<C> {
 				break;
 			}
 			if self.grabbing_cursor {
-				self.display.gl_window().set_cursor_position(winit::dpi::LogicalPosition {
+				self.display.gl_window().set_cursor_position(LogicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
 				}).unwrap();
@@ -639,14 +640,14 @@ impl<C :NetworkClientConn> Game<C> {
 					glutin::WindowEvent::CursorMoved { position, .. } => {
 						if self.has_focus && !self.in_background() {
 							if self.grab_cursor {
-								self.last_pos = Some(winit::dpi::LogicalPosition {
+								self.last_pos = Some(LogicalPosition {
 									x : self.swidth / 2.0,
 									y : self.sheight / 2.0,
 								});
 							}
 
 							if let Some(last) = self.last_pos {
-								let delta = winit::dpi::LogicalPosition {
+								let delta = LogicalPosition {
 									x : position.x - last.x,
 									y : position.y - last.y,
 								};
@@ -890,7 +891,7 @@ impl Camera {
 
 		delta_pos
 	}
-	fn handle_mouse_move(&mut self, delta :winit::dpi::LogicalPosition) {
+	fn handle_mouse_move(&mut self, delta :LogicalPosition) {
 		let factor = 0.7;
 		// Limit the pitch by this value so that we never look 100%
 		// straight down. Otherwise the Matrix4::look_at_rh function

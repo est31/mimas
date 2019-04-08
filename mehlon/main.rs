@@ -3,7 +3,6 @@
 extern crate nalgebra;
 #[macro_use]
 extern crate glium;
-extern crate winit;
 extern crate glium_glyph;
 extern crate num_traits;
 extern crate frustum_query;
