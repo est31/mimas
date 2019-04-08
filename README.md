@@ -2,6 +2,8 @@
 
 Mehlon is a WIP voxel engine and game, inspired a little by Minecraft and a lot by Minetest.
 
+For usage instructions, please view [USAGE.md](USAGE.md).
+
 ### Origin of the name
 
 For the name, "meh" was too short and too much taken so I appended "lon" and
