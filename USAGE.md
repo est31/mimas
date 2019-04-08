@@ -39,3 +39,9 @@ Help on command line params can be obtained using:
 cargo run --release -- --help
 cargo run --release -p mehlon-server -- --help
 ```
+
+### Settings files
+
+`mehlon` has the ability to read from settings files.
+Currently, it reads the `settings.toml` file from the current working directory.
+Descriptions of the available settings are obtainable in [settings.toml.example](settings.toml.example).
