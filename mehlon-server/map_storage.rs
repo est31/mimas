@@ -11,6 +11,7 @@ use toml::{from_str, to_string};
 use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use local_auth::SqliteLocalAuth;
+use std::num::NonZeroU64;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -301,7 +302,7 @@ impl StorageBackend for NullStorageBackend {
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
-pub struct PlayerIdPair(u64);
+pub struct PlayerIdPair(NonZeroU64);
 
 impl PlayerIdPair {
 	pub fn singleplayer() -> Self {
@@ -319,13 +320,13 @@ impl PlayerIdPair {
 		assert!(id < 1 << (64 - 17),
 			"id of {} is too big", id);
 		let v = ((id_src as u64) << (64 - 8)) | id;
-		Self(v)
+		Self(NonZeroU64::new(v).unwrap())
 	}
 	pub fn id_src(&self) -> u8 {
-		self.0.to_be_bytes()[0]
+		self.0.get().to_be_bytes()[0]
 	}
 	pub fn id_u64(&self) -> u64 {
-		self.0 & ((1 << (64 - 8)) - 1)
+		self.0.get() & ((1 << (64 - 8)) - 1)
 	}
 	pub fn id_i64(&self) -> i64 {
 		self.id_u64() as i64
