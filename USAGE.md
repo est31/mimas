@@ -45,3 +45,23 @@ cargo run --release -p mehlon-server -- --help
 `mehlon` has the ability to read from settings files.
 Currently, it reads the `settings.toml` file from the current working directory.
 Descriptions of the available settings are obtainable in [settings.toml.example](settings.toml.example).
+
+
+### Controls
+
+Controls are very similar to minetest controls.
+
+* `w`/`a`/`s`/`d` → movement
+* `e` → fast movement (press it while moving)
+* `space` → jump (no fly mode) or ascend (fly mode)
+* `left shift` → descend (fly mode)
+
+* `h` → toogle noclip mode
+* `j` → toogle fast mode
+* `k` → toogle fly mode
+
+* `t` → chat
+* `esc` → release mouse cursor
+
+* `left click` → dig/mine something
+* `right click` → place something
