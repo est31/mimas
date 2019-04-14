@@ -24,7 +24,7 @@ use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
 use mehlon_server::generic_net::NetworkClientConn;
 use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
-use mehlon_server::map_storage::PlayerPosition;
+use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
@@ -72,6 +72,8 @@ pub struct Game<C :NetworkClientConn> {
 
 	last_frame_time :Instant,
 	last_fps :f32,
+
+	player_positions :Option<(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>)>,
 
 	grab_cursor :bool,
 	grabbing_cursor :bool,
@@ -152,6 +154,9 @@ impl<C :NetworkClientConn> Game<C> {
 			last_pos : None,
 			last_frame_time : Instant::now(),
 			last_fps : 0.0,
+
+			player_positions : None,
+
 			grab_cursor : true,
 			grabbing_cursor : false,
 			has_focus : false,
@@ -239,6 +244,9 @@ impl<C :NetworkClientConn> Game<C> {
 					ServerToClientMsg::LogInFail(reason) => {
 						println!("Log-In failed. Reason: {}", reason);
 						break 'game_main_loop;
+					},
+					ServerToClientMsg::PlayerPositions(own_id, positions) => {
+						self.player_positions = Some((own_id, positions));
 					},
 					ServerToClientMsg::SetPos(p) => {
 						self.camera.pos = p.pos();
@@ -390,6 +398,17 @@ impl<C :NetworkClientConn> Game<C> {
 			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
+		let mut pl_buf = Vec::new();
+		if let Some((own_id, positions)) = &self.player_positions {
+			for (id, pos) in positions {
+				if id == own_id {
+					continue;
+				}
+				let v = player_mesh(*pos);
+				let vbuff = VertexBuffer::new(&self.display, &v).unwrap();
+				pl_buf.push(vbuff);
+			}
+		}
 		let screen_dims = self.display.get_framebuffer_dimensions();
 
 		let polygon_mode = if !self.config.draw_poly_lines {
@@ -433,7 +452,8 @@ impl<C :NetworkClientConn> Game<C> {
 					}
 					return Some(m);
 				})
-				.chain(selbuff.iter()) {
+				.chain(selbuff.iter())
+				.chain(pl_buf.iter()) {
 			drawn_chunks_count += 1;
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
@@ -725,6 +745,23 @@ fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
 	push_block(&mut vertices,
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
 		COLOR, COLOR, 1.0 + DELTA, |_| false);
+	vertices
+}
+
+fn player_mesh(pos :Vector3<f32>) -> Vec<Vertex> {
+	const COLORB :[f32; 4] = [0.3, 0.3, 0.5, 1.0];
+	const COLOR_HEAD :[f32; 4] = [0.94, 0.76, 0.49, 1.0];
+	let mut vertices = Vec::new();
+
+	push_block(&mut vertices,
+		[pos.x, pos.y, pos.z - 1.6 - 0.4],
+		COLORB, COLORB, 0.8, |_| false);
+	push_block(&mut vertices,
+		[pos.x, pos.y, pos.z - 0.8 - 0.4],
+		COLORB, COLORB, 0.8, |_| false);
+	push_block(&mut vertices,
+		[pos.x, pos.y, pos.z - 0.4],
+		COLOR_HEAD, COLOR_HEAD, 0.8, |_| false);
 	vertices
 }
 

@@ -78,6 +78,8 @@ pub enum ServerToClientMsg {
 	HashParamsBpub(HashParams, Vec<u8>),
 	LogInFail(String),
 
+	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>),
+
 	SetPos(PlayerPosition),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
@@ -508,6 +510,20 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	fn send_positions_to_players(&mut self) {
+		let players = self.players.clone();
+		let mut players_to_remove = Vec::new();
+		let player_positions = players.borrow().iter()
+			.map(|(id, player)| (*id, player.pos()))
+			.collect::<Vec<_>>();
+		for (id, player) in players.borrow_mut().iter_mut() {
+			let msg = ServerToClientMsg::PlayerPositions(*id, player_positions.clone());
+			if player.conn.send(msg).is_err() {
+				players_to_remove.push(*id);
+			}
+		}
+		close_connections(&players_to_remove, &mut *players.borrow_mut());
+	}
 	fn add_player_waiting(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String) {
 		const PAYLOAD :u32 = 0;
 		self.map.get_player_kv(id, "position", PAYLOAD);
@@ -593,6 +609,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.config.mapgen_radius_z);
 			}
 			self.send_chunks_to_players();
+			self.send_positions_to_players();
 			self.map.tick();
 			let _float_delta = self.update_fps();
 			let exit = false;

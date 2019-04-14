@@ -300,7 +300,7 @@ impl StorageBackend for NullStorageBackend {
 	}
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub struct PlayerIdPair(u64);
 
 impl PlayerIdPair {
