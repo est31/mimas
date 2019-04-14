@@ -4,6 +4,8 @@
 
 Minimum required Rust version: 1.35.0
 
+Second internal release. Featuring:
+
 * Map saving and loading
 * Configurability via a `settings.toml` file
 * QUIC based network protocol (using the quinn crate)
