@@ -1,6 +1,8 @@
 # Changelog
 
-## Release 0.2 (Upcoming)
+## Release 0.2 - April 14, 2019
+
+Minimum required Rust version: 1.35.0
 
 * Map saving and loading
 * Configurability via a `settings.toml` file
@@ -15,7 +17,7 @@
 
 ## Release 0.1 - January 8, 2019
 
-Required Rust version: 1.33.0
+Minimum required Rust version: 1.33.0
 
 Initial (internal) release. Featuring:
 
