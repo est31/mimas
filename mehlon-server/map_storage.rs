@@ -305,7 +305,7 @@ pub struct PlayerIdPair(u64);
 
 impl PlayerIdPair {
 	pub fn singleplayer() -> Self {
-		Self::from_components(0, 0)
+		Self::from_components(0, 1)
 	}
 	pub fn from_components(id_src :u8, id :u64) -> Self {
 		// Impose a limit on the id
