@@ -3,14 +3,15 @@
 ## Release 0.2 (Upcoming)
 
 * Map saving and loading
-* Added configurability via a `settings.toml` file
+* Configurability via a `settings.toml` file
 * QUIC based network protocol (using the quinn crate)
 * Authentication via password
+* Rudimentary player avatars
 * Mapgen changes:
   - Large macro caves
   - Desert biome with cactuses
   - Iron ore
-  - Make ore clusters not 100% filled with the ore
+  - Made ore clusters not 100% filled with the ore
 
 ## Release 0.1 - January 8, 2019
 
