@@ -9,7 +9,7 @@ use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	rusttype::Font, Section,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
@@ -76,7 +76,7 @@ pub struct Game<C :NetworkClientConn> {
 	grab_cursor :bool,
 	grabbing_cursor :bool,
 	has_focus :bool,
-	chat_msgs :Vec<String>,
+	chat_msgs :VecDeque<String>,
 	chat_window :Option<ChatWindow>,
 	menu_enabled :bool,
 
@@ -155,7 +155,7 @@ impl<C :NetworkClientConn> Game<C> {
 			grab_cursor : true,
 			grabbing_cursor : false,
 			has_focus : false,
-			chat_msgs : Vec::new(),
+			chat_msgs : VecDeque::new(),
 			chat_window : None,
 			menu_enabled : false,
 			map,
@@ -249,7 +249,11 @@ impl<C :NetworkClientConn> Game<C> {
 						self.map.set_chunk(p, c);
 					},
 					ServerToClientMsg::Chat(s) => {
-						self.chat_msgs.push(s);
+						self.chat_msgs.push_back(s);
+						const CHAT_MSGS_LIMIT :usize = 10;
+						while self.chat_msgs.len() > CHAT_MSGS_LIMIT {
+							self.chat_msgs.pop_front();
+						}
 					},
 				}
 			}
