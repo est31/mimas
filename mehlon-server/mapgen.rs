@@ -383,11 +383,7 @@ impl MapgenMap {
 								sth_to_generate = true;
 							}
 						}
-						// TODO: once we have NLL, remove the continue, and
-						// remove the /* */ around the else below.
-						// See: https://github.com/rust-lang/rust/issues/57804
-						continue;
-					} /* else */ {
+					} else {
 						if let Some(data) = self.storage.load_chunk(pos).unwrap() {
 							let chn = MapChunk {
 								data,

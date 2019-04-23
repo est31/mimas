@@ -436,9 +436,13 @@ pub type DynStorageBackend = Box<dyn StorageBackend + Send>;
 
 fn sqlite_backend_from_config(config :&mut Config, auth_needed :bool)
 		-> Option<(DynStorageBackend, Option<SqliteLocalAuth>)> {
-	// TODO: once we have NLL, remove the "cloned" below
-	// See: https://github.com/rust-lang/rust/issues/57804
-	let p = config.map_storage_path.as_ref().cloned()?;
+	let p = config.map_storage_path.as_ref()?;
+
+	let p_config = Path::new(&p);
+	let p_auth = p_config.with_file_name(p_config.file_stem()
+			.and_then(|v| v.to_str()).unwrap_or("").to_owned()
+		+ "-auth.sqlite");
+
 	let sqlite_backend = match SqliteStorageBackend::open_or_create(&p) {
 		Ok(mut b) => {
 			manage_mapgen_meta_toml(&mut b, config).unwrap();
@@ -450,10 +454,6 @@ fn sqlite_backend_from_config(config :&mut Config, auth_needed :bool)
 		},
 	};
 	let storage_backend = Box::new(sqlite_backend);
-	let p_config = Path::new(&p);
-	let p_auth = p_config.with_file_name(p_config.file_stem()
-			.and_then(|v| v.to_str()).unwrap_or("").to_owned()
-		+ "-auth.sqlite");
 	let local_auth = if auth_needed {
 		Some(SqliteLocalAuth::open_or_create(p_auth).unwrap())
 	} else {

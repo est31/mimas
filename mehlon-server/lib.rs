@@ -400,27 +400,23 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	fn handle_players_waiting_for_kv(&mut self) {
 		let mut players_to_add = Vec::new();
-		// TODO with NLL, these {} become unneccessary
-		// See: https://github.com/rust-lang/rust/issues/57804
-		{
-			let pwfk = &mut self.players_waiting_for_kv;
-			self.map.run_for_kv_results(&mut |id, _payload, key, value| {
-				if key != "position" {
-					return;
-				}
-				if let Some((conn, nick)) = pwfk.remove(&id) {
-					let pos = if let Some(buf) = value {
-						PlayerPosition::deserialize(&buf)
-							.ok()
-							.unwrap_or_else(PlayerPosition::default)
-					} else {
-						// No value could be found
-						PlayerPosition::default()
-					};
-					players_to_add.push((conn, id, nick, pos));
-				}
-			});
-		}
+		let pwfk = &mut self.players_waiting_for_kv;
+		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
+			if key != "position" {
+				return;
+			}
+			if let Some((conn, nick)) = pwfk.remove(&id) {
+				let pos = if let Some(buf) = value {
+					PlayerPosition::deserialize(&buf)
+						.ok()
+						.unwrap_or_else(PlayerPosition::default)
+				} else {
+					// No value could be found
+					PlayerPosition::default()
+				};
+				players_to_add.push((conn, id, nick, pos));
+			}
+		});
 		for (conn, id, nick, pos) in players_to_add {
 			self.add_player(conn, id, nick, pos);
 		}
