@@ -118,7 +118,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 			let elev = noise.get(p) + mnoise.get(p) + smnoise.get(p);
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
-				let el = std::cmp::max(std::cmp::min(elev_blocks, CHUNKSIZE), 0);
+				let el = elev_blocks.min(CHUNKSIZE).max(0);
 				if pos.z < 0 {
 					for z in 0 .. el {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
