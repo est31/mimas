@@ -118,43 +118,45 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 			let elev = noise.get(p) + mnoise.get(p) + smnoise.get(p);
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
-				let el = elev_blocks.min(CHUNKSIZE).max(0);
-				if pos.z < 0 {
-					for z in 0 .. el {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
-						let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
-						let coal_limit = if pos.z + z < -30 {
-							0.5
-						} else {
-							0.75
-						};
-						if cnoise.get_3d(p3) > coal_limit {
-							if cpcg.gen::<f64>() > 0.6 {
-								*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
-							}
-						}
-						let iron_limit = if pos.z + z < -60 {
-							0.7
-						} else {
-							0.83
-						};
-						if inoise.get_3d(p3) > iron_limit {
-							if ipcg.gen::<f64>() > 0.6 {
-								*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::IronOre;
-							}
-						}
-						// Generate caves,
-						// but make sure that there is a distance
-						// between the cave and where the water starts.
-						// We need to compare with elev_blocks instead of el
-						// so that there are no artifacts introduced by the
-						// maxing with CHUNKSIZE above.
-						let cave_block = mca_noise.get_3d(p3) > 0.498 || ca_noise.get_3d(p3) > 0.45 ;
-						if z + 10 < elev_blocks && cave_block {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Air;
+				let els = elev_blocks - 4;
+				let els = els.min(CHUNKSIZE).max(0);
+				let elg = elev_blocks.min(CHUNKSIZE).max(0);
+				for z in 0 .. els {
+					*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
+					let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
+					let coal_limit = if pos.z + z < -30 {
+						0.5
+					} else {
+						0.75
+					};
+					if cnoise.get_3d(p3) > coal_limit {
+						if cpcg.gen::<f64>() > 0.6 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
 						}
 					}
-					for z in  el .. CHUNKSIZE {
+					let iron_limit = if pos.z + z < -60 {
+						0.7
+					} else {
+						0.83
+					};
+					if inoise.get_3d(p3) > iron_limit {
+						if ipcg.gen::<f64>() > 0.6 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::IronOre;
+						}
+					}
+					// Generate caves,
+					// but make sure that there is a distance
+					// between the cave and where the water starts.
+					// We need to compare with elev_blocks instead of el
+					// so that there are no artifacts introduced by the
+					// maxing with CHUNKSIZE above.
+					let cave_block = mca_noise.get_3d(p3) > 0.498 || ca_noise.get_3d(p3) > 0.45 ;
+					if z + 10 < elev_blocks && cave_block {
+						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Air;
+					}
+				}
+				if pos.z < 0 {
+					for z in  els .. CHUNKSIZE {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Water;
 					}
 				} else {
@@ -163,13 +165,13 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 					} else {
 						MapBlock::Sand
 					};
-					for z in 0 .. el {
+					for z in els .. elg {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_block;
 					}
-					if pos.z == 0 && el <= 0 {
+					if pos.z == 0 && elg <= 0 {
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
 					}
-					if el > 0 && el < CHUNKSIZE {
+					if elg > 0 && elg < CHUNKSIZE {
 						// Tree spawning
 						let tree_density = 0.4;
 						let macro_density = mtnoise.get(p);
@@ -184,7 +186,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 							// Generate a forest here
 							if tpcg.gen::<f64>() > 0.9 {
 								let in_desert = ground_block == MapBlock::Sand;
-								res.tree_spawn_points.push((pos + Vector3::new(x, y, el), in_desert));
+								res.tree_spawn_points.push((pos + Vector3::new(x, y, elg), in_desert));
 							}
 						}
 					}
