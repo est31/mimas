@@ -78,7 +78,6 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 				.into_future()
 				// Only regard the first stream as new connection
 				.and_then(move |(stream, _incoming)| {
-					println!("new conn open");
 					let (wtr, rdr) = match stream {
 						Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
 						None | Some(NewStream::Uni(_)) => return Ok(()),
