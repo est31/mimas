@@ -123,6 +123,11 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 
 fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 	current_thread::spawn(tokio::io::read_exact(rdr, [0; 8])
+		.map_err(|e| {
+			if e.kind() != tokio::io::ErrorKind::UnexpectedEof {
+				eprintln!("Net error: {:?}", e);
+			}
+		})
 		.and_then(move |(rdr, v)| {
 			let len = u64::from_be_bytes(v) as usize;
 			tokio::io::read_exact(rdr, vec![0; len])
@@ -130,9 +135,9 @@ fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 					to_receive.send(v);
 					spawn_msg_rcv_task(rdr, to_receive);
 					Ok(())
-				})
-		}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
+				}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
 					.map(|_| ())
+		})
 	);
 }
 
