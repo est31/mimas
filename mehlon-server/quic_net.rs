@@ -11,7 +11,7 @@ use std::thread;
 
 use futures::{Future, Stream};
 use futures::sync::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
-use tokio::runtime::current_thread::Runtime;
+use tokio::runtime::current_thread::{self, Runtime};
 
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
@@ -67,7 +67,9 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 
 	let (driver, _, incoming) = endpoint.bind(addr)?;
     runtime.spawn(incoming.fold(conn_send, move |conn_send, conn_tup| {
-		let (_connection_drv, connection, incoming) = conn_tup;
+		let (connection_drv, connection, incoming) = conn_tup;
+		tokio_current_thread::spawn(connection_drv
+			.map_err(|e| eprintln!("Connection driver error: {}", e)));
 		let addr = connection.remote_address();
 		let sender_clone = conn_send.clone();
 		tokio_current_thread::spawn(
@@ -76,6 +78,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 				.into_future()
 				// Only regard the first stream as new connection
 				.and_then(move |(stream, _incoming)| {
+					println!("new conn open");
 					let (wtr, rdr) = match stream {
 						Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
 						None | Some(NewStream::Uni(_)) => return Ok(()),
@@ -162,7 +165,8 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.map_err(|e| {eprintln!("Net Error: {:?}", e); })
 		.and_then(move |conn| {
 			println!("connected to server.");
-			let (_driver, conn, _incoming) = conn;
+			let (driver, conn, _incoming) = conn;
+			current_thread::spawn(driver.map_err(|e| eprintln!("connection driver error: {}", e)));
 			let stream = conn.open_bi();
 			stream.map_err(|e| {eprintln!("Net Error: {:?}", e); })
 			.and_then(move |stream| {
@@ -184,7 +188,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 				})
 			})//.map_err(|e| {eprintln!("Net Error: {:?}", e);})
 		}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-	).map_err(|_| "error")?;
+	).map_err(|_| "network error")?;
 	Ok(())
 }
 
