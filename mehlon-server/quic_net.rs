@@ -1,7 +1,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::ToSocketAddrs;
 use StrErr;
-use quinn::{BiStream, NewStream, EndpointBuilder};
+use quinn::{NewStream, RecvStream, EndpointBuilder};
 use slog::{o, Drain, Logger};
 use generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
@@ -12,8 +12,6 @@ use std::thread;
 use futures::{Future, Stream};
 use futures::sync::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
 use tokio::runtime::current_thread::Runtime;
-use tokio::io::AsyncRead;
-use tokio::io::ReadHalf;
 
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
@@ -29,22 +27,17 @@ impl rustls::ServerCertVerifier for NullVerifier {
 	}
 }
 
-fn quinn_config() -> quinn::Config {
-	quinn::Config {
-		// This value prevents the connection from timing
-		// out when there is no activiy on the connection
-		//
-		// We are not setting to 0 as we are supposed to,
-		// because there is a bug in quinn right now.
-		// Hopefully the next version will resolve it.
-		// 1 << 27 - 1 is the biggest value we can set
-		// idle_timeout to without encountering bugs.
-		// See also:
-		// https://github.com/djc/quinn/issues/210
-		idle_timeout : 1<<27 - 1,
-		.. Default::default()
-	}
-}
+// This value prevents the connection from timing
+// out when there is no activiy on the connection
+//
+// We are not setting to 0 as we are supposed to,
+// because there is a bug in quinn right now.
+// Hopefully the next version will resolve it.
+// 1 << 27 - 1 is the biggest value we can set
+// idle_timeout to without encountering bugs.
+// See also:
+// https://github.com/djc/quinn/issues/210
+const TRANSPORT_IDLE_TIMEOUT :u64 = 1 << 27 - 1;
 
 fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 	let log = get_logger();
@@ -56,21 +49,25 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 	let cert_der = cert.serialize_der();
 	let key = quinn::PrivateKey::from_der(&key_der)?;
 	let cert = quinn::Certificate::from_der(&cert_der)?;
-	server_config.set_certificate(quinn::CertificateChain::from_certs(vec![cert]), key)?;
 
-	let mut endpoint = EndpointBuilder::new(quinn_config());
+	server_config.certificate(quinn::CertificateChain::from_certs(vec![cert]), key)?;
+
+	let mut server_config = server_config.build();
+
+	Arc::get_mut(&mut server_config.transport)
+		.unwrap()
+		.idle_timeout = TRANSPORT_IDLE_TIMEOUT;
+
+	let mut endpoint = EndpointBuilder::default();
 	endpoint.logger(log.clone());
-	endpoint.listen(server_config.build());
+	endpoint.listen(server_config);
 
 	let mut runtime = Runtime::new()?;
 
 
-	let (_, driver, incoming) = endpoint.bind(addr)?;
-    runtime.spawn(incoming.fold(conn_send, move |conn_send, conn| {
-		let quinn::NewConnection {
-			incoming,
-			connection,
-		} = conn;
+	let (driver, _, incoming) = endpoint.bind(addr)?;
+    runtime.spawn(incoming.fold(conn_send, move |conn_send, conn_tup| {
+		let (_connection_drv, connection, incoming) = conn_tup;
 		let addr = connection.remote_address();
 		let sender_clone = conn_send.clone();
 		tokio_current_thread::spawn(
@@ -79,11 +76,10 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 				.into_future()
 				// Only regard the first stream as new connection
 				.and_then(move |(stream, _incoming)| {
-					let stream = match stream {
-						Some(NewStream::Bi(stream)) => stream,
+					let (wtr, rdr) = match stream {
+						Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
 						None | Some(NewStream::Uni(_)) => return Ok(()),
 					};
-					let (rdr, wtr) = stream.split();
 					let (msg_stream, rcv, snd) = QuicMsgStream::new();
 
 					let conn = QuicServerConn {
@@ -117,7 +113,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 	Ok(())
 }
 
-fn spawn_msg_rcv_task(rdr :ReadHalf<BiStream>, to_receive :Sender<Vec<u8>>) {
+fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 	tokio_current_thread::spawn(tokio::io::read_exact(rdr, [0; 8])
 		.and_then(move |(rdr, v)| {
 			let len = u64::from_be_bytes(v) as usize;
@@ -136,20 +132,24 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<(), StrErr> {
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
-	let mut endpoint = EndpointBuilder::new(quinn_config());
-	let mut client_config = quinn::ClientConfigBuilder::new();
+	let mut endpoint = EndpointBuilder::default();
+	let mut client_config = quinn::ClientConfigBuilder::default();
 
-	client_config.set_protocols(&[b"mehlon"]);
+	client_config.protocols(&[b"mehlon"]);
 
 	let mut client_config = client_config.build();
 
+	Arc::get_mut(&mut client_config.transport)
+		.unwrap()
+		.idle_timeout = TRANSPORT_IDLE_TIMEOUT;
+
 	// Trust all certificates
-	Arc::get_mut(&mut client_config.tls_config).unwrap().dangerous()
+	Arc::get_mut(&mut client_config.crypto).unwrap().dangerous()
 		.set_certificate_verifier(Arc::new(NullVerifier));
 
 	endpoint.default_client_config(client_config);
 
-	let (endpoint, driver, _) = endpoint.bind("[::]:0")?;
+	let (driver, endpoint, _) = endpoint.bind("[::]:0")?;
 
 	let mut runtime = Runtime::new()?;
 	let endpoint_future = endpoint.connect(
@@ -162,11 +162,11 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.map_err(|e| {eprintln!("Net Error: {:?}", e); })
 		.and_then(move |conn| {
 			println!("connected to server.");
-			let conn = conn.connection;
+			let (_driver, conn, _incoming) = conn;
 			let stream = conn.open_bi();
 			stream.map_err(|e| {eprintln!("Net Error: {:?}", e); })
 			.and_then(move |stream| {
-				let (rdr, wtr) = stream.split();
+				let (wtr, rdr) = stream;
 				spawn_msg_rcv_task(rdr, to_receive);
 				to_send.fold(wtr, |wtr, msg| {
 					let len_buf = (msg.len() as u64).to_be_bytes();

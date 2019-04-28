@@ -32,7 +32,7 @@ rustls = { version = "0.15", features = ["dangerous_configuration"] }
 tokio = "0.1.6"
 futures = "0.1.21"
 tokio-current-thread = "0.1"
-quinn = "0.2"
+quinn = "0.3"
 slog-term = "2"
 slog = "2.2"
 rcgen = "0.2"
