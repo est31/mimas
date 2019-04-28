@@ -30,6 +30,8 @@ use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent, IDENTITY};
 
+use inventory::SelectableInventory;
+
 use voxel_walk::VoxelWalker;
 
 type MeshResReceiver = Receiver<(Vector3<isize>, Vec<Vertex>)>;
@@ -66,7 +68,7 @@ pub struct Game<C :NetworkClientConn> {
 	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
-	item_in_hand :MapBlock,
+	sel_inventory :SelectableInventory,
 
 	last_pos :Option<LogicalPosition>,
 
@@ -129,6 +131,8 @@ impl<C :NetworkClientConn> Game<C> {
 			AuthState::Authenticated
 		};
 
+		let sel_inventory = SelectableInventory::new();
+
 		// This ensures that the mesh generation thread puts higher priority onto positions
 		// close to the player at the beginning.
 		gen_chunks_around(&mut map, camera.pos.map(|v| v as isize), 1, 1);
@@ -149,7 +153,7 @@ impl<C :NetworkClientConn> Game<C> {
 			vbuffs : HashMap::new(),
 
 			selected_pos : None,
-			item_in_hand : MapBlock::Wood,
+			sel_inventory,
 
 			last_pos : None,
 			last_frame_time : Instant::now(),
@@ -500,12 +504,13 @@ impl<C :NetworkClientConn> Game<C> {
 				fog_near_far : [40.0f32, 60.0]
 			};
 			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
-			let hand_mesh = hand_mesh(hand_mesh_pos,
-				self.item_in_hand);
-			let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
-			target.draw(&vbuff,
-				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-				&self.program, &uniforms, &params).unwrap();
+			if let Some(item) = self.sel_inventory.get_selected() {
+				let hand_mesh = hand_mesh(hand_mesh_pos, item);
+				let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
+				target.draw(&vbuff,
+					&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+					&self.program, &uniforms, &params).unwrap();
+			}
 		}
 		if self.in_background() {
 			if self.menu_enabled {
@@ -612,11 +617,12 @@ impl<C :NetworkClientConn> Game<C> {
 					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;
 				}
 			}
-			if self.camera.mouse_right_down {
-				if self.camera.mouse_right_cooldown <= 0.0 {
+			if self.camera.mouse_right_down
+					&& self.camera.mouse_right_cooldown <= 0.0 {
+				if let Some(ith) = self.sel_inventory.get_selected() {
 					let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-					blk.set(self.item_in_hand);
-					let msg = ClientToServerMsg::SetBlock(before_selected, self.item_in_hand);
+					blk.set(ith);
+					let msg = ClientToServerMsg::SetBlock(before_selected, ith);
 					let _ = self.srv_conn.send(msg);
 					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
 				}
@@ -702,29 +708,11 @@ impl<C :NetworkClientConn> Game<C> {
 							glutin::MouseScrollDelta::LineDelta(_x, y) => y,
 							glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
 						};
-						fn rotate(mb :MapBlock) -> MapBlock {
-							use mehlon_server::map::MapBlock::*;
-							match mb {
-								Water => Ground,
-								Ground => Sand,
-								Sand => Wood,
-								Wood => Stone,
-								Stone => Leaves,
-								Leaves => Tree,
-								Tree => Cactus,
-								Cactus => Coal,
-								Coal => Water,
-								_ => unreachable!(),
-							}
-						}
 						if lines_diff < 0.0 {
-							self.item_in_hand = rotate(self.item_in_hand);
+							self.sel_inventory.rotate(true);
 						} else if lines_diff > 0.0 {
-							for _ in 0 .. 8 {
-								self.item_in_hand = rotate(self.item_in_hand);
-							}
+							self.sel_inventory.rotate(false);
 						}
-
 					},
 
 					_ => (),
