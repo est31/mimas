@@ -68,11 +68,11 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 	let (driver, _, incoming) = endpoint.bind(addr)?;
     runtime.spawn(incoming.fold(conn_send, move |conn_send, conn_tup| {
 		let (connection_drv, connection, incoming) = conn_tup;
-		tokio_current_thread::spawn(connection_drv
+		current_thread::spawn(connection_drv
 			.map_err(|e| eprintln!("Connection driver error: {}", e)));
 		let addr = connection.remote_address();
 		let sender_clone = conn_send.clone();
-		tokio_current_thread::spawn(
+		current_thread::spawn(
 			incoming
 				.map_err(move |e| eprintln!("Connection terminated: {}", e))
 				.into_future()
@@ -93,7 +93,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 
 					spawn_msg_rcv_task(rdr, snd);
 
-					tokio_current_thread::spawn(
+					current_thread::spawn(
 						rcv.fold(wtr, |wtr, msg| {
 							let len_buf = (msg.len() as u64).to_be_bytes();
 							tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
@@ -117,7 +117,7 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 }
 
 fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
-	tokio_current_thread::spawn(tokio::io::read_exact(rdr, [0; 8])
+	current_thread::spawn(tokio::io::read_exact(rdr, [0; 8])
 		.and_then(move |(rdr, v)| {
 			let len = u64::from_be_bytes(v) as usize;
 			tokio::io::read_exact(rdr, vec![0; len])

@@ -21,7 +21,6 @@ extern crate quinn;
 extern crate slog_term;
 extern crate slog;
 extern crate tokio;
-extern crate tokio_current_thread;
 extern crate futures;
 extern crate rcgen;
 extern crate srp;
