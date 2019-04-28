@@ -101,7 +101,13 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 									tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
 										.map(|(wtr, _msg)| wtr)
 								})
-						}).map(|_| {})
+						})
+						// Gracefully terminate the stream
+						.and_then(|wtr| {
+							tokio::io::shutdown(wtr)
+								.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
+						})
+						.map(|_| ())
 					);
 
 					Ok(())
