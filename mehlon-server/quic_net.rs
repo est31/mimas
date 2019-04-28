@@ -37,7 +37,7 @@ impl rustls::ServerCertVerifier for NullVerifier {
 // idle_timeout to without encountering bugs.
 // See also:
 // https://github.com/djc/quinn/issues/210
-const TRANSPORT_IDLE_TIMEOUT :u64 = 1 << 27 - 1;
+const TRANSPORT_IDLE_TIMEOUT :u64 = 0;
 
 fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 	let log = get_logger();
