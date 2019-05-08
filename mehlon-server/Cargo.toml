@@ -22,7 +22,7 @@ serde_derive = "1.0"
 bincode = "1.0"
 serde-big-array = "0.1"
 structopt = "0.2"
-fasthash = "0.3"
+fasthash = "0.4"
 toml = "0.5"
 rust-argon2 = "0.4"
 
