@@ -30,7 +30,7 @@ use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent, IDENTITY};
 
-use inventory::SelectableInventory;
+use inventory::{SelectableInventory, Stack};
 
 use voxel_walk::VoxelWalker;
 
@@ -612,7 +612,7 @@ impl<C :NetworkClientConn> Game<C> {
 				if self.camera.mouse_left_cooldown <= 0.0 {
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 					let dug_block = blk.get();
-					self.sel_inventory.put_item(dug_block);
+					self.sel_inventory.put(Stack::with(dug_block, 1));
 					blk.set(MapBlock::Air);
 					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
 					let _ = self.srv_conn.send(msg);
