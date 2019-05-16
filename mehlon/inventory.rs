@@ -37,6 +37,26 @@ impl Stack {
 			},
 		}
 	}
+	pub fn put(&mut self, other :Stack, allow_empty :bool,
+			limit :u16) -> Stack {
+		if self.is_empty() {
+			if !allow_empty {
+				return other;
+			}
+			*self = other;
+			return Stack::Empty;
+		}
+		if let Stack::Content { item : item2, count : count2, } = other {
+			let (item, count) = self.content().unwrap();
+			if item == item2 {
+				let wanted_count = (count as u32) + (count2.get() as u32);
+				let limit_exceeding = wanted_count.saturating_sub(limit as u32);
+				*self = Stack::with(item, (wanted_count - limit_exceeding) as u16);
+				return Stack::with(item, limit_exceeding as u16);
+			}
+		}
+		return other;
+	}
 }
 
 impl SelectableInventory {
@@ -57,6 +77,9 @@ impl SelectableInventory {
 				Stack::with(Tree, 1),
 				Stack::with(Cactus, 1),
 				Stack::with(Coal, 1),
+				Stack::Empty,
+				Stack::Empty,
+				Stack::Empty,
 				].into_boxed_slice(),
 		}
 	}
@@ -81,8 +104,26 @@ impl SelectableInventory {
 			}
 		}
 	}
-	pub fn put(&mut self, _stack :Stack) -> Stack {
-		// TODO implement
-		Stack::Empty
+	pub fn put(&mut self, stack :Stack) -> Stack {
+		let mut stack = stack;
+		let selection = self.selection.unwrap_or(0);
+		let stack_count = self.stacks.len();
+		// Stack size limit
+		const STACK_SIZE_LIMIT :u16 = 60;
+		for offs in 0 .. stack_count {
+			let idx = (selection + offs) % stack_count;
+			stack = self.stacks[idx].put(stack, false, STACK_SIZE_LIMIT);
+			if stack.is_empty() {
+				break;
+			}
+		}
+		for offs in 0 .. stack_count {
+			let idx = (selection + offs) % stack_count;
+			stack = self.stacks[idx].put(stack, true, STACK_SIZE_LIMIT);
+			if stack.is_empty() {
+				break;
+			}
+		}
+		stack
 	}
 }
