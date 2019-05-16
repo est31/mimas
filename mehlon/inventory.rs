@@ -37,4 +37,7 @@ impl SelectableInventory {
 			}
 		}
 	}
+	pub fn put_item(&mut self, _item :MapBlock) {
+		// TODO actually put it into the inventory
+	}
 }

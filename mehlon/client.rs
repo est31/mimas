@@ -611,6 +611,8 @@ impl<C :NetworkClientConn> Game<C> {
 			if self.camera.mouse_left_down {
 				if self.camera.mouse_left_cooldown <= 0.0 {
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
+					let dug_block = blk.get();
+					self.sel_inventory.put_item(dug_block);
 					blk.set(MapBlock::Air);
 					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
 					let _ = self.srv_conn.send(msg);
