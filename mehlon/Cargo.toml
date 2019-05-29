@@ -11,10 +11,10 @@ path = "main.rs"
 nalgebra = "0.18"
 num-traits = "0.2"
 frustum_query = "0.1"
-glium = "0.24"
+glium = "0.25"
 #glium-glyph = { path = "../../glium-glyph" }
 #glium-glyph = { git = "https://github.com/est31/glium-glyph" }
-glium-glyph = "0.4"
+glium-glyph = "0.5"
 rand_pcg = "0.1.1"
 rand = "0.6.0"
 structopt = "0.2"

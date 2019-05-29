@@ -274,7 +274,7 @@ impl<C :NetworkClientConn> Game<C> {
 				break;
 			}
 			if self.grabbing_cursor {
-				self.display.gl_window().set_cursor_position(LogicalPosition {
+				self.display.gl_window().window().set_cursor_position(LogicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
 				}).unwrap();
@@ -554,8 +554,8 @@ impl<C :NetworkClientConn> Game<C> {
 		let grabbing_cursor = self.has_focus &&
 			!self.in_background() && self.grab_cursor;
 		if self.grabbing_cursor != grabbing_cursor {
-			self.display.gl_window().hide_cursor(grabbing_cursor);
-			let _  = self.display.gl_window().grab_cursor(grabbing_cursor);
+			self.display.gl_window().window().hide_cursor(grabbing_cursor);
+			let _  = self.display.gl_window().window().grab_cursor(grabbing_cursor);
 			self.grabbing_cursor = grabbing_cursor;
 		}
 	}
