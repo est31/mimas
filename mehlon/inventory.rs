@@ -57,10 +57,11 @@ impl Stack {
 		}
 		return other;
 	}
-	pub fn take_n(&mut self, n :u16) -> Option<(MapBlock, u16)> {
+	pub fn take_n(&mut self, n :u16) -> Option<(MapBlock, u16, bool)> {
 		match self {
 			Stack::Empty => None,
 			Stack::Content { item, count, } => {
+				let mut emptied = false;
 				let item = *item;
 				let new_count = count.get().checked_sub(n);
 				let items_removed = new_count.unwrap_or(count.get());
@@ -69,13 +70,14 @@ impl Stack {
 					*count = new_count;
 				} else {
 					*self = Stack::Empty;
+					emptied = true;
 				}
-				Some((item, items_removed))
+				Some((item, items_removed, emptied))
 			},
 		}
 	}
-	pub fn take_one(&mut self) -> Option<MapBlock> {
-		self.take_n(1).map(|(c, _n)| c)
+	pub fn take_one(&mut self) -> Option<(MapBlock, bool)> {
+		self.take_n(1).map(|(c, _n, emptied)| (c, emptied))
 	}
 }
 
@@ -110,7 +112,13 @@ impl SelectableInventory {
 	}
 	pub fn take_selected(&mut self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
-			self.stacks[idx].take_one()
+			self.stacks[idx].take_one().map(|(it, emptied)| {
+				if emptied && self.selection == Some(idx) {
+					// Update the selection
+					self.rotate(true);
+				}
+				it
+			})
 		})
 	}
 	pub fn rotate(&mut self, forwards :bool) {
