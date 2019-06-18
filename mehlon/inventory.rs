@@ -57,19 +57,25 @@ impl Stack {
 		}
 		return other;
 	}
-	pub fn take_one(&mut self) -> Option<MapBlock> {
+	pub fn take_n(&mut self, n :u16) -> Option<(MapBlock, u16)> {
 		match self {
 			Stack::Empty => None,
 			Stack::Content { item, count, } => {
 				let item = *item;
-				if count.get() > 1 {
-					*count = NonZeroU16::new(count.get() - 1).unwrap();
+				let new_count = count.get().checked_sub(n);
+				let items_removed = new_count.unwrap_or(count.get());
+				let new_count_nonzero = new_count.and_then(|v| NonZeroU16::new(v));
+				if let Some(new_count) = new_count_nonzero {
+					*count = new_count;
 				} else {
 					*self = Stack::Empty;
 				}
-				Some(item)
+				Some((item, items_removed))
 			},
 		}
+	}
+	pub fn take_one(&mut self) -> Option<MapBlock> {
+		self.take_n(1).map(|(c, _n)| c)
 	}
 }
 
