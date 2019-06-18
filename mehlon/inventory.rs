@@ -57,6 +57,20 @@ impl Stack {
 		}
 		return other;
 	}
+	pub fn take_one(&mut self) -> Option<MapBlock> {
+		match self {
+			Stack::Empty => None,
+			Stack::Content { item, count, } => {
+				let item = *item;
+				if count.get() > 1 {
+					*count = NonZeroU16::new(count.get() - 1).unwrap();
+				} else {
+					*self = Stack::Empty;
+				}
+				Some(item)
+			},
+		}
+	}
 }
 
 impl SelectableInventory {
@@ -86,6 +100,11 @@ impl SelectableInventory {
 	pub fn get_selected(&self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
 			self.stacks[idx].content().map(|(it, _count)| it)
+		})
+	}
+	pub fn take_selected(&mut self) -> Option<MapBlock> {
+		self.selection.and_then(|idx| {
+			self.stacks[idx].take_one()
 		})
 	}
 	pub fn rotate(&mut self, forwards :bool) {

@@ -621,7 +621,7 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			if self.camera.mouse_right_down
 					&& self.camera.mouse_right_cooldown <= 0.0 {
-				if let Some(ith) = self.sel_inventory.get_selected() {
+				if let Some(ith) = self.sel_inventory.take_selected() {
 					let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 					blk.set(ith);
 					let msg = ClientToServerMsg::SetBlock(before_selected, ith);
