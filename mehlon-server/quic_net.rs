@@ -43,10 +43,10 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 	let log = get_logger();
 
 	let mut server_config = quinn::ServerConfigBuilder::default();
-	let cert = rcgen::generate_simple_self_signed(vec!["mehlon-host".into()]);
+	let cert = rcgen::generate_simple_self_signed(vec!["mehlon-host".into()])?;
 
 	let key_der = cert.serialize_private_key_der();
-	let cert_der = cert.serialize_der();
+	let cert_der = cert.serialize_der()?;
 	let key = quinn::PrivateKey::from_der(&key_der)?;
 	let cert = quinn::Certificate::from_der(&cert_der)?;
 
