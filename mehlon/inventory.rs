@@ -143,19 +143,33 @@ impl SelectableInventory {
 		let stack_count = self.stacks.len();
 		// Stack size limit
 		const STACK_SIZE_LIMIT :u16 = 60;
+		let mut last_idx_changed = None;
+		// First put into the non-empty stacks
 		for offs in 0 .. stack_count {
 			let idx = (selection + offs) % stack_count;
-			stack = self.stacks[idx].put(stack, false, STACK_SIZE_LIMIT);
+			let new_stack = self.stacks[idx].put(stack, false, STACK_SIZE_LIMIT);
+			if stack != new_stack {
+				last_idx_changed = Some(idx);
+			}
+			stack = new_stack;
 			if stack.is_empty() {
 				break;
 			}
 		}
+		// Then put into the possibly empty stacks
 		for offs in 0 .. stack_count {
 			let idx = (selection + offs) % stack_count;
-			stack = self.stacks[idx].put(stack, true, STACK_SIZE_LIMIT);
+			let new_stack = self.stacks[idx].put(stack, true, STACK_SIZE_LIMIT);
+			if stack != new_stack {
+				last_idx_changed = Some(idx);
+			}
 			if stack.is_empty() {
 				break;
 			}
+		}
+		// Set selection if it's none
+		if self.selection.is_none() {
+			self.selection = last_idx_changed;
 		}
 		stack
 	}
