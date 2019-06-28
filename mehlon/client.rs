@@ -121,7 +121,7 @@ impl<C :NetworkClientConn> Game<C> {
 		let auth_state = if let Some((nick, pw)) = nick_pw {
 			// Start doing the login
 			let mut a = [0; 64];
-			let mut rng = rand::rngs::OsRng::new().unwrap();
+			let mut rng = rand::rngs::OsRng;
 			rng.fill_bytes(&mut a);
 			let client = SrpClient::new(&a, &G_4096);
 			let a_pub = client.get_a_pub();

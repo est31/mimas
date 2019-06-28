@@ -15,8 +15,8 @@ glium = "0.25"
 #glium-glyph = { path = "../../glium-glyph" }
 #glium-glyph = { git = "https://github.com/est31/glium-glyph" }
 glium-glyph = "0.5"
-rand_pcg = "0.1.1"
-rand = "0.6.0"
+rand_pcg = "0.2"
+rand = "0.7"
 structopt = "0.2"
 srp = "0.4"
 sha2 = "0.8"
