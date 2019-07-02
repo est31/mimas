@@ -39,8 +39,8 @@ srp = "0.4"
 sha2 = "0.8"
 
 # For map storage
-rusqlite = "0.18"
-libsqlite3-sys = "0.14"
+rusqlite = "0.19"
+libsqlite3-sys = "0.15"
 byteorder = "1.0"
 flate2 = "1.0"
 base64 = "0.10.1"
