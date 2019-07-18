@@ -308,7 +308,7 @@ impl<S :NetworkServerSocket> Server<S> {
 								};
 
 								let mut b = [0; 64];
-								let mut rng = rand::rngs::OsRng::new().unwrap();
+								let mut rng = rand::rngs::OsRng;
 								rng.fill_bytes(&mut b);
 
 								let srp_server = SrpServer::new(&user_record, &a_pub, &b, &*G_4096).unwrap();
