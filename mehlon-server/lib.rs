@@ -53,6 +53,7 @@ use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, PlayerPosition};
+use inventory::SelectableInventory;
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
@@ -81,6 +82,7 @@ pub enum ServerToClientMsg {
 	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>),
 
 	SetPos(PlayerPosition),
+	SetInventory(SelectableInventory),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
 }
@@ -530,6 +532,10 @@ impl<S :NetworkServerSocket> Server<S> {
 			let msg = ServerToClientMsg::SetPos(pos);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
+			let msg = ServerToClientMsg::SetInventory(SelectableInventory::new());
+			// TODO get rid of unwrap
+			conn.send(msg).unwrap();
+
 			let mut players = self.players.borrow_mut();
 			players.insert(id, Player::from_conn_id_nick(conn, id, nick.clone()));
 			players.len()

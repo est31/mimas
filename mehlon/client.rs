@@ -131,8 +131,6 @@ impl<C :NetworkClientConn> Game<C> {
 			AuthState::Authenticated
 		};
 
-		let sel_inventory = SelectableInventory::new();
-
 		// This ensures that the mesh generation thread puts higher priority onto positions
 		// close to the player at the beginning.
 		gen_chunks_around(&mut map, camera.pos.map(|v| v as isize), 1, 1);
@@ -153,7 +151,7 @@ impl<C :NetworkClientConn> Game<C> {
 			vbuffs : HashMap::new(),
 
 			selected_pos : None,
-			sel_inventory,
+			sel_inventory : SelectableInventory::new(),
 
 			last_pos : None,
 			last_frame_time : Instant::now(),
@@ -256,6 +254,9 @@ impl<C :NetworkClientConn> Game<C> {
 						self.camera.pos = p.pos();
 						self.camera.pitch = p.pitch();
 						self.camera.yaw = p.yaw();
+					},
+					ServerToClientMsg::SetInventory(inv) => {
+						self.sel_inventory = inv;
 					},
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);

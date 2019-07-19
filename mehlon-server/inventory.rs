@@ -4,12 +4,13 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use map_storage::{mapblock_to_number, number_to_mapblock};
 use StrErr;
 
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SelectableInventory {
 	selection :Option<usize>,
 	stacks :Box<[Stack]>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Stack {
 	Empty,
 	Content {
