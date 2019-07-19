@@ -26,12 +26,11 @@ use mehlon_server::generic_net::NetworkClientConn;
 use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
 use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
+use mehlon_server::inventory::{SelectableInventory, Stack};
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent, IDENTITY};
-
-use inventory::{SelectableInventory, Stack};
 
 use voxel_walk::VoxelWalker;
 

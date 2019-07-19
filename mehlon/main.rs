@@ -19,7 +19,6 @@ mod client;
 mod collide;
 mod ui;
 mod voxel_walk;
-mod inventory;
 
 use glium::glutin;
 use client::Game;

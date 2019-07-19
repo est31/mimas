@@ -1,4 +1,4 @@
-use mehlon_server::map::MapBlock;
+use map::MapBlock;
 use std::num::NonZeroU16;
 
 pub struct SelectableInventory {
@@ -86,7 +86,7 @@ impl SelectableInventory {
 		Self::with_stuff_inside()
 	}
 	pub fn with_stuff_inside() -> Self {
-		use mehlon_server::map::MapBlock::*;
+		use map::MapBlock::*;
 		Self {
 			selection : None,
 			stacks : vec![
