@@ -184,6 +184,8 @@ impl SelectableInventory {
 	}
 	pub fn serialize(&self, res :&mut Vec<u8>) {
 		res.write_u8(0).unwrap();
+		let selection_id = self.selection.unwrap_or(0) + 1;
+		res.write_u16::<BigEndian>(selection_id as u16).unwrap();
 		res.write_u16::<BigEndian>(self.stacks.len() as u16).unwrap();
 		for st in self.stacks.iter() {
 			let (id, count) = st.content()
@@ -200,6 +202,12 @@ impl SelectableInventory {
 			// The version is too recent
 			Err(format!("Unsupported map chunk version {}", version))?;
 		}
+		let selection_id = rdr.read_u16::<BigEndian>()?;
+		let selection = if selection_id == 0 {
+			None
+		} else {
+			Some((selection_id - 1) as usize)
+		};
 
 		let cnt = rdr.read_u16::<BigEndian>()?;
 		let mut stacks = Vec::new();
@@ -218,7 +226,7 @@ impl SelectableInventory {
 			}
 		}
 		Ok(Self {
-			selection : None,
+			selection,
 			stacks : stacks.into_boxed_slice(),
 		})
 	}
