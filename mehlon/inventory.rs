@@ -173,4 +173,10 @@ impl SelectableInventory {
 		}
 		stack
 	}
+	pub fn selection(&self) -> Option<usize> {
+		self.selection
+	}
+	pub fn stacks(&self) -> &Box<[Stack]> {
+		&self.stacks
+	}
 }

@@ -7,7 +7,8 @@ use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
-	rusttype::Font, Section,
+	rusttype::{Font, Scale},
+	Section, VariedSection, SectionText,
 };
 use std::collections::{HashMap, VecDeque};
 use std::time::{Instant, Duration};
@@ -474,9 +475,33 @@ impl<C :NetworkClientConn> Game<C> {
 		glyph_brush.queue(Section {
 			text :&text,
 			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
-			//scale : glium_brush::glyph_brush::rusttype::Scale::uniform(32.0),
 			color : [0.9, 0.9, 0.9, 1.0],
 			.. Section::default()
+		});
+		let mut inv_contents = Vec::new();
+		for (i, v) in self.sel_inventory.stacks().iter().enumerate() {
+			if let Stack::Content { item, count } = v {
+				let is = Some(i) == self.sel_inventory.selection();
+				inv_contents.push((format!(" {:?}({})", item, count), is));
+			}
+		}
+		let inv_text = inv_contents.iter()
+			.map(|(txt, b)| SectionText {
+				text : &txt,
+				color : [0.9, 0.9, 0.9, 1.0],
+				scale : if *b {
+					Scale::uniform(25.0)
+				} else {
+					Scale::uniform(16.0)
+				},
+				.. SectionText::default()
+			})
+			.collect::<Vec<_>>();
+		glyph_brush.queue(VariedSection {
+			text : inv_text,
+			bounds : (screen_dims.0 as f32, screen_dims.1 as f32),
+			screen_position : (0.0, screen_dims.1 as f32 * 0.9),
+			.. VariedSection::default()
 		});
 
 		glyph_brush.draw_queued(&self.display, &mut target);
