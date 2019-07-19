@@ -1,5 +1,8 @@
 use map::MapBlock;
 use std::num::NonZeroU16;
+use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use map_storage::{mapblock_to_number, number_to_mapblock};
+use StrErr;
 
 pub struct SelectableInventory {
 	selection :Option<usize>,
@@ -178,5 +181,45 @@ impl SelectableInventory {
 	}
 	pub fn stacks(&self) -> &Box<[Stack]> {
 		&self.stacks
+	}
+	pub fn serialize(&self, res :&mut Vec<u8>) {
+		res.write_u8(0).unwrap();
+		res.write_u16::<BigEndian>(self.stacks.len() as u16).unwrap();
+		for st in self.stacks.iter() {
+			let (id, count) = st.content()
+				.map(|(b, cnt)| (mapblock_to_number(b), cnt))
+				.unwrap_or((0, 0)); // id doesn't matter if count is 0
+			res.write_u8(id).unwrap();
+			res.write_u16::<BigEndian>(count).unwrap();
+		}
+	}
+	pub fn deserialize(buf :&[u8]) -> Result<Self, StrErr> {
+		let mut rdr = buf;
+		let version = rdr.read_u8()?;
+		if version != 0 {
+			// The version is too recent
+			Err(format!("Unsupported map chunk version {}", version))?;
+		}
+
+		let cnt = rdr.read_u16::<BigEndian>()?;
+		let mut stacks = Vec::new();
+		for _ in 0 .. cnt {
+			let item_id = rdr.read_u8()?;
+			let count = rdr.read_u16::<BigEndian>()?;
+			if let Some(count) = NonZeroU16::new(count) {
+				let item = number_to_mapblock(item_id)
+					.ok_or_else(|| "invalid item id".to_owned())?;
+				stacks.push(Stack::Content {
+					item,
+					count,
+				});
+			} else {
+				stacks.push(Stack::Empty);
+			}
+		}
+		Ok(Self {
+			selection : None,
+			stacks : stacks.into_boxed_slice(),
+		})
 	}
 }

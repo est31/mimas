@@ -121,7 +121,7 @@ impl SqliteStorageBackend {
 	}
 }
 
-fn mapblock_to_number(b :MapBlock) -> u8 {
+pub fn mapblock_to_number(b :MapBlock) -> u8 {
 	use MapBlock::*;
 	match b {
 		Air => 0,
@@ -138,7 +138,7 @@ fn mapblock_to_number(b :MapBlock) -> u8 {
 	}
 }
 
-fn number_to_mapblock(b :u8) -> Option<MapBlock> {
+pub fn number_to_mapblock(b :u8) -> Option<MapBlock> {
 	use MapBlock::*;
 	Some(match b {
 		0 => Air,
