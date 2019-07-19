@@ -120,6 +120,8 @@ struct Player<C: NetworkServerConn> {
 	ids :PlayerIdPair,
 	nick :String,
 	pos :PlayerPosition,
+	inventory :SelectableInventory,
+	inventory_last_ser :SelectableInventory,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
@@ -131,6 +133,8 @@ impl<C: NetworkServerConn> Player<C> {
 			ids,
 			nick,
 			pos : PlayerPosition::default(),
+			inventory : SelectableInventory::new(),
+			inventory_last_ser : SelectableInventory::new(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
@@ -146,7 +150,9 @@ pub struct Server<S :NetworkServerSocket> {
 	config :Config,
 	auth_back :Option<SqliteLocalAuth>,
 	unauthenticated_players :Vec<(S::Conn, AuthState)>,
-	players_waiting_for_kv :HashMap<PlayerIdPair, (S::Conn, String)>,
+	players_waiting_for_kv :HashMap<PlayerIdPair,
+		(S::Conn, String,
+			Option<PlayerPosition>, Option<SelectableInventory>)>,
 	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -404,23 +410,41 @@ impl<S :NetworkServerSocket> Server<S> {
 		let mut players_to_add = Vec::new();
 		let pwfk = &mut self.players_waiting_for_kv;
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
-			if key != "position" {
-				return;
+			let mut ready = false;
+			if key == "position" {
+				if let Some((_conn, _nick, pos, inv)) = pwfk.get_mut(&id) {
+					*pos = Some(if let Some(buf) = value {
+						PlayerPosition::deserialize(&buf)
+							.ok()
+							.unwrap_or_else(PlayerPosition::default)
+					} else {
+						// No value could be found
+						PlayerPosition::default()
+					});
+					ready = inv.is_some();
+				}
+			} else if key == "inventory" {
+				if let Some((_conn, _nick, pos, inv)) = pwfk.get_mut(&id) {
+					*inv = Some(if let Some(buf) = value {
+						SelectableInventory::deserialize(&buf)
+							.ok()
+							.unwrap_or_else(SelectableInventory::new)
+					} else {
+						// No value could be found
+						SelectableInventory::new()
+					});
+					ready = pos.is_some();
+				}
 			}
-			if let Some((conn, nick)) = pwfk.remove(&id) {
-				let pos = if let Some(buf) = value {
-					PlayerPosition::deserialize(&buf)
-						.ok()
-						.unwrap_or_else(PlayerPosition::default)
-				} else {
-					// No value could be found
-					PlayerPosition::default()
-				};
-				players_to_add.push((conn, id, nick, pos));
+			if ready {
+				if let Some((conn, nick, Some(pos), Some(inv)))
+						= pwfk.remove(&id) {
+					players_to_add.push((conn, id, nick, pos, inv));
+				}
 			}
 		});
-		for (conn, id, nick, pos) in players_to_add {
-			self.add_player(conn, id, nick, pos);
+		for (conn, id, nick, pos, inv) in players_to_add {
+			self.add_player(conn, id, nick, pos, inv);
 		}
 	}
 	fn get_msgs(&mut self) -> Vec<(PlayerIdPair, ClientToServerMsg)> {
@@ -475,6 +499,24 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		Ok(())
 	}
+	fn store_player_kvs(&mut self) -> Result<(), StrErr> {
+		self.store_player_positions()?;
+		self.store_player_inventories()?;
+		Ok(())
+	}
+	fn store_player_inventories(&mut self) -> Result<(), StrErr> {
+		// Store the player inventories at each update instead of at certain
+		// intervals because in general, intervals don't change around.
+		let players = self.players.clone();
+		for (_, player) in players.borrow_mut().iter_mut() {
+			if player.inventory_last_ser != player.inventory {
+				let serialized_inv = player.inventory.serialize();
+				self.map.set_player_kv(player.ids, "inventory", serialized_inv);
+				player.inventory_last_ser = player.inventory.clone();
+			}
+		}
+		Ok(())
+	}
 	fn store_player_positions(&mut self) -> Result<(), StrErr> {
 		// This limiting makes sure we don't store the player positions
 		// too often as that would mean too much wear on the hdd
@@ -525,14 +567,16 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn add_player_waiting(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String) {
 		const PAYLOAD :u32 = 0;
 		self.map.get_player_kv(id, "position", PAYLOAD);
-		self.players_waiting_for_kv.insert(id, (conn, nick));
+		self.map.get_player_kv(id, "inventory", PAYLOAD);
+		self.players_waiting_for_kv.insert(id, (conn, nick, None, None));
 	}
-	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair, nick :String, pos :PlayerPosition) {
+	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair,
+			nick :String, pos :PlayerPosition, inv :SelectableInventory) {
 		let player_count = {
 			let msg = ServerToClientMsg::SetPos(pos);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
-			let msg = ServerToClientMsg::SetInventory(SelectableInventory::new());
+			let msg = ServerToClientMsg::SetInventory(inv);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 
@@ -625,7 +669,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			}
 			self.handle_auth_msgs();
 			self.handle_players_waiting_for_kv();
-			self.store_player_positions().unwrap();
+			self.store_player_kvs().unwrap();
 
 			let msgs = self.get_msgs();
 

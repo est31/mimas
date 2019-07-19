@@ -639,6 +639,7 @@ impl<C :NetworkClientConn> Game<C> {
 					let dug_block = blk.get();
 					self.sel_inventory.put(Stack::with(dug_block, 1));
 					blk.set(MapBlock::Air);
+					// TODO send msg to server
 					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
 					let _ = self.srv_conn.send(msg);
 					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;

@@ -183,7 +183,12 @@ impl SelectableInventory {
 	pub fn stacks(&self) -> &Box<[Stack]> {
 		&self.stacks
 	}
-	pub fn serialize(&self, res :&mut Vec<u8>) {
+	pub fn serialize(&self) -> Vec<u8> {
+		let mut res = Vec::new();
+		self.serialize_to(&mut res);
+		res
+	}
+	pub fn serialize_to(&self, res :&mut Vec<u8>) {
 		res.write_u8(0).unwrap();
 		let selection_id = self.selection.unwrap_or(0) + 1;
 		res.write_u16::<BigEndian>(selection_id as u16).unwrap();
