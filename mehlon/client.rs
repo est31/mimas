@@ -639,7 +639,8 @@ impl<C :NetworkClientConn> Game<C> {
 					let dug_block = blk.get();
 					self.sel_inventory.put(Stack::with(dug_block, 1));
 					blk.set(MapBlock::Air);
-					// TODO send msg to server
+					let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+					let _ = self.srv_conn.send(msg);
 					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
 					let _ = self.srv_conn.send(msg);
 					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;
@@ -650,6 +651,8 @@ impl<C :NetworkClientConn> Game<C> {
 				if let Some(ith) = self.sel_inventory.take_selected() {
 					let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 					blk.set(ith);
+					let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+					let _ = self.srv_conn.send(msg);
 					let msg = ClientToServerMsg::SetBlock(before_selected, ith);
 					let _ = self.srv_conn.send(msg);
 					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
@@ -741,6 +744,8 @@ impl<C :NetworkClientConn> Game<C> {
 						} else if lines_diff > 0.0 {
 							self.sel_inventory.rotate(false);
 						}
+						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+						let _ = self.srv_conn.send(msg);
 					},
 
 					_ => (),

@@ -70,6 +70,7 @@ pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
 	SetPos(PlayerPosition),
+	SetInventory(SelectableInventory),
 	Chat(String),
 }
 
@@ -458,6 +459,9 @@ impl<S :NetworkServerSocket> Server<S> {
 					Ok(Some(ClientToServerMsg::SetPos(p))) => {
 						player.pos = p;
 					},
+					Ok(Some(ClientToServerMsg::SetInventory(inv))) => {
+						player.inventory = inv;
+					},
 					Ok(Some(msg)) => {
 						msgs.push((*id, msg));
 					},
@@ -693,6 +697,7 @@ impl<S :NetworkServerSocket> Server<S> {
 						map::spawn_tree(&mut self.map, p);
 					},
 					SetPos(_p) => unreachable!(),
+					SetInventory(_inv) => unreachable!(),
 					Chat(m) => {
 						if m.starts_with('/') {
 							self.handle_command(id, m);
