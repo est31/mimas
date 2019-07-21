@@ -119,8 +119,6 @@ impl ChatWindow {
 const BACKGROUND_COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
 
 pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[f32; 4]) -> Vec<Vertex> {
-	let mut vertices = Vec::new();
-
 	let size_x = (mesh_dims.0 as f32) / (framebuffer_dims.0 as f32);
 	let size_y = (mesh_dims.1 as f32) / (framebuffer_dims.1 as f32);
 
@@ -128,6 +126,16 @@ pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[
 	let y_min = -size_y;
 	let x_max = size_x;
 	let y_max = size_y;
+
+	square_mesh_frac_limits(x_min, y_min, x_max, y_max, color)
+}
+
+/// Creates a square mesh from limits given in fractions of screen size
+pub fn square_mesh_frac_limits(
+		x_min :f32, y_min :f32, x_max :f32, y_max :f32,
+		color :[f32; 4]) -> Vec<Vertex> {
+	let mut vertices = Vec::new();
+
 	let z = 0.2;
 
 	vertices.push(Vertex {
