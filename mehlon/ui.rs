@@ -5,6 +5,7 @@ use glium_glyph::glyph_brush::{
 };
 use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState};
 use glium_glyph::glyph_brush::GlyphCruncher;
+use mehlon_server::inventory::SelectableInventory;
 
 use mehlon_meshgen::Vertex;
 
@@ -115,6 +116,63 @@ impl ChatWindow {
 	}
 }
 
+pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
+		display :&glium::Display, program :&glium::Program,
+		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+
+	let screen_dims = display.get_framebuffer_dimensions();
+
+	let uniforms = uniform! {
+		vmatrix : IDENTITY,
+		pmatrix : IDENTITY,
+		fog_near_far : [40.0f32, 60.0]
+	};
+	let params = glium::draw_parameters::DrawParameters {
+		/*depth : glium::Depth {
+			test : glium::draw_parameters::DepthTest::IfLess,
+			write : true,
+			.. Default::default()
+		},
+		backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
+		blend :glium::Blend::alpha_blending(),
+		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
+		.. Default::default()
+	};
+
+	let unit = screen_dims.0 as f32 / 15.0;
+
+	const SLOT_COUNT :usize = 8;
+	const SLOT_COUNT_F32 :f32 = SLOT_COUNT as f32;
+
+	let hud_width = SLOT_COUNT_F32 * unit * 1.10 + 0.1 * unit;
+	let hud_height = unit * 1.10;
+
+	let mut vertices = Vec::new();
+
+	// Background
+	let dims = (hud_width as i32,
+		hud_height as i32);
+	let mesh_x = -(hud_width / 2.0) as i32;
+	let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
+	vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+		dims, screen_dims, BACKGROUND_COLOR));
+
+	const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
+
+	// Item slots
+	for i in 0 .. SLOT_COUNT {
+		let dims = (unit as i32, unit as i32);
+		let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * i as f32) + unit * 0.1) as i32;
+		let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
+		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+			dims, screen_dims, SLOT_COLOR));
+	}
+
+	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
+	target.draw(&vbuff,
+			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+			&program, &uniforms, &params).unwrap();
+}
 
 const BACKGROUND_COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
 
@@ -126,6 +184,23 @@ pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[
 	let y_min = -size_y;
 	let x_max = size_x;
 	let y_max = size_y;
+
+	square_mesh_frac_limits(x_min, y_min, x_max, y_max, color)
+}
+
+pub fn square_mesh_xy(mesh_x :i32, mesh_y :i32,
+		mesh_dims :(i32, i32), framebuffer_dims :(u32, u32),
+		color :[f32; 4]) -> Vec<Vertex> {
+	let mesh_x = (mesh_x as f32) / (framebuffer_dims.0 as f32);
+	let mesh_y = (mesh_y as f32) / (framebuffer_dims.1 as f32);
+
+	let size_x = (mesh_dims.0 as f32) / (framebuffer_dims.0 as f32);
+	let size_y = (mesh_dims.1 as f32) / (framebuffer_dims.1 as f32);
+
+	let x_min = mesh_x;
+	let y_min = mesh_y;
+	let x_max = mesh_x + size_x;
+	let y_max = mesh_y + size_y;
 
 	square_mesh_frac_limits(x_min, y_min, x_max, y_max, color)
 }

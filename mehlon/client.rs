@@ -30,7 +30,8 @@ use mehlon_server::inventory::{SelectableInventory, Stack};
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
-use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent, IDENTITY};
+use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
+	IDENTITY, render_inventory_hud};
 
 use voxel_walk::VoxelWalker;
 
@@ -537,6 +538,10 @@ impl<C :NetworkClientConn> Game<C> {
 					&self.program, &uniforms, &params).unwrap();
 			}
 		}
+		render_inventory_hud(
+			&self.sel_inventory,
+			&mut self.display,
+			&self.program, glyph_brush, &mut target);
 		if self.in_background() {
 			if self.menu_enabled {
 				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
