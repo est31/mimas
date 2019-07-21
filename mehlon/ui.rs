@@ -5,7 +5,7 @@ use glium_glyph::glyph_brush::{
 };
 use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState};
 use glium_glyph::glyph_brush::GlyphCruncher;
-use mehlon_server::inventory::SelectableInventory;
+use mehlon_server::inventory::{SelectableInventory, Stack};
 
 use mehlon_meshgen::Vertex;
 
@@ -138,8 +138,11 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
 		.. Default::default()
 	};
+	//let mut mesh_dims = glyph_brush.pixel_bounds(&section).unwrap();
+	//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
+	//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
 
-	let unit = screen_dims.0 as f32 / 15.0;
+	let unit = screen_dims.0 as f32 / 15.0 * 2.0;
 
 	const SLOT_COUNT :usize = 8;
 	const SLOT_COUNT_F32 :f32 = SLOT_COUNT as f32;
@@ -172,13 +175,33 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		};
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, color));
-
+		let content = inv.stacks()
+			.get(i)
+			.unwrap_or(&Stack::Empty);
+		let text = if let Stack::Content { item, count } = content {
+			format!("{:?}({})", item, count)
+		} else {
+			String::from("")
+		};
+		let text_x = (screen_dims.0 as f32 - hud_width / 2.0
+			+ unit * 1.1 * i as f32 + unit * 0.1) * 0.5;
+		let section = Section {
+			text : &text,
+			bounds : (unit, unit),
+			screen_position : (text_x, screen_dims.1 as f32 - hud_height * 0.5),
+			layout : Layout::default()
+				.h_align(HorizontalAlign::Left),
+			color : [0.9, 0.9, 0.9, 1.0],
+			.. Section::default()
+		};
+		glyph_brush.queue(section);
 	}
 
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
 			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 			&program, &uniforms, &params).unwrap();
+	glyph_brush.draw_queued(display, target);
 }
 
 const BACKGROUND_COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
