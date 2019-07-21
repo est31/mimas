@@ -735,17 +735,19 @@ impl<C :NetworkClientConn> Game<C> {
 						}
 					},
 					glutin::WindowEvent::MouseWheel { delta, .. } => {
-						let lines_diff = match delta {
-							glutin::MouseScrollDelta::LineDelta(_x, y) => y,
-							glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
-						};
-						if lines_diff < 0.0 {
-							self.sel_inventory.rotate(true);
-						} else if lines_diff > 0.0 {
-							self.sel_inventory.rotate(false);
+						if !self.in_background() {
+							let lines_diff = match delta {
+								glutin::MouseScrollDelta::LineDelta(_x, y) => y,
+								glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
+							};
+							if lines_diff < 0.0 {
+								self.sel_inventory.rotate(true);
+							} else if lines_diff > 0.0 {
+								self.sel_inventory.rotate(false);
+							}
+							let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+							let _ = self.srv_conn.send(msg);
 						}
-						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
-						let _ = self.srv_conn.send(msg);
 					},
 
 					_ => (),
