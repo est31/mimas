@@ -179,7 +179,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 			.get(i)
 			.unwrap_or(&Stack::Empty);
 		let text = if let Stack::Content { item, count } = content {
-			format!("{:?}({})", item, count)
+			format!("{:?} ({})", item, count)
 		} else {
 			String::from("")
 		};
@@ -187,7 +187,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 			+ unit * 1.1 * i as f32 + unit * 0.1) * 0.5;
 		let section = Section {
 			text : &text,
-			bounds : (unit, unit),
+			bounds : (unit / 2.0, unit / 2.0),
 			screen_position : (text_x, screen_dims.1 as f32 - hud_height * 0.5),
 			layout : Layout::default()
 				.h_align(HorizontalAlign::Left),
