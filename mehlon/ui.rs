@@ -158,14 +158,21 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		dims, screen_dims, BACKGROUND_COLOR));
 
 	const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
+	const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
 	// Item slots
 	for i in 0 .. SLOT_COUNT {
 		let dims = (unit as i32, unit as i32);
 		let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * i as f32) + unit * 0.1) as i32;
 		let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
+		let color = if Some(i) == inv.selection() {
+			SELECTED_SLOT_COLOR
+		} else {
+			SLOT_COLOR
+		};
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, SLOT_COLOR));
+			dims, screen_dims, color));
+
 	}
 
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
