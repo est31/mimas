@@ -30,7 +30,7 @@ use mehlon_server::inventory::{SelectableInventory, Stack};
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
-	IDENTITY, render_inventory_hud};
+	IDENTITY, render_inventory_hud, render_inventory_menu};
 
 use voxel_walk::VoxelWalker;
 
@@ -82,6 +82,7 @@ pub struct Game<C :NetworkClientConn> {
 	has_focus :bool,
 	chat_msgs :VecDeque<String>,
 	chat_window :Option<ChatWindow>,
+	inventory_menu_enabled :bool,
 	menu_enabled :bool,
 
 	map :ClientMap,
@@ -164,6 +165,7 @@ impl<C :NetworkClientConn> Game<C> {
 			has_focus : false,
 			chat_msgs : VecDeque::new(),
 			chat_window : None,
+			inventory_menu_enabled : false,
 			menu_enabled : false,
 			map,
 			camera,
@@ -191,7 +193,9 @@ impl<C :NetworkClientConn> Game<C> {
 		float_delta
 	}
 	fn in_background(&self) -> bool {
-		self.chat_window.is_some() || self.menu_enabled
+		self.chat_window.is_some() ||
+			self.inventory_menu_enabled ||
+			self.menu_enabled
 	}
 	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
@@ -521,6 +525,11 @@ impl<C :NetworkClientConn> Game<C> {
 				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
 			} else if let Some(cw) = &self.chat_window {
 				cw.render(&mut self.display, &self.program, glyph_brush, &mut target);
+			} else if self.inventory_menu_enabled {
+				render_inventory_menu(
+					&self.sel_inventory,
+					&mut self.display,
+					&self.program, glyph_brush, &mut target);
 			}
 		} else {
 			let params = glium::draw_parameters::DrawParameters {
@@ -594,11 +603,23 @@ impl<C :NetworkClientConn> Game<C> {
 			self.handle_chat_win_ev(ev);
 			return false;
 		}
+		if self.inventory_menu_enabled &&
+				input.virtual_keycode == Some(glutin::VirtualKeyCode::Escape) {
+			self.inventory_menu_enabled = false;
+			self.check_grab_change();
+			return false;
+		}
 
 		match input.virtual_keycode {
 			Some(glutin::VirtualKeyCode::Escape) => {
 				if input.state == glutin::ElementState::Pressed {
 					self.menu_enabled = !self.menu_enabled;
+					self.check_grab_change();
+				}
+			},
+			Some(glutin::VirtualKeyCode::I) => {
+				if input.state == glutin::ElementState::Pressed {
+					self.inventory_menu_enabled = !self.inventory_menu_enabled;
 					self.check_grab_change();
 				}
 			},
