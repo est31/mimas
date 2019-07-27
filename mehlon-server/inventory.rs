@@ -181,6 +181,7 @@ impl SelectableInventory {
 			if stack != new_stack {
 				last_idx_changed = Some(idx);
 			}
+			stack = new_stack;
 			if stack.is_empty() {
 				break;
 			}
