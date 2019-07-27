@@ -188,6 +188,7 @@ impl InventoryMenu {
 			dims, screen_dims, BACKGROUND_COLOR));
 
 		const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
+		const SELECTED_SLOT_COLOR :[f32; 4] = [0.3, 0.3, 0.3, 0.85];
 		const HOVERED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
 		// TODO this is hacky, we change state in RENDERING code!!
@@ -209,7 +210,9 @@ impl InventoryMenu {
 					(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
 				})
 				.unwrap_or(false);
-			let color = if hovering {
+			let color = if self.from_pos == Some(i) {
+				SELECTED_SLOT_COLOR
+			} else if hovering {
 				HOVERED_SLOT_COLOR
 			} else {
 				SLOT_COLOR
