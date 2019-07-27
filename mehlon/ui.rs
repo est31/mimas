@@ -116,94 +116,108 @@ impl ChatWindow {
 	}
 }
 
-pub fn render_inventory_menu<'a, 'b>(inv :&SelectableInventory,
-		display :&glium::Display, program :&glium::Program,
-		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+pub struct InventoryMenu {
+	inv :SelectableInventory,
+}
 
-	let screen_dims = display.get_framebuffer_dimensions();
-
-	let uniforms = uniform! {
-		vmatrix : IDENTITY,
-		pmatrix : IDENTITY,
-		fog_near_far : [40.0f32, 60.0]
-	};
-	let params = glium::draw_parameters::DrawParameters {
-		/*depth : glium::Depth {
-			test : glium::draw_parameters::DepthTest::IfLess,
-			write : true,
-			.. Default::default()
-		},
-		backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
-		blend :glium::Blend::alpha_blending(),
-		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
-		.. Default::default()
-	};
-	//let mut mesh_dims = glyph_brush.pixel_bounds(&section).unwrap();
-	//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
-	//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
-
-	let unit = screen_dims.0 as f32 / 15.0 * 2.0;
-
-	const SLOT_COUNT_X :usize = 8;
-	const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
-
-	let hud_width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
-	let hud_height = (inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil()
-		* unit * 1.1 + 0.1 * unit;
-
-	let mut vertices = Vec::new();
-
-	// Background
-	let dims = (hud_width as i32,
-		hud_height as i32);
-	let mesh_x = -(hud_width / 2.0) as i32;
-	let mesh_y = -(hud_height / 2.0) as i32;
-	vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-		dims, screen_dims, BACKGROUND_COLOR));
-
-	const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
-	const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
-
-	// Item slots
-	for (i, stack) in inv.stacks().iter().enumerate() {
-		let col = i % SLOT_COUNT_X;
-		let line = i / SLOT_COUNT_X;
-		let dims = (unit as i32, unit as i32);
-		let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
-		let mesh_y = (hud_height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
-		let color = if Some(i) == inv.selection() {
-			SELECTED_SLOT_COLOR
-		} else {
-			SLOT_COLOR
-		};
-		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, color));
-		let text = if let Stack::Content { item, count } = stack {
-			format!("{:?} ({})", item, count)
-		} else {
-			String::from("")
-		};
-		let text_x = (screen_dims.0 as f32 - hud_width / 2.0
-			+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
-		let text_y = (screen_dims.1 as f32 - hud_height / 2.0
-			+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5;
-		let section = Section {
-			text : &text,
-			bounds : (unit / 2.0, unit / 2.0),
-			screen_position : (text_x, text_y),
-			layout : Layout::default()
-				.h_align(HorizontalAlign::Left),
-			color : [0.9, 0.9, 0.9, 1.0],
-			.. Section::default()
-		};
-		glyph_brush.queue(section);
+impl InventoryMenu {
+	pub fn new(inv :SelectableInventory) -> Self {
+		Self {
+			inv,
+		}
 	}
+	pub fn into_inventory(self) -> SelectableInventory {
+		self.inv
+	}
+	pub fn render<'a, 'b>(&self,
+			display :&glium::Display, program :&glium::Program,
+			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 
-	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
-	target.draw(&vbuff,
-			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-			&program, &uniforms, &params).unwrap();
-	glyph_brush.draw_queued(display, target);
+		let screen_dims = display.get_framebuffer_dimensions();
+
+		let uniforms = uniform! {
+			vmatrix : IDENTITY,
+			pmatrix : IDENTITY,
+			fog_near_far : [40.0f32, 60.0]
+		};
+		let params = glium::draw_parameters::DrawParameters {
+			/*depth : glium::Depth {
+				test : glium::draw_parameters::DepthTest::IfLess,
+				write : true,
+				.. Default::default()
+			},
+			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
+			blend :glium::Blend::alpha_blending(),
+			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
+			.. Default::default()
+		};
+		//let mut mesh_dims = glyph_brush.pixel_bounds(&section).unwrap();
+		//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
+		//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
+
+		let unit = screen_dims.0 as f32 / 15.0 * 2.0;
+
+		const SLOT_COUNT_X :usize = 8;
+		const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
+
+		let hud_width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
+		let hud_height = (self.inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil()
+			* unit * 1.1 + 0.1 * unit;
+
+		let mut vertices = Vec::new();
+
+		// Background
+		let dims = (hud_width as i32,
+			hud_height as i32);
+		let mesh_x = -(hud_width / 2.0) as i32;
+		let mesh_y = -(hud_height / 2.0) as i32;
+		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+			dims, screen_dims, BACKGROUND_COLOR));
+
+		const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
+		const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
+
+		// Item slots
+		for (i, stack) in self.inv.stacks().iter().enumerate() {
+			let col = i % SLOT_COUNT_X;
+			let line = i / SLOT_COUNT_X;
+			let dims = (unit as i32, unit as i32);
+			let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
+			let mesh_y = (hud_height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
+			let color = if Some(i) == self.inv.selection() {
+				SELECTED_SLOT_COLOR
+			} else {
+				SLOT_COLOR
+			};
+			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+				dims, screen_dims, color));
+			let text = if let Stack::Content { item, count } = stack {
+				format!("{:?} ({})", item, count)
+			} else {
+				String::from("")
+			};
+			let text_x = (screen_dims.0 as f32 - hud_width / 2.0
+				+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
+			let text_y = (screen_dims.1 as f32 - hud_height / 2.0
+				+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5;
+			let section = Section {
+				text : &text,
+				bounds : (unit / 2.0, unit / 2.0),
+				screen_position : (text_x, text_y),
+				layout : Layout::default()
+					.h_align(HorizontalAlign::Left),
+				color : [0.9, 0.9, 0.9, 1.0],
+				.. Section::default()
+			};
+			glyph_brush.queue(section);
+		}
+
+		let vbuff = VertexBuffer::new(display, &vertices).unwrap();
+		target.draw(&vbuff,
+				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+				&program, &uniforms, &params).unwrap();
+		glyph_brush.draw_queued(display, target);
+	}
 }
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,

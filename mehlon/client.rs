@@ -30,7 +30,7 @@ use mehlon_server::inventory::{SelectableInventory, Stack};
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
-	IDENTITY, render_inventory_hud, render_inventory_menu};
+	InventoryMenu, IDENTITY, render_inventory_hud};
 
 use voxel_walk::VoxelWalker;
 
@@ -82,7 +82,7 @@ pub struct Game<C :NetworkClientConn> {
 	has_focus :bool,
 	chat_msgs :VecDeque<String>,
 	chat_window :Option<ChatWindow>,
-	inventory_menu_enabled :bool,
+	inventory_menu :Option<InventoryMenu>,
 	menu_enabled :bool,
 
 	map :ClientMap,
@@ -165,7 +165,7 @@ impl<C :NetworkClientConn> Game<C> {
 			has_focus : false,
 			chat_msgs : VecDeque::new(),
 			chat_window : None,
-			inventory_menu_enabled : false,
+			inventory_menu : None,
 			menu_enabled : false,
 			map,
 			camera,
@@ -194,7 +194,7 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn in_background(&self) -> bool {
 		self.chat_window.is_some() ||
-			self.inventory_menu_enabled ||
+			self.inventory_menu.is_some() ||
 			self.menu_enabled
 	}
 	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
@@ -525,9 +525,8 @@ impl<C :NetworkClientConn> Game<C> {
 				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
 			} else if let Some(cw) = &self.chat_window {
 				cw.render(&mut self.display, &self.program, glyph_brush, &mut target);
-			} else if self.inventory_menu_enabled {
-				render_inventory_menu(
-					&self.sel_inventory,
+			} else if let Some(m) = &self.inventory_menu {
+				m.render(
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 			}
@@ -603,11 +602,16 @@ impl<C :NetworkClientConn> Game<C> {
 			self.handle_chat_win_ev(ev);
 			return false;
 		}
-		if self.inventory_menu_enabled &&
-				input.virtual_keycode == Some(glutin::VirtualKeyCode::Escape) {
-			self.inventory_menu_enabled = false;
-			self.check_grab_change();
-			return false;
+		if input.virtual_keycode == Some(glutin::VirtualKeyCode::Escape) {
+			if let Some(m) = self.inventory_menu.take() {
+				self.sel_inventory = m.into_inventory();
+
+				let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+				let _ = self.srv_conn.send(msg);
+
+				self.check_grab_change();
+				return false;
+			}
 		}
 
 		match input.virtual_keycode {
@@ -619,7 +623,13 @@ impl<C :NetworkClientConn> Game<C> {
 			},
 			Some(glutin::VirtualKeyCode::I) => {
 				if input.state == glutin::ElementState::Pressed {
-					self.inventory_menu_enabled = !self.inventory_menu_enabled;
+					if let Some(m) = self.inventory_menu.take() {
+						self.sel_inventory = m.into_inventory();
+						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+						let _ = self.srv_conn.send(msg);
+					} else {
+						self.inventory_menu = Some(InventoryMenu::new(self.sel_inventory.clone()));
+					}
 					self.check_grab_change();
 				}
 			},
