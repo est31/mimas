@@ -3,7 +3,8 @@ use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	Section, Layout, HorizontalAlign,
 };
-use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState};
+use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
+	dpi::LogicalPosition};
 use glium_glyph::glyph_brush::GlyphCruncher;
 use mehlon_server::inventory::{SelectableInventory, Stack};
 
@@ -118,16 +119,21 @@ impl ChatWindow {
 
 pub struct InventoryMenu {
 	inv :SelectableInventory,
+	last_mouse_pos : Option<LogicalPosition>,
 }
 
 impl InventoryMenu {
 	pub fn new(inv :SelectableInventory) -> Self {
 		Self {
 			inv,
+			last_mouse_pos : None,
 		}
 	}
 	pub fn into_inventory(self) -> SelectableInventory {
 		self.inv
+	}
+	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
+		self.last_mouse_pos = Some(pos);
 	}
 	pub fn render<'a, 'b>(&self,
 			display :&glium::Display, program :&glium::Program,
@@ -175,7 +181,7 @@ impl InventoryMenu {
 			dims, screen_dims, BACKGROUND_COLOR));
 
 		const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
-		const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
+		const HOVERED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
 		// Item slots
 		for (i, stack) in self.inv.stacks().iter().enumerate() {
@@ -184,8 +190,14 @@ impl InventoryMenu {
 			let dims = (unit as i32, unit as i32);
 			let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 			let mesh_y = (hud_height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
-			let color = if Some(i) == self.inv.selection() {
-				SELECTED_SLOT_COLOR
+			let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
+			let color = if self.last_mouse_pos
+					.map(|pos| {
+						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+					})
+					.unwrap_or(false) {
+				HOVERED_SLOT_COLOR
 			} else {
 				SLOT_COLOR
 			};

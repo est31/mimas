@@ -726,6 +726,11 @@ impl<C :NetworkClientConn> Game<C> {
 							}
 							self.last_pos = Some(position);
 						}
+						if self.has_focus {
+							if let Some(m) = &mut self.inventory_menu {
+								m.handle_mouse_moved(position);
+							}
+						}
 					},
 					glutin::WindowEvent::MouseInput { state, button, .. } => {
 						if !self.in_background() {
