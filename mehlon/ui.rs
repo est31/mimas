@@ -221,10 +221,9 @@ impl InventoryMenu {
 
 			// TODO this is hacky, we change state in RENDERING code!!
 			if let Some((state, button)) = input_ev {
-				if hovering && state == ElementState::Released &&
-						button == MouseButton::Left {
+				if hovering && state == ElementState::Released {
 					if let Some(from_pos) = self.from_pos.take() {
-						swap_command = Some((from_pos, i));
+						swap_command = Some((from_pos, i, button));
 					} else {
 						self.from_pos = Some(i);
 					}
@@ -254,8 +253,13 @@ impl InventoryMenu {
 		}
 
 		// TODO this is hacky, we change state in RENDERING code!!
-		if let Some((from_pos, to_pos)) = swap_command {
-			self.inv.merge_or_swap(from_pos, to_pos);
+		if let Some((from_pos, to_pos, button)) = swap_command {
+			if button == MouseButton::Left {
+				self.inv.merge_or_swap(from_pos, to_pos);
+			}
+			if button == MouseButton::Right {
+				self.inv.move_n_if_possible(from_pos, to_pos, 1);
+			}
 		}
 
 		let vbuff = VertexBuffer::new(display, &vertices).unwrap();

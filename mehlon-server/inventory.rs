@@ -61,27 +61,29 @@ impl Stack {
 		}
 		return other;
 	}
-	pub fn take_n(&mut self, n :u16) -> Option<(MapBlock, u16, bool)> {
-		match self {
-			Stack::Empty => None,
+	pub fn take_n(&mut self, n :u16) -> (Stack, bool) {
+		let mut emptied = false;
+		let stack_taken = match self {
+			Stack::Empty => Stack::Empty,
 			Stack::Content { item, count, } => {
-				let mut emptied = false;
 				let item = *item;
-				let new_count = count.get().checked_sub(n);
-				let items_removed = new_count.unwrap_or(count.get());
-				let new_count_nonzero = new_count.and_then(|v| NonZeroU16::new(v));
+				let new_count = count.get().saturating_sub(n);
+				let items_removed = count.get() - new_count;
+				let new_count_nonzero = NonZeroU16::new(new_count);
 				if let Some(new_count) = new_count_nonzero {
 					*count = new_count;
 				} else {
 					*self = Stack::Empty;
 					emptied = true;
 				}
-				Some((item, items_removed, emptied))
+				Stack::with(item, items_removed)
 			},
-		}
+		};
+		(stack_taken, emptied)
 	}
 	pub fn take_one(&mut self) -> Option<(MapBlock, bool)> {
-		self.take_n(1).map(|(c, _n, emptied)| (c, emptied))
+		let (stack_taken, emptied) = self.take_n(1);
+		stack_taken.content().map(|(c, _n)| (c, emptied))
 	}
 }
 
@@ -140,6 +142,12 @@ impl SelectableInventory {
 			// Merging wasn't possible, fall back to swap
 			self.stacks.swap(idx_from, idx_to);
 		}
+	}
+	pub fn move_n_if_possible(&mut self, idx_from :usize, idx_to :usize, count :u16) {
+		let stack_from = self.stacks[idx_from].take_n(count).0;
+		let new_stack = self.stacks[idx_to].put(stack_from, true, STACK_SIZE_LIMIT);
+		// Put back any residue
+		self.stacks[idx_from].put(new_stack, true, STACK_SIZE_LIMIT);
 	}
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);
