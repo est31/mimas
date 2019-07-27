@@ -88,6 +88,8 @@ impl Stack {
 // Stack size limit
 const STACK_SIZE_LIMIT :u16 = 60;
 
+pub const HUD_SLOT_COUNT :usize = 8;
+
 impl SelectableInventory {
 	pub fn new() -> Self {
 		Self::with_stuff_inside()
@@ -141,7 +143,7 @@ impl SelectableInventory {
 	}
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);
-		let stack_count = self.stacks.len();
+		let stack_count = self.stacks.len().min(HUD_SLOT_COUNT);
 		for offs in 1 .. stack_count {
 			let idx = if forwards {
 				(selection + offs) % stack_count

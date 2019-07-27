@@ -6,7 +6,8 @@ use glium_glyph::glyph_brush::{
 use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
 	MouseButton, dpi::LogicalPosition};
 use glium_glyph::glyph_brush::GlyphCruncher;
-use mehlon_server::inventory::{SelectableInventory, Stack};
+use mehlon_server::inventory::{SelectableInventory, Stack,
+	HUD_SLOT_COUNT};
 
 use mehlon_meshgen::Vertex;
 
@@ -297,8 +298,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 
 	let unit = unit_from_screen_dims(screen_dims.0);
 
-	const SLOT_COUNT :usize = 8;
-	const SLOT_COUNT_F32 :f32 = SLOT_COUNT as f32;
+	const SLOT_COUNT_F32 :f32 = HUD_SLOT_COUNT as f32;
 
 	let hud_width = SLOT_COUNT_F32 * unit * 1.10 + 0.1 * unit;
 	let hud_height = unit * 1.10;
@@ -317,7 +317,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 	const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
 	// Item slots
-	for i in 0 .. SLOT_COUNT {
+	for i in 0 .. HUD_SLOT_COUNT {
 		let dims = (unit as i32, unit as i32);
 		let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * i as f32) + unit * 0.1) as i32;
 		let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
