@@ -161,7 +161,7 @@ impl InventoryMenu {
 		//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
 		//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
 
-		let unit = screen_dims.0 as f32 / 15.0 * 2.0;
+		let unit = unit_from_screen_dims(screen_dims.0);
 
 		const SLOT_COUNT_X :usize = 8;
 		const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
@@ -232,6 +232,10 @@ impl InventoryMenu {
 	}
 }
 
+fn unit_from_screen_dims(screen_dim_x :u32) -> f32 {
+	screen_dim_x as f32 / 15.0 * 2.0
+}
+
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		display :&glium::Display, program :&glium::Program,
 		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
@@ -258,7 +262,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 	//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
 	//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
 
-	let unit = screen_dims.0 as f32 / 15.0 * 2.0;
+	let unit = unit_from_screen_dims(screen_dims.0);
 
 	const SLOT_COUNT :usize = 8;
 	const SLOT_COUNT_F32 :f32 = SLOT_COUNT as f32;
