@@ -125,6 +125,9 @@ impl SelectableInventory {
 			})
 		})
 	}
+	pub fn swap(&mut self, idx_a :usize, idx_b :usize) {
+		self.stacks.swap(idx_a, idx_b);
+	}
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);
 		let stack_count = self.stacks.len();

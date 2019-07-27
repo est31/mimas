@@ -4,7 +4,7 @@ use glium_glyph::glyph_brush::{
 	Section, Layout, HorizontalAlign,
 };
 use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
-	dpi::LogicalPosition};
+	MouseButton, dpi::LogicalPosition};
 use glium_glyph::glyph_brush::GlyphCruncher;
 use mehlon_server::inventory::{SelectableInventory, Stack};
 
@@ -120,6 +120,8 @@ impl ChatWindow {
 pub struct InventoryMenu {
 	inv :SelectableInventory,
 	last_mouse_pos : Option<LogicalPosition>,
+	mouse_input_ev : Option<(ElementState, MouseButton)>,
+	from_pos : Option<usize>,
 }
 
 impl InventoryMenu {
@@ -127,6 +129,8 @@ impl InventoryMenu {
 		Self {
 			inv,
 			last_mouse_pos : None,
+			mouse_input_ev : None,
+			from_pos : None,
 		}
 	}
 	pub fn into_inventory(self) -> SelectableInventory {
@@ -135,7 +139,10 @@ impl InventoryMenu {
 	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
 		self.last_mouse_pos = Some(pos);
 	}
-	pub fn render<'a, 'b>(&self,
+	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {
+		self.mouse_input_ev = Some((state, button));
+	}
+	pub fn render<'a, 'b>(&mut self,
 			display :&glium::Display, program :&glium::Program,
 			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 
@@ -183,6 +190,10 @@ impl InventoryMenu {
 		const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
 		const HOVERED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
+		// TODO this is hacky, we change state in RENDERING code!!
+		let input_ev = self.mouse_input_ev.take();
+		let mut swap_command = None;
+
 		// Item slots
 		for (i, stack) in self.inv.stacks().iter().enumerate() {
 			let col = i % SLOT_COUNT_X;
@@ -191,16 +202,30 @@ impl InventoryMenu {
 			let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 			let mesh_y = (hud_height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
 			let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
-			let color = if self.last_mouse_pos
-					.map(|pos| {
-						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-					})
-					.unwrap_or(false) {
+
+			let hovering = self.last_mouse_pos
+				.map(|pos| {
+					(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+					(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+				})
+				.unwrap_or(false);
+			let color = if hovering {
 				HOVERED_SLOT_COLOR
 			} else {
 				SLOT_COLOR
 			};
+
+			// TODO this is hacky, we change state in RENDERING code!!
+			if let Some((state, button)) = input_ev {
+				if hovering && state == ElementState::Released &&
+						button == MouseButton::Left {
+					if let Some(from_pos) = self.from_pos.take() {
+						swap_command = Some((from_pos, i));
+					} else {
+						self.from_pos = Some(i);
+					}
+				}
+			}
 			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 				dims, screen_dims, color));
 			let text = if let Stack::Content { item, count } = stack {
@@ -222,6 +247,11 @@ impl InventoryMenu {
 				.. Section::default()
 			};
 			glyph_brush.queue(section);
+		}
+
+		// TODO this is hacky, we change state in RENDERING code!!
+		if let Some((from_pos, to_pos)) = swap_command {
+			self.inv.swap(from_pos, to_pos);
 		}
 
 		let vbuff = VertexBuffer::new(display, &vertices).unwrap();

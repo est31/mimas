@@ -525,7 +525,7 @@ impl<C :NetworkClientConn> Game<C> {
 				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
 			} else if let Some(cw) = &self.chat_window {
 				cw.render(&mut self.display, &self.program, glyph_brush, &mut target);
-			} else if let Some(m) = &self.inventory_menu {
+			} else if let Some(m) = &mut self.inventory_menu {
 				m.render(
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
@@ -746,6 +746,11 @@ impl<C :NetworkClientConn> Game<C> {
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
 									let _ = self.srv_conn.send(msg);
 								}
+							}
+						}
+						if self.has_focus {
+							if let Some(m) = &mut self.inventory_menu {
+								m.handle_mouse_input(state, button);
 							}
 						}
 					},
