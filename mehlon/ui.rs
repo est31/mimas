@@ -233,7 +233,7 @@ impl InventoryMenu {
 }
 
 fn unit_from_screen_dims(screen_dim_x :u32) -> f32 {
-	screen_dim_x as f32 / 15.0 * 2.0
+	(screen_dim_x as f32 / 15.0 * 2.0).min(128.0)
 }
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
