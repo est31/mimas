@@ -222,7 +222,10 @@ impl InventoryMenu {
 			// TODO this is hacky, we change state in RENDERING code!!
 			if let Some((state, button)) = input_ev {
 				if hovering && state == ElementState::Released {
-					if let Some(from_pos) = self.from_pos.take() {
+					if let Some(from_pos) = self.from_pos {
+						if button == MouseButton::Left {
+							self.from_pos = None;
+						}
 						swap_command = Some((from_pos, i, button));
 					} else {
 						self.from_pos = Some(i);
