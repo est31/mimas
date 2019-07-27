@@ -134,8 +134,8 @@ impl InventoryMenu {
 			from_pos : None,
 		}
 	}
-	pub fn into_inventory(self) -> SelectableInventory {
-		self.inv
+	pub fn inventory(&self) -> &SelectableInventory {
+		&self.inv
 	}
 	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
 		self.last_mouse_pos = Some(pos);

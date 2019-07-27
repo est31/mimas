@@ -92,6 +92,16 @@ pub struct Game<C :NetworkClientConn> {
 	sheight :f64,
 }
 
+macro_rules! maybe_inventory_change {
+	($m:ident, $this:ident) => {
+		if $m.inventory() != &$this.sel_inventory {
+			$this.sel_inventory = $m.inventory().clone();
+			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
+			let _ = $this.srv_conn.send(msg);
+		}
+	};
+}
+
 impl<C :NetworkClientConn> Game<C> {
 	pub fn new(events_loop :&glutin::EventsLoop,
 			srv_conn :C, config :Config, nick_pw :Option<(String, String)>) -> Self {
@@ -529,6 +539,7 @@ impl<C :NetworkClientConn> Game<C> {
 				m.render(
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
+				maybe_inventory_change!(m, self);
 			}
 		} else {
 			let params = glium::draw_parameters::DrawParameters {
@@ -604,10 +615,7 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 		if input.virtual_keycode == Some(glutin::VirtualKeyCode::Escape) {
 			if let Some(m) = self.inventory_menu.take() {
-				self.sel_inventory = m.into_inventory();
-
-				let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
-				let _ = self.srv_conn.send(msg);
+				maybe_inventory_change!(m, self);
 
 				self.check_grab_change();
 				return false;
@@ -624,9 +632,7 @@ impl<C :NetworkClientConn> Game<C> {
 			Some(glutin::VirtualKeyCode::I) => {
 				if input.state == glutin::ElementState::Pressed {
 					if let Some(m) = self.inventory_menu.take() {
-						self.sel_inventory = m.into_inventory();
-						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
-						let _ = self.srv_conn.send(msg);
+						maybe_inventory_change!(m, self);
 					} else {
 						self.inventory_menu = Some(InventoryMenu::new(self.sel_inventory.clone()));
 					}
