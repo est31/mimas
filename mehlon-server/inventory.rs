@@ -85,6 +85,9 @@ impl Stack {
 	}
 }
 
+// Stack size limit
+const STACK_SIZE_LIMIT :u16 = 60;
+
 impl SelectableInventory {
 	pub fn new() -> Self {
 		Self::with_stuff_inside()
@@ -125,8 +128,16 @@ impl SelectableInventory {
 			})
 		})
 	}
-	pub fn swap(&mut self, idx_a :usize, idx_b :usize) {
-		self.stacks.swap(idx_a, idx_b);
+	pub fn merge_or_swap(&mut self, idx_from :usize, idx_to :usize) {
+		let stack_from = self.stacks[idx_from];
+		let new_stack = self.stacks[idx_to].put(stack_from, false, STACK_SIZE_LIMIT);
+		if stack_from != new_stack {
+			// Partial merge successful
+			self.stacks[idx_from] = new_stack;
+		} else {
+			// Merging wasn't possible, fall back to swap
+			self.stacks.swap(idx_from, idx_to);
+		}
 	}
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);
@@ -148,8 +159,6 @@ impl SelectableInventory {
 		let mut stack = stack;
 		let selection = self.selection.unwrap_or(0);
 		let stack_count = self.stacks.len();
-		// Stack size limit
-		const STACK_SIZE_LIMIT :u16 = 60;
 		let mut last_idx_changed = None;
 		// First put into the non-empty stacks
 		for offs in 0 .. stack_count {

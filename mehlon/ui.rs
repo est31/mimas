@@ -254,7 +254,7 @@ impl InventoryMenu {
 
 		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos)) = swap_command {
-			self.inv.swap(from_pos, to_pos);
+			self.inv.merge_or_swap(from_pos, to_pos);
 		}
 
 		let vbuff = VertexBuffer::new(display, &vertices).unwrap();
