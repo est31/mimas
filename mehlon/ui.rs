@@ -199,7 +199,9 @@ impl InventoryMenu {
 
 		// TODO this is hacky, we change state in RENDERING code!!
 		let input_ev = self.mouse_input_ev.take();
-		let mut swap_command = None;
+		let mut hover_idx = None;
+
+		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
 		// Item slots
 		for (i, stack) in self.inv.stacks().iter().enumerate() {
@@ -208,7 +210,6 @@ impl InventoryMenu {
 			let dims = (unit as i32, unit as i32);
 			let mesh_x = (-width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 			let mesh_y = (height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
-			let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
 			let hovering = self.last_mouse_pos
 				.map(|pos| {
@@ -216,6 +217,7 @@ impl InventoryMenu {
 					(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
 				})
 				.unwrap_or(false);
+
 			let color = if self.from_pos == Some(i) {
 				SELECTED_SLOT_COLOR
 			} else if hovering {
@@ -224,19 +226,10 @@ impl InventoryMenu {
 				SLOT_COLOR
 			};
 
-			// TODO this is hacky, we change state in RENDERING code!!
-			if let Some((state, button)) = input_ev {
-				if hovering && state == ElementState::Released {
-					if let Some(from_pos) = self.from_pos {
-						if button == MouseButton::Left {
-							self.from_pos = None;
-						}
-						swap_command = Some((from_pos, i, button));
-					} else {
-						self.from_pos = Some(i);
-					}
-				}
+			if hovering {
+				hover_idx = Some(i);
 			}
+
 			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 				dims, screen_dims, color));
 			let text = if let Stack::Content { item, count } = stack {
@@ -258,6 +251,22 @@ impl InventoryMenu {
 				.. Section::default()
 			};
 			glyph_brush.queue(section);
+		}
+
+		let mut swap_command = None;
+
+		// TODO this is hacky, we change state in RENDERING code!!
+		if let (Some((state, button)), Some(i)) = (input_ev, hover_idx) {
+			if state == ElementState::Released {
+				if let Some(from_pos) = self.from_pos {
+					if button == MouseButton::Left {
+						self.from_pos = None;
+					}
+					swap_command = Some((from_pos, i, button));
+				} else {
+					self.from_pos = Some(i);
+				}
+			}
 		}
 
 		// TODO this is hacky, we change state in RENDERING code!!
