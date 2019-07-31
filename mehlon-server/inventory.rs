@@ -138,22 +138,28 @@ impl SelectableInventory {
 			})
 		})
 	}
-	pub fn merge_or_swap(&mut self, idx_from :usize, idx_to :usize) {
-		let stack_from = self.stacks[idx_from];
-		let new_stack = self.stacks[idx_to].put(stack_from, false, STACK_SIZE_LIMIT);
+	pub fn merge_or_swap(invs :&mut [&mut SelectableInventory],
+			from :(usize, usize), to :(usize, usize)) {
+		let stack_from = invs[from.0].stacks[from.1];
+		let new_stack = invs[to.0].stacks[to.1]
+			.put(stack_from, false, STACK_SIZE_LIMIT);
 		if stack_from != new_stack {
 			// Partial merge successful
-			self.stacks[idx_from] = new_stack;
+			invs[from.0].stacks[from.1] = new_stack;
 		} else {
 			// Merging wasn't possible, fall back to swap
-			self.stacks.swap(idx_from, idx_to);
+			let tmp = invs[to.0].stacks[to.1];
+			invs[to.0].stacks[to.1] = invs[from.0].stacks[from.1];
+			invs[from.0].stacks[from.1] = tmp;
 		}
 	}
-	pub fn move_n_if_possible(&mut self, idx_from :usize, idx_to :usize, count :u16) {
-		let stack_from = self.stacks[idx_from].take_n(count).0;
-		let new_stack = self.stacks[idx_to].put(stack_from, true, STACK_SIZE_LIMIT);
+	pub fn move_n_if_possible(invs :&mut [&mut SelectableInventory],
+			from :(usize, usize), to :(usize, usize), count :u16) {
+		let stack_from = invs[from.0].stacks[from.1].take_n(count).0;
+		let new_stack = invs[to.0].stacks[to.1]
+			.put(stack_from, true, STACK_SIZE_LIMIT);
 		// Put back any residue
-		self.stacks[idx_from].put(new_stack, true, STACK_SIZE_LIMIT);
+		invs[from.0].stacks[from.1].put(new_stack, true, STACK_SIZE_LIMIT);
 	}
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);

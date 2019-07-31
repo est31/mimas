@@ -123,7 +123,7 @@ pub struct InventoryMenu {
 	craft_inv :SelectableInventory,
 	last_mouse_pos : Option<LogicalPosition>,
 	mouse_input_ev : Option<(ElementState, MouseButton)>,
-	from_pos : Option<usize>,
+	from_pos : Option<(usize, usize)>,
 }
 
 impl InventoryMenu {
@@ -208,6 +208,9 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
+		const CRAFTING_ID :usize = 1;
+		const NORMAL_INV_ID :usize = 0;
+
 		// Crafting inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
 			&self.craft_inv,
@@ -226,9 +229,9 @@ impl InventoryMenu {
 					})
 					.unwrap_or(false);
 				if hovering {
-					hover_idx = Some(i);
+					hover_idx = Some((CRAFTING_ID, i));
 				}
-				if self.from_pos == Some(i) {
+				if self.from_pos == Some((CRAFTING_ID, i)) {
 					SELECTED_SLOT_COLOR
 				} else if hovering {
 					HOVERED_SLOT_COLOR
@@ -263,9 +266,9 @@ impl InventoryMenu {
 					})
 					.unwrap_or(false);
 				if hovering {
-					hover_idx = Some(i);
+					hover_idx = Some((NORMAL_INV_ID, i));
 				}
-				if self.from_pos == Some(i) {
+				if self.from_pos == Some((NORMAL_INV_ID, i)) {
 					SELECTED_SLOT_COLOR
 				} else if hovering {
 					HOVERED_SLOT_COLOR
@@ -287,15 +290,15 @@ impl InventoryMenu {
 		let mut swap_command = None;
 
 		// TODO this is hacky, we change state in RENDERING code!!
-		if let (Some((state, button)), Some(i)) = (input_ev, hover_idx) {
+		if let (Some((state, button)), Some(hv)) = (input_ev, hover_idx) {
 			if state == ElementState::Released {
 				if let Some(from_pos) = self.from_pos {
 					if button == MouseButton::Left {
 						self.from_pos = None;
 					}
-					swap_command = Some((from_pos, i, button));
+					swap_command = Some((from_pos, hv, button));
 				} else {
-					self.from_pos = Some(i);
+					self.from_pos = Some(hv);
 				}
 			}
 		}
@@ -303,10 +306,14 @@ impl InventoryMenu {
 		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if button == MouseButton::Left {
-				self.inv.merge_or_swap(from_pos, to_pos);
+				SelectableInventory::merge_or_swap(
+					&mut[&mut self.inv, &mut self.craft_inv],
+					from_pos, to_pos);
 			}
 			if button == MouseButton::Right {
-				self.inv.move_n_if_possible(from_pos, to_pos, 1);
+				SelectableInventory::move_n_if_possible(
+					&mut[&mut self.inv, &mut self.craft_inv],
+					from_pos, to_pos, 1);
 			}
 		}
 
