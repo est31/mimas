@@ -204,54 +204,42 @@ impl InventoryMenu {
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
 		// Item slots
-		for (i, stack) in self.inv.stacks().iter().enumerate() {
-			let col = i % SLOT_COUNT_X;
-			let line = i / SLOT_COUNT_X;
-			let dims = (unit as i32, unit as i32);
-			let mesh_x = (-width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
-			let mesh_y = (height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
-
-			let hovering = self.last_mouse_pos
-				.map(|pos| {
-					(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-					(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-				})
-				.unwrap_or(false);
-
-			let color = if self.from_pos == Some(i) {
-				SELECTED_SLOT_COLOR
-			} else if hovering {
-				HOVERED_SLOT_COLOR
-			} else {
-				SLOT_COLOR
-			};
-
-			if hovering {
-				hover_idx = Some(i);
-			}
-
-			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-				dims, screen_dims, color));
-			let text = if let Stack::Content { item, count } = stack {
-				format!("{:?} ({})", item, count)
-			} else {
-				String::from("")
-			};
-			let text_x = (screen_dims.0 as f32 - width / 2.0
-				+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
-			let text_y = (screen_dims.1 as f32 - height / 2.0
-				+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5;
-			let section = Section {
-				text : &text,
-				bounds : (unit / 2.0, unit / 2.0),
-				screen_position : (text_x, text_y),
-				layout : Layout::default()
-					.h_align(HorizontalAlign::Left),
-				color : [0.9, 0.9, 0.9, 1.0],
-				.. Section::default()
-			};
-			glyph_brush.queue(section);
-		}
+		vertices.extend_from_slice(&inventory_slots_mesh(
+			&self.inv,
+			self.inv.stacks().len(),
+			SLOT_COUNT_X,
+			unit,
+			(0, 0),
+			width,
+			screen_dims,
+			|i, mesh_x, mesh_y| { // color_fn
+				let dims = (unit as i32, unit as i32);
+				let hovering = self.last_mouse_pos
+					.map(|pos| {
+						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+					})
+					.unwrap_or(false);
+				if hovering {
+					hover_idx = Some(i);
+				}
+				if self.from_pos == Some(i) {
+					SELECTED_SLOT_COLOR
+				} else if hovering {
+					HOVERED_SLOT_COLOR
+				} else {
+					SLOT_COLOR
+				}
+			},
+			|line| { // mesh_y_fn
+				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
+			},
+			|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			},
+			glyph_brush,
+		));
 
 		let mut swap_command = None;
 
@@ -289,6 +277,52 @@ impl InventoryMenu {
 
 fn unit_from_screen_dims(screen_dim_x :u32) -> f32 {
 	(screen_dim_x as f32 / 15.0 * 2.0).min(128.0)
+}
+
+fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
+		slot_count :usize,
+		slot_count_x :usize,
+		unit :f32,
+		offsets :(i32, i32),
+		ui_width :f32,
+		screen_dims :(u32, u32),
+		mut color_fn :impl FnMut(usize, i32, i32) -> [f32; 4],
+		mesh_y_fn :impl Fn(usize) -> i32,
+		text_y_fn :impl Fn(usize) -> f32,
+		glyph_brush :&mut GlyphBrush<'a, 'b>) -> Vec<Vertex> {
+	let mut vertices = Vec::new();
+	for i in 0 .. slot_count {
+		let col = i % slot_count_x;
+		let line = i / slot_count_x;
+		let dims = (unit as i32, unit as i32);
+		let mesh_x = offsets.0 +
+			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
+		let mesh_y = offsets.1 + mesh_y_fn(line);
+		let color = color_fn(i, mesh_x, mesh_y);
+		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+			dims, screen_dims, color));
+		let content = inv.stacks()
+			.get(i)
+			.unwrap_or(&Stack::Empty);
+		let text = if let Stack::Content { item, count } = content {
+			format!("{:?} ({})", item, count)
+		} else {
+			String::from("")
+		};
+		let text_x = (screen_dims.0 as f32 - ui_width / 2.0
+			+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
+		let section = Section {
+			text : &text,
+			bounds : (unit / 2.0, unit / 2.0),
+			screen_position : (text_x, text_y_fn(line)),
+			layout : Layout::default()
+				.h_align(HorizontalAlign::Left),
+			color : [0.9, 0.9, 0.9, 1.0],
+			.. Section::default()
+		};
+		glyph_brush.queue(section);
+	}
+	vertices
 }
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
@@ -338,38 +372,29 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 	const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
 	// Item slots
-	for i in 0 .. HUD_SLOT_COUNT {
-		let dims = (unit as i32, unit as i32);
-		let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * i as f32) + unit * 0.1) as i32;
-		let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
-		let color = if Some(i) == inv.selection() {
-			SELECTED_SLOT_COLOR
-		} else {
-			SLOT_COLOR
-		};
-		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, color));
-		let content = inv.stacks()
-			.get(i)
-			.unwrap_or(&Stack::Empty);
-		let text = if let Stack::Content { item, count } = content {
-			format!("{:?} ({})", item, count)
-		} else {
-			String::from("")
-		};
-		let text_x = (screen_dims.0 as f32 - hud_width / 2.0
-			+ unit * 1.1 * i as f32 + unit * 0.1) * 0.5;
-		let section = Section {
-			text : &text,
-			bounds : (unit / 2.0, unit / 2.0),
-			screen_position : (text_x, screen_dims.1 as f32 - hud_height * 0.5),
-			layout : Layout::default()
-				.h_align(HorizontalAlign::Left),
-			color : [0.9, 0.9, 0.9, 1.0],
-			.. Section::default()
-		};
-		glyph_brush.queue(section);
-	}
+	vertices.extend_from_slice(&inventory_slots_mesh(
+		inv,
+		HUD_SLOT_COUNT,
+		HUD_SLOT_COUNT,
+		unit,
+		(0, -(screen_dims.1 as i32)),
+		hud_width,
+		screen_dims,
+		|i, _mesh_x, _mesh_y| { // color_fn
+			if Some(i) == inv.selection() {
+				SELECTED_SLOT_COLOR
+			} else {
+				SLOT_COLOR
+			}
+		},
+		|_line| { // mesh_y_fn
+			(hud_height * 0.10) as i32
+		},
+		|_line| { // text_y_fn
+			screen_dims.1 as f32 - hud_height * 0.5
+		},
+		glyph_brush,
+	));
 
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
