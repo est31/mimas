@@ -41,6 +41,7 @@ pub mod config;
 pub mod sqlite_generic;
 pub mod local_auth;
 pub mod inventory;
+pub mod crafting;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
