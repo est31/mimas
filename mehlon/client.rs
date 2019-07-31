@@ -101,7 +101,7 @@ macro_rules! maybe_inventory_change {
 			let _ = $this.srv_conn.send(msg);
 		}
 		if $m.craft_inv() != &$this.craft_inv {
-			$this.craft_inv = $m.inventory().clone();
+			$this.craft_inv = $m.craft_inv().clone();
 			// TODO send craft inventory to server
 		}
 	};
