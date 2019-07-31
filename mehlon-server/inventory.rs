@@ -96,6 +96,12 @@ impl SelectableInventory {
 	pub fn new() -> Self {
 		Self::with_stuff_inside()
 	}
+	pub fn crafting_inv() -> Self {
+		Self {
+			selection : None,
+			stacks : vec![Stack::Empty; 9].into_boxed_slice(),
+		}
+	}
 	pub fn with_stuff_inside() -> Self {
 		use map::MapBlock::*;
 		Self {

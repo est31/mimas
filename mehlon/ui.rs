@@ -120,15 +120,18 @@ impl ChatWindow {
 
 pub struct InventoryMenu {
 	inv :SelectableInventory,
+	craft_inv :SelectableInventory,
 	last_mouse_pos : Option<LogicalPosition>,
 	mouse_input_ev : Option<(ElementState, MouseButton)>,
 	from_pos : Option<usize>,
 }
 
 impl InventoryMenu {
-	pub fn new(inv :SelectableInventory) -> Self {
+	pub fn new(inv :SelectableInventory,
+			craft_inv :SelectableInventory) -> Self {
 		Self {
 			inv,
+			craft_inv,
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
@@ -136,6 +139,9 @@ impl InventoryMenu {
 	}
 	pub fn inventory(&self) -> &SelectableInventory {
 		&self.inv
+	}
+	pub fn craft_inv(&self) -> &SelectableInventory {
+		&self.craft_inv
 	}
 	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
 		self.last_mouse_pos = Some(pos);

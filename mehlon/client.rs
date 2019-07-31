@@ -69,6 +69,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	sel_inventory :SelectableInventory,
+	craft_inv :SelectableInventory,
 
 	last_pos :Option<LogicalPosition>,
 
@@ -98,6 +99,10 @@ macro_rules! maybe_inventory_change {
 			$this.sel_inventory = $m.inventory().clone();
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
+		}
+		if $m.craft_inv() != &$this.craft_inv {
+			$this.craft_inv = $m.inventory().clone();
+			// TODO send craft inventory to server
 		}
 	};
 }
@@ -163,6 +168,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 			selected_pos : None,
 			sel_inventory : SelectableInventory::new(),
+			craft_inv : SelectableInventory::crafting_inv(),
 
 			last_pos : None,
 			last_frame_time : Instant::now(),
@@ -634,7 +640,9 @@ impl<C :NetworkClientConn> Game<C> {
 					if let Some(m) = self.inventory_menu.take() {
 						maybe_inventory_change!(m, self);
 					} else {
-						self.inventory_menu = Some(InventoryMenu::new(self.sel_inventory.clone()));
+						self.inventory_menu = Some(InventoryMenu::new(
+							self.sel_inventory.clone(),
+							self.craft_inv.clone()));
 					}
 					self.check_grab_change();
 				}
