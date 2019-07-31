@@ -202,8 +202,6 @@ impl InventoryMenu {
 		const SELECTED_SLOT_COLOR :[f32; 4] = [0.3, 0.3, 0.3, 0.85];
 		const HOVERED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
 
-		// TODO this is hacky, we change state in RENDERING code!!
-		let input_ev = self.mouse_input_ev.take();
 		let mut hover_idx = None;
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
@@ -289,6 +287,8 @@ impl InventoryMenu {
 
 		let mut swap_command = None;
 
+		// TODO this is hacky, we change state in RENDERING code!!
+		let input_ev = self.mouse_input_ev.take();
 		// TODO this is hacky, we change state in RENDERING code!!
 		if let (Some((state, button)), Some(hv)) = (input_ev, hover_idx) {
 			if state == ElementState::Released {
