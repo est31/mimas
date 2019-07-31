@@ -180,17 +180,16 @@ impl InventoryMenu {
 		const SLOT_COUNT_X :usize = 8;
 		const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
 
-		let hud_width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
-		let hud_height = (self.inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil()
+		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
+		let height = (self.inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil()
 			* unit * 1.1 + 0.1 * unit;
 
 		let mut vertices = Vec::new();
 
 		// Background
-		let dims = (hud_width as i32,
-			hud_height as i32);
-		let mesh_x = -(hud_width / 2.0) as i32;
-		let mesh_y = -(hud_height / 2.0) as i32;
+		let dims = (width as i32, height as i32);
+		let mesh_x = -(width / 2.0) as i32;
+		let mesh_y = -(height / 2.0) as i32;
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, BACKGROUND_COLOR));
 
@@ -207,8 +206,8 @@ impl InventoryMenu {
 			let col = i % SLOT_COUNT_X;
 			let line = i / SLOT_COUNT_X;
 			let dims = (unit as i32, unit as i32);
-			let mesh_x = (-hud_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
-			let mesh_y = (hud_height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
+			let mesh_x = (-width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
+			let mesh_y = (height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32;
 			let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
 			let hovering = self.last_mouse_pos
@@ -245,9 +244,9 @@ impl InventoryMenu {
 			} else {
 				String::from("")
 			};
-			let text_x = (screen_dims.0 as f32 - hud_width / 2.0
+			let text_x = (screen_dims.0 as f32 - width / 2.0
 				+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
-			let text_y = (screen_dims.1 as f32 - hud_height / 2.0
+			let text_y = (screen_dims.1 as f32 - height / 2.0
 				+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5;
 			let section = Section {
 				text : &text,
