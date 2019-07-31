@@ -180,9 +180,14 @@ impl InventoryMenu {
 		const SLOT_COUNT_X :usize = 8;
 		const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
 
+		const CRAFT_SLOT_COUNT_X :usize = 3;
+		const CRAFT_SLOT_COUNT_X_F32 :f32 = CRAFT_SLOT_COUNT_X as f32;
+
 		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
-		let height = (self.inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil()
-			* unit * 1.1 + 0.1 * unit;
+		let inv_height_units = (self.craft_inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
+		let craft_height_units = (self.craft_inv.stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
+		let height_units = inv_height_units + craft_height_units;
+		let height = height_units * unit * 1.1 + 0.1 * unit;
 
 		let mut vertices = Vec::new();
 
@@ -203,11 +208,11 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		// Item slots
+		// Crafting inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.inv,
-			self.inv.stacks().len(),
-			SLOT_COUNT_X,
+			&self.craft_inv,
+			self.craft_inv.stacks().len(),
+			CRAFT_SLOT_COUNT_X,
 			unit,
 			(0, 0),
 			width,
@@ -235,6 +240,44 @@ impl InventoryMenu {
 				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
 			},
 			|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			},
+			glyph_brush,
+		));
+		// Inventory slots
+		vertices.extend_from_slice(&inventory_slots_mesh(
+			&self.inv,
+			self.inv.stacks().len(),
+			SLOT_COUNT_X,
+			unit,
+			(0, -(craft_height_units * 1.1 * unit) as i32),
+			width,
+			screen_dims,
+			|i, mesh_x, mesh_y| { // color_fn
+				let dims = (unit as i32, unit as i32);
+				let hovering = self.last_mouse_pos
+					.map(|pos| {
+						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+					})
+					.unwrap_or(false);
+				if hovering {
+					hover_idx = Some(i);
+				}
+				if self.from_pos == Some(i) {
+					SELECTED_SLOT_COLOR
+				} else if hovering {
+					HOVERED_SLOT_COLOR
+				} else {
+					SLOT_COLOR
+				}
+			},
+			|line| { // mesh_y_fn
+				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
+			},
+			|line| { // text_y_fn
+				(craft_height_units * 1.1 * unit) / 2.0 +
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			},
