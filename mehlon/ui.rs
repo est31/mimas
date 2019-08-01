@@ -8,6 +8,7 @@ use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
 use glium_glyph::glyph_brush::GlyphCruncher;
 use mehlon_server::inventory::{SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
+use mehlon_server::crafting::get_matching_recipe;
 
 use mehlon_meshgen::Vertex;
 
@@ -149,6 +150,14 @@ impl InventoryMenu {
 	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {
 		self.mouse_input_ev = Some((state, button));
 	}
+	fn craft_output_inv(&self) -> SelectableInventory {
+		let recipe = get_matching_recipe(&self.craft_inv);
+		let stack = recipe
+			.map(|r| Stack::with(r.output.0, r.output.1))
+			.unwrap_or(Stack::Empty);
+		let stacks = vec![stack].into_boxed_slice();
+		SelectableInventory::from_stacks(stacks)
+	}
 	pub fn render<'a, 'b>(&mut self,
 			display :&glium::Display, program :&glium::Program,
 			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
@@ -206,8 +215,9 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		const CRAFTING_ID :usize = 1;
-		const NORMAL_INV_ID :usize = 0;
+		const CRAFTING_ID :usize = 0;
+		const CRAFTING_OUTPUT_ID :usize = 1;
+		const NORMAL_INV_ID :usize = 2;
 
 		// Crafting inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
@@ -246,6 +256,45 @@ impl InventoryMenu {
 			},
 			glyph_brush,
 		));
+
+		let mut craft_output_inv = self.craft_output_inv();
+		vertices.extend_from_slice(&inventory_slots_mesh(
+			&craft_output_inv,
+			craft_output_inv.stacks().len(),
+			CRAFT_SLOT_COUNT_X,
+			unit,
+			((width / 2.0) as i32, 0),
+			width,
+			screen_dims,
+			|i, mesh_x, mesh_y| { // color_fn
+				let dims = (unit as i32, unit as i32);
+				let hovering = self.last_mouse_pos
+					.map(|pos| {
+						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+					})
+					.unwrap_or(false);
+				if hovering {
+					hover_idx = Some((CRAFTING_OUTPUT_ID, i));
+				}
+				if self.from_pos == Some((CRAFTING_OUTPUT_ID, i)) {
+					SELECTED_SLOT_COLOR
+				} else if hovering {
+					HOVERED_SLOT_COLOR
+				} else {
+					SLOT_COLOR
+				}
+			},
+			|line| { // mesh_y_fn
+				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
+			},
+			|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			},
+			glyph_brush,
+		));
+
 		// Inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
 			&self.inv,
@@ -307,12 +356,14 @@ impl InventoryMenu {
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if button == MouseButton::Left {
 				SelectableInventory::merge_or_swap(
-					&mut[&mut self.inv, &mut self.craft_inv],
+					&mut[&mut self.craft_inv, &mut craft_output_inv,
+						&mut self.inv],
 					from_pos, to_pos);
 			}
 			if button == MouseButton::Right {
 				SelectableInventory::move_n_if_possible(
-					&mut[&mut self.inv, &mut self.craft_inv],
+					&mut[&mut self.craft_inv, &mut craft_output_inv,
+						&mut self.inv],
 					from_pos, to_pos, 1);
 			}
 		}
@@ -360,7 +411,8 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 			String::from("")
 		};
 		let text_x = (screen_dims.0 as f32 - ui_width / 2.0
-			+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5;
+			+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5
+			+ offsets.0 as f32 / 2.0;
 		let section = Section {
 			text : &text,
 			bounds : (unit / 2.0, unit / 2.0),
