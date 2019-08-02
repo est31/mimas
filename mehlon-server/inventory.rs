@@ -141,6 +141,9 @@ impl SelectableInventory {
 	}
 	pub fn merge_or_swap(invs :&mut [&mut SelectableInventory],
 			from :(usize, usize), to :(usize, usize)) {
+		if from == to {
+			return;
+		}
 		let stack_from = invs[from.0].stacks[from.1];
 		let new_stack = invs[to.0].stacks[to.1]
 			.put(stack_from, false, STACK_SIZE_LIMIT);
