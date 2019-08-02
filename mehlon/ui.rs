@@ -356,15 +356,19 @@ impl InventoryMenu {
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			let invs = &mut [&mut self.craft_inv, &mut craft_output_inv,
 				&mut self.inv];
-			if button == MouseButton::Left {
-				SelectableInventory::merge_or_swap(
-					invs,
-					from_pos, to_pos);
-			}
-			if button == MouseButton::Right {
-				SelectableInventory::move_n_if_possible(
-					invs,
-					from_pos, to_pos, 1);
+			if to_pos.0 == CRAFTING_OUTPUT_ID {
+				// No action
+			} else {
+				if button == MouseButton::Left {
+					SelectableInventory::merge_or_swap(
+						invs,
+						from_pos, to_pos);
+				}
+				if button == MouseButton::Right {
+					SelectableInventory::move_n_if_possible(
+						invs,
+						from_pos, to_pos, 1);
+				}
 			}
 		}
 
