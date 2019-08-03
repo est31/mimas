@@ -357,7 +357,7 @@ impl InventoryMenu {
 			let invs = &mut [&mut self.craft_inv, &mut craft_output_inv,
 				&mut self.inv];
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
-				// No action
+				// Putting into the crafting menu is not possible
 			} else {
 				if button == MouseButton::Left {
 					SelectableInventory::merge_or_swap(
