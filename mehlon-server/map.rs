@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
-use map_storage::PlayerIdPair;
+use map_storage::{PlayerIdPair, number_to_mapblock};
 
 use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenThread};
 
@@ -43,6 +43,16 @@ impl MapBlock {
 			MapBlock::IronOre => true,
 			_ => false
 		}
+	}
+	pub fn from_str(s :&str) -> Option<Self> {
+		let mut id = 0;
+		while let Some(mb) = number_to_mapblock(id) {
+			if format!("{:?}", mb).eq_ignore_ascii_case(s) {
+				return Some(mb);
+			}
+			id += 1;
+		}
+		None
 	}
 }
 

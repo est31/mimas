@@ -54,7 +54,7 @@ use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, PlayerPosition};
-use inventory::SelectableInventory;
+use inventory::{SelectableInventory, Stack};
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
@@ -600,7 +600,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		println!("Command: {}", msg);
 		let mut it = msg[1..].split(" ");
 		let command = it.next().unwrap();
-		let _params = it.collect::<Vec<&str>>();
+		let params = it.collect::<Vec<&str>>();
 		match command {
 			"spawn" => {
 				let players = self.players.clone();
@@ -611,6 +611,31 @@ impl<S :NetworkServerSocket> Server<S> {
 				};
 				if remove_player {
 					close_connections(&[issuer_id], &mut *players.borrow_mut());
+				}
+			},
+			"gime" => {
+				let content = params.get(0);
+				let content = if let Some(content) = content {
+					if let Some(mb) = MapBlock::from_str(&content) {
+						mb
+					} else {
+						self.chat_msg_for(issuer_id, format!("Invalid item {}", content));
+						return;
+					}
+				} else {
+					self.chat_msg_for(issuer_id, format!("No content to give specified"));
+					return;
+				};
+				self.chat_msg_for(issuer_id, format!("Giving {:?}", content));
+				let mut players = self.players.borrow_mut();
+				let remove_player = {
+					let player = players.get_mut(&issuer_id).unwrap();
+					player.inventory.put(Stack::with(content, 1));
+					let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
+					player.conn.send(msg).is_err()
+				};
+				if remove_player {
+					close_connections(&[issuer_id], &mut *players);
 				}
 			},
 			_ => {
