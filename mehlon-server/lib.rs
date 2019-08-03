@@ -129,13 +129,14 @@ struct Player<C: NetworkServerConn> {
 }
 
 impl<C: NetworkServerConn> Player<C> {
-	pub fn from_conn_id_nick(conn :C, ids :PlayerIdPair, nick :String) -> Self {
+	pub fn from_stuff(conn :C, ids :PlayerIdPair,
+			nick :String, inventory :SelectableInventory) -> Self {
 		Player {
 			conn,
 			ids,
 			nick,
 			pos : PlayerPosition::default(),
-			inventory : SelectableInventory::new(),
+			inventory,
 			inventory_last_ser : SelectableInventory::new(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
@@ -581,12 +582,13 @@ impl<S :NetworkServerSocket> Server<S> {
 			let msg = ServerToClientMsg::SetPos(pos);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
-			let msg = ServerToClientMsg::SetInventory(inv);
+			let msg = ServerToClientMsg::SetInventory(inv.clone());
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 
 			let mut players = self.players.borrow_mut();
-			players.insert(id, Player::from_conn_id_nick(conn, id, nick.clone()));
+			let player = Player::from_stuff(conn, id, nick.clone(), inv);
+			players.insert(id, player);
 			players.len()
 		};
 		// In singleplayer, don't spam messages about players joining
