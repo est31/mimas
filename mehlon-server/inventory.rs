@@ -120,6 +120,10 @@ impl SelectableInventory {
 			Stack::Empty,
 			Stack::Empty,
 			Stack::Empty,
+			Stack::Empty,
+			Stack::Empty,
+			Stack::Empty,
+			Stack::Empty,
 			].into_boxed_slice(),
 		)
 	}
