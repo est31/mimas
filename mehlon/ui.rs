@@ -347,7 +347,14 @@ impl InventoryMenu {
 					}
 					swap_command = Some((from_pos, hv, button));
 				} else {
-					self.from_pos = Some(hv);
+					if hv.0 == CRAFTING_OUTPUT_ID {
+						// If we click onto the crafting output menu,
+						// add the output to the inventory immediately.
+						// TODO figure out something for the remainder stack
+						self.inv.put(craft_output_inv.stacks()[0]);
+					} else {
+						self.from_pos = Some(hv);
+					}
 				}
 			}
 		}
@@ -358,13 +365,6 @@ impl InventoryMenu {
 				&mut self.inv];
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
 				// Putting into the crafting menu is not possible
-				// But if we click onto the crafting menu again,
-				// just add the content to the inventory.
-				if from_pos.0 == CRAFTING_OUTPUT_ID {
-					self.from_pos = Some(from_pos);
-					// TODO figure out something for the remainder stack
-					self.inv.put(craft_output_inv.stacks()[0]);
-				}
 			} else {
 				if button == MouseButton::Left {
 					SelectableInventory::merge_or_swap(
