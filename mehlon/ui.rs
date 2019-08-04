@@ -122,7 +122,6 @@ impl ChatWindow {
 pub struct InventoryMenu {
 	inv :SelectableInventory,
 	craft_inv :SelectableInventory,
-	craft_quantity :u16,
 	last_mouse_pos :Option<LogicalPosition>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
@@ -134,7 +133,6 @@ impl InventoryMenu {
 		Self {
 			inv,
 			craft_inv,
-			craft_quantity : 1,
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
@@ -154,9 +152,8 @@ impl InventoryMenu {
 	}
 	fn craft_output_inv(&self) -> SelectableInventory {
 		let recipe = get_matching_recipe(&self.craft_inv);
-		let qty = self.craft_quantity;
 		let stack = recipe
-			.map(|r| Stack::with(r.output.0, r.output.1 * qty))
+			.map(|r| Stack::with(r.output.0, r.output.1))
 			.unwrap_or(Stack::Empty);
 		let stacks = vec![stack].into_boxed_slice();
 		SelectableInventory::from_stacks(stacks)
@@ -361,15 +358,14 @@ impl InventoryMenu {
 				&mut self.inv];
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
 				// Putting into the crafting menu is not possible
-				// But the number inside it can be increased
+				// But if we click onto the crafting menu again,
+				// just add the content to the inventory.
 				if from_pos.0 == CRAFTING_OUTPUT_ID {
 					self.from_pos = Some(from_pos);
-					self.craft_quantity += 1;
+					// TODO figure out something for the remainder stack
+					self.inv.put(craft_output_inv.stacks()[0]);
 				}
 			} else {
-				if from_pos.0 == CRAFTING_OUTPUT_ID {
-					self.craft_quantity = 1;
-				}
 				if button == MouseButton::Left {
 					SelectableInventory::merge_or_swap(
 						invs,
