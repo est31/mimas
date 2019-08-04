@@ -223,6 +223,9 @@ impl SelectableInventory {
 	pub fn selection(&self) -> Option<usize> {
 		self.selection
 	}
+	pub fn stacks_mut(&mut self) -> &mut Box<[Stack]> {
+		&mut self.stacks
+	}
 	pub fn stacks(&self) -> &Box<[Stack]> {
 		&self.stacks
 	}

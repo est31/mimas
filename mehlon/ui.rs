@@ -352,6 +352,10 @@ impl InventoryMenu {
 						// add the output to the inventory immediately.
 						// TODO figure out something for the remainder stack
 						self.inv.put(craft_output_inv.stacks()[0]);
+						// Reduce inputs.
+						for st in self.craft_inv.stacks_mut().iter_mut() {
+							st.take_n(1);
+						}
 					} else {
 						self.from_pos = Some(hv);
 					}
