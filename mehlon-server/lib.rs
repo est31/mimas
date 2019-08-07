@@ -604,6 +604,12 @@ impl<S :NetworkServerSocket> Server<S> {
 		let command = it.next().unwrap();
 		let params = it.collect::<Vec<&str>>();
 		match command {
+			"info" => {
+				self.chat_msg_for(issuer_id, format!(
+					"{} {}",
+					env!("CARGO_PKG_NAME"),
+					env!("CARGO_PKG_VERSION")));
+			},
 			"spawn" => {
 				let players = self.players.clone();
 				let msg = ServerToClientMsg::SetPos(PlayerPosition::default());
