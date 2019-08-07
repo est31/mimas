@@ -640,6 +640,40 @@ impl<S :NetworkServerSocket> Server<S> {
 					close_connections(&[issuer_id], &mut *players);
 				}
 			},
+			"clear" => {
+				let to_clear = params.get(0);
+				enum Cmd {
+					Selection,
+				}
+				let cmd = match to_clear {
+					Some(&"selection") | Some(&"sel") => Cmd::Selection,
+					_ => {
+						self.chat_msg_for(issuer_id, format!("Invalid clearing command."));
+						return;
+					},
+				};
+
+				let mut players = self.players.borrow_mut();
+				let remove_player = {
+					let player = players.get_mut(&issuer_id).unwrap();
+					match cmd {
+						Cmd::Selection => {
+							let sel = player.inventory.selection();
+							let sel_stack = sel.and_then(|s|player.inventory.stacks_mut().get_mut(s));
+							if let Some(sel_stack) = sel_stack {
+								*sel_stack = Stack::Empty;
+							} else {
+								return;
+							}
+						},
+					}
+					let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
+					player.conn.send(msg).is_err()
+				};
+				if remove_player {
+					close_connections(&[issuer_id], &mut *players);
+				}
+			},
 			_ => {
 				self.chat_msg_for(issuer_id, format!("Unknown command {}", command));
 			},
