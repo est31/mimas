@@ -644,11 +644,16 @@ impl<S :NetworkServerSocket> Server<S> {
 				let to_clear = params.get(0);
 				enum Cmd {
 					Selection,
+					Inventory,
 				}
 				let cmd = match to_clear {
 					Some(&"selection") | Some(&"sel") => {
 						self.chat_msg_for(issuer_id, format!("Clearing selection"));
 						Cmd::Selection
+					},
+					Some(&"inventory") | Some(&"inv") => {
+						self.chat_msg_for(issuer_id, format!("Clearing inventory"));
+						Cmd::Inventory
 					},
 					_ => {
 						self.chat_msg_for(issuer_id, format!("Invalid clearing command."));
@@ -668,6 +673,10 @@ impl<S :NetworkServerSocket> Server<S> {
 							} else {
 								return;
 							}
+						},
+						Cmd::Inventory => {
+							player.inventory.stacks_mut().iter_mut()
+								.for_each(|i| *i = Stack::Empty);
 						},
 					}
 					let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
