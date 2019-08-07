@@ -107,11 +107,20 @@ macro_rules! maybe_inventory_change {
 	};
 }
 
+fn title() -> String {
+	let title = format!(
+		"{} {}",
+		env!("CARGO_PKG_NAME"),
+		env!("CARGO_PKG_VERSION"));
+	let first = title.chars().next().unwrap();
+	first.to_uppercase().chain(title.chars().skip(1)).collect::<String>()
+}
+
 impl<C :NetworkClientConn> Game<C> {
 	pub fn new(events_loop :&glutin::EventsLoop,
 			srv_conn :C, config :Config, nick_pw :Option<(String, String)>) -> Self {
 		let window = glutin::WindowBuilder::new()
-			.with_title("Mehlon");
+			.with_title(&title());
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
 		let display = glium::Display::new(window, context, events_loop).unwrap();
 
