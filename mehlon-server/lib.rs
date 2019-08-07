@@ -625,7 +625,7 @@ impl<S :NetworkServerSocket> Server<S> {
 						return;
 					}
 				} else {
-					self.chat_msg_for(issuer_id, format!("No content to give specified"));
+					self.chat_msg_for(issuer_id, "No content to give specified");
 					return;
 				};
 				self.chat_msg_for(issuer_id, format!("Giving {:?}", content));
@@ -648,15 +648,15 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 				let cmd = match to_clear {
 					Some(&"selection") | Some(&"sel") => {
-						self.chat_msg_for(issuer_id, format!("Clearing selection"));
+						self.chat_msg_for(issuer_id, "Clearing selection");
 						Cmd::Selection
 					},
 					Some(&"inventory") | Some(&"inv") => {
-						self.chat_msg_for(issuer_id, format!("Clearing inventory"));
+						self.chat_msg_for(issuer_id, "Clearing inventory");
 						Cmd::Inventory
 					},
 					_ => {
-						self.chat_msg_for(issuer_id, format!("Invalid clearing command."));
+						self.chat_msg_for(issuer_id, "Invalid clearing command.");
 						return;
 					},
 				};
@@ -703,9 +703,10 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
-	fn chat_msg_for(&mut self, for_id :PlayerIdPair, msg :String) {
+	fn chat_msg_for(&mut self, for_id :PlayerIdPair, msg :impl Into<String>) {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
+		let msg = msg.into();
 		for (id, player) in players.borrow_mut().iter_mut() {
 			if *id != for_id {
 				continue;
