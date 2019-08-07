@@ -646,7 +646,10 @@ impl<S :NetworkServerSocket> Server<S> {
 					Selection,
 				}
 				let cmd = match to_clear {
-					Some(&"selection") | Some(&"sel") => Cmd::Selection,
+					Some(&"selection") | Some(&"sel") => {
+						self.chat_msg_for(issuer_id, format!("Clearing selection"));
+						Cmd::Selection
+					},
 					_ => {
 						self.chat_msg_for(issuer_id, format!("Invalid clearing command."));
 						return;
