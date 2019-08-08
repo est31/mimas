@@ -134,13 +134,7 @@ impl SelectableInventory {
 	}
 	pub fn take_selected(&mut self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
-			self.stacks[idx].take_one().map(|(it, emptied)| {
-				if emptied && self.selection == Some(idx) {
-					// Update the selection
-					self.rotate(true);
-				}
-				it
-			})
+			self.stacks[idx].take_one().map(|(it, emptied)| it)
 		})
 	}
 	pub fn merge_or_swap(invs :&mut [&mut SelectableInventory],
@@ -172,18 +166,12 @@ impl SelectableInventory {
 	pub fn rotate(&mut self, forwards :bool) {
 		let selection = self.selection.take().unwrap_or(0);
 		let stack_count = self.stacks.len().min(HUD_SLOT_COUNT);
-		for offs in 1 .. stack_count {
-			let idx = if forwards {
-				(selection + offs) % stack_count
-			} else {
-				(stack_count + selection - offs) % stack_count
-			};
-			if !self.stacks[idx].is_empty() {
-				// Found non-empty stack to point at
-				self.selection = Some(idx);
-				break;
-			}
-		}
+		let idx = if forwards {
+			(selection + 1) % stack_count
+		} else {
+			(stack_count + selection - 1) % stack_count
+		};
+		self.selection = Some(idx);
 	}
 	pub fn put(&mut self, stack :Stack) -> Stack {
 		let mut stack = stack;
