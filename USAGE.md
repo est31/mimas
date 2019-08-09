@@ -60,7 +60,9 @@ Controls are very similar to minetest controls.
 * `j` → toogle fast mode
 * `k` → toogle fly mode
 
+* `i` → open inventory menu
 * `t` → chat
+
 * `esc` → release mouse cursor
 
 * `left click` → dig/mine something
