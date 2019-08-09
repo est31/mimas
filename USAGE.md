@@ -67,3 +67,12 @@ Controls are very similar to minetest controls.
 
 * `left click` → dig/mine something
 * `right click` → place something
+
+### Commands
+
+There are commands that you can invoke from chat:
+
+* `/info`: Prints information on the server
+* `/spawn`: Teleport to spawn
+* `/gime <item>`: Gives item to player
+* `/clear {sel,selection,inv,inventory}`: Clears either the selection or the entire inventory of the player
