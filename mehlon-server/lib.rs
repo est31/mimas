@@ -65,8 +65,8 @@ use rand::RngCore;
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
 	LogIn(String, Vec<u8>),
-	SendHash(PlayerPwHash), // TODO temporary to try it out
-	SendM1(Vec<u8>),
+	SendHash(PlayerPwHash), // "Auth" for new users
+	SendM1(Vec<u8>), // Auth for existing users
 
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
