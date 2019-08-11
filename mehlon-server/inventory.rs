@@ -134,7 +134,7 @@ impl SelectableInventory {
 	}
 	pub fn take_selected(&mut self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
-			self.stacks[idx].take_one().map(|(it, emptied)| it)
+			self.stacks[idx].take_one().map(|(it, _emptied)| it)
 		})
 	}
 	pub fn merge_or_swap(invs :&mut [&mut SelectableInventory],
