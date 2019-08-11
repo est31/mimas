@@ -10,8 +10,8 @@ pub struct GameParams {
 }
 
 impl GameParams {
-	pub fn load() -> Self {
-		GameParams {
+	pub fn load() -> GameParamsHdl {
+		Arc::new(GameParams {
 			recipes : vec![
 				Recipe {
 					inputs : vec![
@@ -20,6 +20,6 @@ impl GameParams {
 					output : (MapBlock::Wood, 4),
 				},
 			],
-		}
+		})
 	}
 }

@@ -51,7 +51,6 @@ use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
@@ -171,7 +170,8 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S, singleplayer :bool, mut config :Config) -> Self {
+	pub fn new(srv_socket :S, params :GameParamsHdl,
+			singleplayer :bool, mut config :Config) -> Self {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
 		let (storage_back, auth_back) = backends;
 		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
@@ -195,7 +195,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 		let srv = Server {
 			srv_socket,
-			params : Arc::new(GameParams::load()),
+			params,
 			is_singleplayer : singleplayer,
 			config,
 			auth_back,

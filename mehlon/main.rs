@@ -30,6 +30,7 @@ use mehlon_server::{Server, StrErr};
 use mehlon_server::generic_net::{MpscServerSocket, NetworkClientConn};
 use mehlon_server::quic_net::QuicClientConn;
 use mehlon_server::config::load_config;
+use mehlon_server::game_params::GameParams;
 
 /// Mehlon client
 #[derive(StructOpt, Debug)]
@@ -67,8 +68,9 @@ fn main() -> Result<(), StrErr> {
 	} else {
 		let (server_socket, client_conn) = MpscServerSocket::new();
 		let config = config.clone();
+		let game_params = GameParams::load();
 		thread::spawn(move || {
-			let mut server = Server::new(server_socket, true, config);
+			let mut server = Server::new(server_socket, game_params, true, config);
 			server.run_loop();
 		});
 		Box::new(client_conn)

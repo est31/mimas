@@ -28,7 +28,8 @@ fn main() -> Result<(), StrErr> {
 		QuicServerSocket::new()?
 	};
 	let config = load_config();
-	let mut server = Server::new(server_socket, false, config);
+	let game_params = GameParams::load();
+	let mut server = Server::new(server_socket, game_params, false, config);
 	server.run_loop();
 
 	Ok(())
