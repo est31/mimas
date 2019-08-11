@@ -9,6 +9,7 @@ use glium_glyph::glyph_brush::GlyphCruncher;
 use mehlon_server::inventory::{SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
 use mehlon_server::crafting::get_matching_recipe;
+use mehlon_server::game_params::GameParamsHdl;
 
 use mehlon_meshgen::Vertex;
 
@@ -120,6 +121,7 @@ impl ChatWindow {
 }
 
 pub struct InventoryMenu {
+	params :GameParamsHdl,
 	inv :SelectableInventory,
 	craft_inv :SelectableInventory,
 	last_mouse_pos :Option<LogicalPosition>,
@@ -128,9 +130,11 @@ pub struct InventoryMenu {
 }
 
 impl InventoryMenu {
-	pub fn new(inv :SelectableInventory,
+	pub fn new(params :GameParamsHdl,
+			inv :SelectableInventory,
 			craft_inv :SelectableInventory) -> Self {
 		Self {
+			params,
 			inv,
 			craft_inv,
 			last_mouse_pos : None,
@@ -151,7 +155,7 @@ impl InventoryMenu {
 		self.mouse_input_ev = Some((state, button));
 	}
 	fn craft_output_inv(&self) -> SelectableInventory {
-		let recipe = get_matching_recipe(&self.craft_inv);
+		let recipe = get_matching_recipe(&self.craft_inv, &self.params);
 		let stack = recipe
 			.map(|r| Stack::with(r.output.0, r.output.1))
 			.unwrap_or(Stack::Empty);

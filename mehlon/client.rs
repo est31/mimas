@@ -13,6 +13,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
+use std::sync::Arc;
 use frustum_query::frustum::Frustum;
 use collide::collide;
 use srp::client::SrpClient;
@@ -26,6 +27,7 @@ use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
 use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mehlon_server::inventory::{SelectableInventory, Stack};
+use mehlon_server::game_params::{GameParamsHdl, GameParams};
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
@@ -60,6 +62,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	config :Config,
 	auth_state :AuthState,
+	params :GameParamsHdl,
 
 	meshres_r :MeshResReceiver,
 
@@ -168,6 +171,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 			config,
 			auth_state,
+			params : Arc::new(GameParams::load()),
 
 			meshres_r,
 
@@ -650,6 +654,7 @@ impl<C :NetworkClientConn> Game<C> {
 						maybe_inventory_change!(m, self);
 					} else {
 						self.inventory_menu = Some(InventoryMenu::new(
+							self.params.clone(),
 							self.sel_inventory.clone(),
 							self.craft_inv.clone()));
 					}

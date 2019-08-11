@@ -1,4 +1,5 @@
 use inventory::SelectableInventory;
+use game_params::GameParams;
 use map::MapBlock;
 
 pub struct Recipe {
@@ -49,16 +50,7 @@ impl Recipe {
 	}
 }
 
-static RECIPES :&[Recipe] = &[
-	Recipe {
-		inputs : &[
-			Some(MapBlock::Tree),
-		],
-		output : (MapBlock::Wood, 4),
-	},
-];
-
-pub fn get_matching_recipe(inv :&SelectableInventory)
-		-> Option<&'static Recipe> {
-	RECIPES.iter().find(|r| r.matches(inv))
+pub fn get_matching_recipe<'p>(inv :&SelectableInventory, params :&'p GameParams)
+		-> Option<&'p Recipe> {
+	params.recipes.iter().find(|r| r.matches(inv))
 }
