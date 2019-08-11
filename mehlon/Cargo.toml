@@ -14,7 +14,7 @@ frustum_query = "0.1"
 glium = "0.25"
 #glium-glyph = { path = "../../glium-glyph" }
 #glium-glyph = { git = "https://github.com/est31/glium-glyph" }
-glium-glyph = "0.5"
+glium-glyph = "0.6"
 rand_pcg = "0.2"
 rand = "0.7"
 structopt = "0.2"
