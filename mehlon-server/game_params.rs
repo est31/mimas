@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 pub type GameParamsHdl = Arc<GameParams>;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
 }
@@ -13,7 +14,7 @@ impl GameParams {
 		GameParams {
 			recipes : vec![
 				Recipe {
-					inputs : &[
+					inputs : vec![
 						Some(MapBlock::Tree),
 					],
 					output : (MapBlock::Wood, 4),

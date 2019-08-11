@@ -2,8 +2,9 @@ use inventory::SelectableInventory;
 use game_params::GameParams;
 use map::MapBlock;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Recipe {
-	pub inputs :&'static [Option<MapBlock>],
+	pub inputs :Vec<Option<MapBlock>>,
 	pub output : (MapBlock, u16),
 }
 

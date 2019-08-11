@@ -51,12 +51,14 @@ use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use config::Config;
 use map_storage::{PlayerIdPair, PlayerPosition};
 use inventory::{SelectableInventory, Stack};
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
+use game_params::{GameParams, GameParamsHdl};
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
 use srp::groups::G_4096;
@@ -81,6 +83,7 @@ pub enum ServerToClientMsg {
 	HashEnrollment,
 	HashParamsBpub(HashParams, Vec<u8>),
 	LogInFail(String),
+	GameParams(GameParams),
 
 	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>),
 
@@ -150,6 +153,7 @@ impl<C: NetworkServerConn> Player<C> {
 
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
+	params :GameParamsHdl,
 	is_singleplayer :bool,
 	config :Config,
 	auth_back :Option<SqliteLocalAuth>,
@@ -191,6 +195,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 		let srv = Server {
 			srv_socket,
+			params : Arc::new(GameParams::load()),
 			is_singleplayer : singleplayer,
 			config,
 			auth_back,
@@ -580,9 +585,14 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair,
 			nick :String, pos :PlayerPosition, inv :SelectableInventory) {
 		let player_count = {
+			let msg = ServerToClientMsg::GameParams(self.params.as_ref().clone());
+			// TODO get rid of unwrap
+			conn.send(msg).unwrap();
+
 			let msg = ServerToClientMsg::SetPos(pos);
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
+
 			let msg = ServerToClientMsg::SetInventory(inv.clone());
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();

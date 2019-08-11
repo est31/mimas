@@ -27,7 +27,7 @@ use mehlon_server::local_auth::{PlayerPwHash, HashParams};
 use mehlon_server::config::Config;
 use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mehlon_server::inventory::{SelectableInventory, Stack};
-use mehlon_server::game_params::{GameParamsHdl, GameParams};
+use mehlon_server::game_params::GameParamsHdl;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
 
@@ -62,7 +62,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	config :Config,
 	auth_state :AuthState,
-	params :GameParamsHdl,
+	params :Option<GameParamsHdl>,
 
 	meshres_r :MeshResReceiver,
 
@@ -171,7 +171,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 			config,
 			auth_state,
-			params : Arc::new(GameParams::load()),
+			params : None,
 
 			meshres_r,
 
@@ -279,6 +279,9 @@ impl<C :NetworkClientConn> Game<C> {
 					ServerToClientMsg::LogInFail(reason) => {
 						println!("Log-In failed. Reason: {}", reason);
 						break 'game_main_loop;
+					},
+					ServerToClientMsg::GameParams(params) => {
+						self.params = Some(Arc::new(params));
 					},
 					ServerToClientMsg::PlayerPositions(own_id, positions) => {
 						self.player_positions = Some((own_id, positions));
@@ -654,7 +657,7 @@ impl<C :NetworkClientConn> Game<C> {
 						maybe_inventory_change!(m, self);
 					} else {
 						self.inventory_menu = Some(InventoryMenu::new(
-							self.params.clone(),
+							self.params.as_ref().unwrap().clone(),
 							self.sel_inventory.clone(),
 							self.craft_inv.clone()));
 					}
