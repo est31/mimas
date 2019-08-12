@@ -147,24 +147,21 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		}
 	}
 	fn blocked(chunk :&MapChunkData,
-			[xo, yo, zo] :[isize; 3], pos :Vector3<isize>) -> bool {
+			[xo, yo, zo] :[isize; 3], pos :Vector3<isize>,
+			hdl :&GameParamsHdl) -> bool {
 		let pos = Vector3::new(pos.x + xo, pos.y + yo, pos.z + zo);
 		let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 		if outside.x || outside.y || outside.z {
 			return false;
 		}
-		match *chunk.get_blk(pos) {
-			MapBlock::Air => {
-				false
-			},
-			_ => true,
-		}
+		let blk = chunk.get_blk(pos);
+		hdl.get_color_for_blk(blk).is_some()
 	};
 	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>,
 			offsets :[isize; 3], hdl :&GameParamsHdl) -> Option<[f32; 4]> {
 		let blk = chunk.get_blk(pos);
 		let mut color = hdl.get_color_for_blk(blk);
-		if color.is_some() && blocked(chunk, offsets, pos) {
+		if color.is_some() && blocked(chunk, offsets, pos, hdl) {
 			color = None;
 		}
 		color
