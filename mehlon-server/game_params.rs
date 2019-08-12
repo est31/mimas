@@ -61,8 +61,15 @@ fn from_tbl(tbl :Table) -> Result<GameParams, StrErr> {
 }
 
 pub fn load_params_failible() -> Result<GameParamsHdl, StrErr> {
-	let file_str = read_to_string("game-params.toml")?;
+	let file_str = read_to_string("game-params.toml")
+		.unwrap_or_else(|err| {
+			println!("Using default game params because of error: {}", err);
+			DEFAULT_GAME_PARAMS_STR.to_owned()
+		});
+
 	let tbl = from_str(&file_str)?;
 	let res = from_tbl(tbl)?;
 	Ok(Arc::new(res))
 }
+
+static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
