@@ -28,7 +28,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 			let inputs = recipe.read::<Array>("inputs")?;
 			let inputs = inputs.iter()
 				.map(|input| {
-					let name = input.as_str().ok_or("expected str")?;
+					let name = input.convert::<str>()?;
 					if name == "" {
 						Ok(None)
 					} else {

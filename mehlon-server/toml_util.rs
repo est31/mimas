@@ -3,6 +3,7 @@ use StrErr;
 
 pub trait TomlReadExt {
 	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T, StrErr>;
+	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T, StrErr>;
 }
 
 impl TomlReadExt for Value {
@@ -12,6 +13,13 @@ impl TomlReadExt for Value {
 				format!("key {} not found", key)
 			})?;
 		let res = <T as TomlValue>::try_conversion(&val)
+			.ok_or_else(|| {
+				format!("expected type {}", <T as TomlValue>::TYPE_NAME)
+			})?;
+		Ok(res)
+	}
+	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T, StrErr> {
+		let res = <T as TomlValue>::try_conversion(self)
 			.ok_or_else(|| {
 				format!("expected type {}", <T as TomlValue>::TYPE_NAME)
 			})?;
