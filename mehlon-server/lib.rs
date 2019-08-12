@@ -43,6 +43,7 @@ pub mod local_auth;
 pub mod inventory;
 pub mod crafting;
 pub mod game_params;
+pub mod toml_util;
 
 use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
 use nalgebra::{Vector3};
