@@ -90,3 +90,11 @@ pub fn load_params_failible() -> Result<GameParamsHdl, StrErr> {
 }
 
 static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
+
+#[cfg(test)]
+#[test]
+fn default_game_params_parse_test() {
+	let file_str = DEFAULT_GAME_PARAMS_STR;
+	let val = from_str(&file_str).unwrap();
+	let res = from_val(val).unwrap();
+}
