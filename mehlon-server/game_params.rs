@@ -1,6 +1,9 @@
 use crafting::Recipe;
-use map::MapBlock;
 use std::sync::Arc;
+use toml::{from_str, value::Table};
+use std::fs::read_to_string;
+use map::MapBlock;
+use super::StrErr;
 
 pub type GameParamsHdl = Arc<GameParams>;
 
@@ -11,15 +14,55 @@ pub struct GameParams {
 
 impl GameParams {
 	pub fn load() -> GameParamsHdl {
-		Arc::new(GameParams {
-			recipes : vec![
-				Recipe {
-					inputs : vec![
-						Some(MapBlock::Tree),
-					],
-					output : (MapBlock::Wood, 4),
-				},
-			],
-		})
+		load_params_failible().expect("Couldn't load game params")
 	}
+}
+
+fn from_tbl(tbl :Table) -> Result<GameParams, StrErr> {
+
+	let recipes_list = tbl.get("recipe")
+		.ok_or("No recipe list found")?
+		.as_array().ok_or("Expected table for recipe")?;
+	let recipes = recipes_list.iter()
+		.map(|recipe| {
+			let inputs = recipe.get("inputs")
+				.ok_or("inputs not found")?
+				.as_array().ok_or("map expected")?;
+			let inputs = inputs.iter()
+				.map(|input| {
+					let name = input.as_str().ok_or("expected str")?;
+					if name == "" {
+						Ok(None)
+					} else {
+						let mb = MapBlock::from_str(name).ok_or("invalid name")?;
+						Ok(Some(mb))
+					}
+				})
+				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
+			let output_itm = recipe.get("output-itm")
+				.ok_or("output item not found")?
+				.as_str().ok_or("expected str")?;
+			let output_itm = MapBlock::from_str(output_itm)
+				.ok_or("invalid name")?;
+			let output_qty = recipe.get("output-qty")
+				.ok_or("output qty not found")?
+				.as_integer().ok_or("expected int")?;
+
+			Ok(Recipe {
+				inputs,
+				output : (output_itm, output_qty as u16),
+			})
+		})
+		.collect::<Result<Vec<Recipe>, StrErr>>()?;
+
+	Ok(GameParams {
+		recipes,
+	})
+}
+
+pub fn load_params_failible() -> Result<GameParamsHdl, StrErr> {
+	let file_str = read_to_string("game-params.toml")?;
+	let tbl = from_str(&file_str)?;
+	let res = from_tbl(tbl)?;
+	Ok(Arc::new(res))
 }

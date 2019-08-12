@@ -1,0 +1,4 @@
+[[recipe]]
+inputs = ["Tree"]
+output-itm = "Wood"
+output-qty = 4
