@@ -1,4 +1,4 @@
-cuse crafting::Recipe;
+use crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
 use toml::value::{Value, Array};
@@ -13,6 +13,7 @@ pub type GameParamsHdl = Arc<GameParams>;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlockParams {
 	pub color :Option<[f32; 4]>,
+	pub pointable :bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -29,6 +30,11 @@ impl GameParams {
 		self.block_params.get(blk)
 			.map(|p| p.color)
 			.unwrap_or(None)
+	}
+	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
+		self.block_params.get(blk)
+			.map(|p| p.pointable)
+			.unwrap_or(true)
 	}
 }
 
@@ -74,8 +80,12 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 			} else {
 				Some(color.try_into()?)
 			};
+			let pointable = block.get("pointable")
+				.unwrap_or(&Value::Boolean(true));
+			let pointable = *pointable.convert::<bool>()?;
 			let block_params = BlockParams {
 				color,
+				pointable,
 			};
 			Ok((id, block_params))
 		})

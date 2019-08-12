@@ -1,6 +1,7 @@
 [[block]]
 name = "Air"
 color = false
+pointable = false
 
 [[block]]
 name = "Ground"

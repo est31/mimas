@@ -27,23 +27,7 @@ impl Default for MapBlock {
 		MapBlock::Air
 	}
 }
-
 impl MapBlock {
-	pub fn is_pointable(&self) -> bool {
-		match self {
-			MapBlock::Water |
-			MapBlock::Sand |
-			MapBlock::Ground |
-			MapBlock::Wood |
-			MapBlock::Stone |
-			MapBlock::Tree |
-			MapBlock::Leaves |
-			MapBlock::Cactus |
-			MapBlock::Coal |
-			MapBlock::IronOre => true,
-			_ => false
-		}
-	}
 	pub fn from_str(s :&str) -> Option<Self> {
 		let mut id = 0;
 		while let Some(mb) = number_to_mapblock(id) {

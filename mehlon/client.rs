@@ -437,7 +437,7 @@ impl<C :NetworkClientConn> Game<C> {
 			pmatrix : pmatrix,
 			fog_near_far : [self.config.fog_near, self.config.fog_far]
 		};
-		self.selected_pos = self.camera.get_selected_pos(&self.map);
+		self.selected_pos = self.params.as_ref().and_then(|params| self.camera.get_selected_pos(&self.map, params));
 		let mut sel_text = "sel = None".to_string();
 		let mut selbuff = Vec::new();
 		if let Some((selected_pos, _)) = self.selected_pos {
@@ -1059,13 +1059,13 @@ impl Camera {
 		Matrix4::new_perspective(self.aspect_ratio, fov, znear, zfar).into()
 	}
 
-	pub fn get_selected_pos<B :MapBackend>(&self, map :&Map<B>) -> Option<(Vector3<isize>, Vector3<isize>)> {
+	pub fn get_selected_pos<B :MapBackend>(&self, map :&Map<B>, params :&GameParamsHdl) -> Option<(Vector3<isize>, Vector3<isize>)> {
 		for (vs, ve) in VoxelWalker::new(self.pos,
 				self.direction().coords) {
 			let vs = vs.map(|v| v.floor() as isize);
 			let ve = ve.map(|v| v.floor() as isize);
 			if let Some(blk) = map.get_blk(ve) {
-				if blk.is_pointable() {
+				if params.get_pointability_for_blk(&blk) {
 					return Some((ve, vs));
 				}
 			}
