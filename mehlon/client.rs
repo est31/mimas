@@ -64,6 +64,7 @@ pub struct Game<C :NetworkClientConn> {
 	auth_state :AuthState,
 	params :Option<GameParamsHdl>,
 
+	meshgen_spawner :Option<Box<dyn FnOnce(GameParamsHdl)>>,
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
@@ -135,12 +136,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 		let (meshgen_s, meshgen_r) = channel();
 		let (meshres_s, meshres_r) = channel();
-		thread::spawn(move || {
-			while let Ok((p, chunk)) = meshgen_r.recv() {
-				let mesh = mesh_for_chunk(p, &chunk);
-				let _ = meshres_s.send((p, mesh));
-			}
-		});
+
 
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			meshgen_s.send((chunk_pos, *chunk)).unwrap();
@@ -173,6 +169,15 @@ impl<C :NetworkClientConn> Game<C> {
 			auth_state,
 			params : None,
 
+			meshgen_spawner : Some(Box::new(move |hdl| {
+				thread::spawn(move || {
+					let hdl = hdl;
+					while let Ok((p, chunk)) = meshgen_r.recv() {
+						let mesh = mesh_for_chunk(p, &chunk, &hdl);
+						let _ = meshres_s.send((p, mesh));
+					}
+				});
+			})),
 			meshres_r,
 
 			display,
@@ -281,7 +286,13 @@ impl<C :NetworkClientConn> Game<C> {
 						break 'game_main_loop;
 					},
 					ServerToClientMsg::GameParams(params) => {
-						self.params = Some(Arc::new(params));
+						let params_arc = Arc::new(params);
+						if let Some(spawner) = self.meshgen_spawner.take() {
+							spawner(params_arc.clone());
+						} else {
+							// TODO print a warning about duplicate GameParams or sth
+						}
+						self.params = Some(params_arc);
 					},
 					ServerToClientMsg::PlayerPositions(own_id, positions) => {
 						self.player_positions = Some((own_id, positions));
@@ -540,8 +551,8 @@ impl<C :NetworkClientConn> Game<C> {
 				fog_near_far : [40.0f32, 60.0]
 			};
 			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
-			if let Some(item) = self.sel_inventory.get_selected() {
-				let hand_mesh = hand_mesh(hand_mesh_pos, item);
+			if let (Some(item), Some(game_params)) = (self.sel_inventory.get_selected(), &self.params) {
+				let hand_mesh = hand_mesh(hand_mesh_pos, item, game_params);
 				let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
 				target.draw(&vbuff,
 					&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
@@ -839,9 +850,10 @@ fn player_mesh(pos :Vector3<f32>) -> Vec<Vertex> {
 	vertices
 }
 
-fn hand_mesh(pos :Vector3<f32>, blk :MapBlock) -> Vec<Vertex> {
+fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
+		params :&GameParamsHdl) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
-	let color = if let Some(c) = mehlon_meshgen::get_color_for_blk(blk) {
+	let color = if let Some(c) = params.get_color_for_blk(&blk) {
 		c
 	} else {
 		return vec![];

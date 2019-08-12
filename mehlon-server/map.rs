@@ -7,7 +7,7 @@ use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenThread};
 
 pub const CHUNKSIZE :isize = 16;
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum MapBlock {
 	Air,
 	Water,

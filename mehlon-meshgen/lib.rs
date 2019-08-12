@@ -7,6 +7,7 @@ extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
 	CHUNKSIZE, MapBlock};
+use mehlon_server::game_params::GameParamsHdl;
 use nalgebra::Vector3;
 
 #[derive(Copy, Clone)]
@@ -99,28 +100,12 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 }
 
 #[inline]
-pub fn get_color_for_blk(blk :MapBlock) -> Option<[f32; 4]> {
-	match blk {
-		MapBlock::Air => None,
-		MapBlock::Ground => Some([0.0, 1.0, 0.0, 1.0]),
-		MapBlock::Sand => Some([1.0, 1.0, 0.3, 1.0]),
-		MapBlock::Water => Some([0.0, 0.0, 1.0, 1.0]),
-		MapBlock::Wood => Some([0.5, 0.25, 0.0, 1.0]),
-		MapBlock::Stone => Some([0.5, 0.5, 0.5, 1.0]),
-		MapBlock::Tree => Some([0.38, 0.25, 0.125, 1.0]),
-		MapBlock::Leaves => Some([0.0, 0.4, 0.0, 1.0]),
-		MapBlock::Cactus => Some([0.0, 0.2, 0.0, 1.0]),
-		MapBlock::Coal => Some([0.05, 0.05, 0.05, 1.0]),
-		MapBlock::IronOre => Some([0.4, 0.30, 0.0, 1.0]),
-	}
-}
-
-#[inline]
 pub fn colorh(col :[f32; 4]) -> [f32; 4] {
 	[col[0]/2.0, col[1]/2.0, col[2]/2.0, col[3]]
 }
 
-pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex> {
+pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
+		hdl :&GameParamsHdl) -> Vec<Vertex> {
 	let mut r = Vec::new();
 
 	struct Walker {
@@ -176,9 +161,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 		}
 	};
 	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>,
-			offsets :[isize; 3]) -> Option<[f32; 4]> {
-		let blk = *chunk.get_blk(pos);
-		let mut color = get_color_for_blk(blk);
+			offsets :[isize; 3], hdl :&GameParamsHdl) -> Option<[f32; 4]> {
+		let blk = chunk.get_blk(pos);
+		let mut color = hdl.get_color_for_blk(blk);
 		if color.is_some() && blocked(chunk, offsets, pos) {
 			color = None;
 		}
@@ -187,13 +172,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 	fn walk_for_all_blocks<G :FnMut(&mut Walker, Option<[f32; 4]>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
 			offsets :[isize; 3],
-			chunk :&MapChunkData, g :&mut G) {
+			chunk :&MapChunkData, g :&mut G,
+			hdl :&GameParamsHdl) {
 		for c1 in 0 .. CHUNKSIZE {
 			for c2 in 0 .. CHUNKSIZE {
 				let mut walker = Walker::new();
 				for cinner in 0 .. CHUNKSIZE {
 					let rel_pos = f(c1, c2, cinner);
-					let color = get_col(chunk, rel_pos, offsets);
+					let color = get_col(chunk, rel_pos, offsets, hdl);
 					g(&mut walker, color, rel_pos)
 				}
 				let rel_pos = f(c1, c2, CHUNKSIZE);
@@ -214,7 +200,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 				rpush_face!(r, (x, last_y, z), (siz, 0.0, ylen, 0.0), l_col);
 			});
-		}
+		},
+		hdl
 	);
 
 	// X-Z face (unify over x)
@@ -229,7 +216,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let colorh = colorh(l_col);
 				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), colorh);
 			});
-		}
+		},
+		hdl
 	);
 
 	// Y-Z face (unify over y)
@@ -244,7 +232,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let colorh = colorh(l_col);
 				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), colorh);
 			});
-		}
+		},
+		hdl
 	);
 
 	// X-Y face (z+1) (unify over y)
@@ -258,7 +247,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
 			});
-		}
+		},
+		hdl
 	);
 
 	// X-Z face (y+1) (unify over x)
@@ -273,7 +263,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let colorh = colorh(l_col);
 				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), colorh);
 			});
-		}
+		},
+		hdl
 	);
 
 	// Y-Z face (x+1) (unify over y)
@@ -288,7 +279,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData) -> Vec<Vertex>
 				let colorh = colorh(l_col);
 				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), colorh);
 			});
-		}
+		},
+		hdl
 	);
 
 	r

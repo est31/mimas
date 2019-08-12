@@ -6,17 +6,22 @@ use std::fs::read_to_string;
 use map::MapBlock;
 use super::StrErr;
 use toml_util::TomlReadExt;
+use std::collections::HashMap;
 
 pub type GameParamsHdl = Arc<GameParams>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
+	pub colors :HashMap<MapBlock, Option<[f32; 4]>>,
 }
 
 impl GameParams {
 	pub fn load() -> GameParamsHdl {
 		load_params_failible().expect("Couldn't load game params")
+	}
+	pub fn get_color_for_blk(&self, blk :&MapBlock) -> Option<[f32; 4]> {
+		self.colors.get(blk).cloned().unwrap_or(None)
 	}
 }
 
@@ -49,8 +54,22 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		})
 		.collect::<Result<Vec<Recipe>, StrErr>>()?;
 
+	let colors = val.read::<Array>("block")?
+		.iter()
+		.map(|block| {
+			let name = block.read::<str>("name")?;
+			let id = MapBlock::from_str(name)
+				.ok_or("invalid name")?;
+			let color = block.read::<Value>("color")?
+				.clone()
+				.try_into()?;
+			Ok((id, color))
+		})
+		.collect::<Result<HashMap<_, _>, StrErr>>()?;
+
 	Ok(GameParams {
 		recipes,
+		colors,
 	})
 }
 

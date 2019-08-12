@@ -33,6 +33,13 @@ pub trait TomlValue {
 	fn try_conversion(v :&Value) -> Option<&Self>;
 }
 
+impl TomlValue for Value {
+	const TYPE_NAME :&'static str = "VALUE";
+	fn try_conversion(v :&Value) -> Option<&Self> {
+		Some(v)
+	}
+}
+
 macro_rules! impl_toml_value {
 	($ty:ty, $name:literal, $variant:ident) => {
 		impl TomlValue for $ty {
