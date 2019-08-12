@@ -1,4 +1,8 @@
 [[block]]
+name = "Air"
+color = false
+
+[[block]]
 name = "Ground"
 color = [0.0, 1.0, 0.0, 1.0]
 
