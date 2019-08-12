@@ -338,6 +338,9 @@ impl PlayerIdPair {
 fn test_player_id_pair() {
 	for i in 0 .. 32 {
 		for j in 0 .. 32 {
+			if (i, j) == (0, 0) {
+				continue;
+			}
 			let id = PlayerIdPair::from_components(i, j);
 			assert_eq!((id.id_src(), id.id_u64()), (i, j));
 		}
