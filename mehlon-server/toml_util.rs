@@ -33,63 +33,25 @@ pub trait TomlValue {
 	fn try_conversion(v :&Value) -> Option<&Self>;
 }
 
-impl TomlValue for str {
-	const TYPE_NAME :&'static str = "string";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		v.as_str()
-	}
-}
-
-impl TomlValue for i64 {
-	const TYPE_NAME :&'static str = "integer";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		if let Value::Integer(v) = v {
-			Some(v)
-		} else {
-			None
+macro_rules! impl_toml_value {
+	($ty:ty, $name:literal, $variant:ident) => {
+		impl TomlValue for $ty {
+			const TYPE_NAME :&'static str = $name;
+			fn try_conversion(v :&Value) -> Option<&Self> {
+				if let Value::$variant(v) = v {
+					Some(v)
+				} else {
+					None
+				}
+			}
 		}
-	}
+	};
 }
 
-impl TomlValue for f64 {
-	const TYPE_NAME :&'static str = "float";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		if let Value::Float(v) = v {
-			Some(v)
-		} else {
-			None
-		}
-	}
-}
-
-impl TomlValue for bool {
-	const TYPE_NAME :&'static str = "boolean";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		if let Value::Boolean(v) = v {
-			Some(v)
-		} else {
-			None
-		}
-	}
-}
-
-impl TomlValue for Datetime {
-	const TYPE_NAME :&'static str = "datetime";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		v.as_datetime()
-	}
-}
-
-impl TomlValue for Array {
-	const TYPE_NAME :&'static str = "array";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		v.as_array()
-	}
-}
-
-impl TomlValue for Table {
-	const TYPE_NAME :&'static str = "table";
-	fn try_conversion(v :&Value) -> Option<&Self> {
-		v.as_table()
-	}
-}
+impl_toml_value!(str, "string", String);
+impl_toml_value!(i64, "integer", Integer);
+impl_toml_value!(f64, "float", Float);
+impl_toml_value!(bool, "bool", Boolean);
+impl_toml_value!(Datetime, "datetime", Datetime);
+impl_toml_value!(Array, "array", Array);
+impl_toml_value!(Table, "table", Table);
