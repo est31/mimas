@@ -61,8 +61,12 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 			let id = MapBlock::from_str(name)
 				.ok_or("invalid name")?;
 			let color = block.read::<Value>("color")?
-				.clone()
-				.try_into()?;
+				.clone();
+			let color = if color == Value::Boolean(false) {
+				None
+			} else {
+				Some(color.try_into()?)
+			};
 			Ok((id, color))
 		})
 		.collect::<Result<HashMap<_, _>, StrErr>>()?;
