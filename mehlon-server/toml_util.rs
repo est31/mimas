@@ -14,7 +14,8 @@ impl TomlReadExt for Value {
 			})?;
 		let res = <T as TomlValue>::try_conversion(&val)
 			.ok_or_else(|| {
-				format!("expected type {}", <T as TomlValue>::TYPE_NAME)
+				format!("expected type {} for {}",
+					<T as TomlValue>::TYPE_NAME, key)
 			})?;
 		Ok(res)
 	}
