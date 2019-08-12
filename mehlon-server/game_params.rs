@@ -40,7 +40,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 			let output_itm = recipe.read::<str>("output-itm")?;
 			let output_itm = MapBlock::from_str(output_itm)
 				.ok_or("invalid name")?;
-			let output_qty = *recipe.read::<i64>("inputs")?;
+			let output_qty = *recipe.read::<i64>("output-qty")?;
 
 			Ok(Recipe {
 				inputs,
