@@ -6,7 +6,7 @@ extern crate glium;
 extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
-	CHUNKSIZE, MapBlock};
+	CHUNKSIZE};
 use mehlon_server::game_params::GameParamsHdl;
 use nalgebra::Vector3;
 
