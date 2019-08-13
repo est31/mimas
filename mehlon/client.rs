@@ -336,12 +336,17 @@ impl<C :NetworkClientConn> Game<C> {
 		let d = 3;
 		let cubes_min = Vector3::new(pos.x.min(new_pos.x) - d, pos.y.min(new_pos.y) - d, pos.z.min(new_pos.z) - d);
 		let cubes_max = Vector3::new(pos.x.max(new_pos.x) + d, pos.y.max(new_pos.y) + d, pos.z.max(new_pos.z) + d);
+		let air_bl = if let Some(p) = &self.params {
+			p.block_roles.air
+		} else {
+			MapBlock::default()
+		};
 		for x in cubes_min.x .. cubes_max.x {
 			for y in cubes_min.y .. cubes_max.y {
 				for z in cubes_min.z .. cubes_max.z {
 					let p = Vector3::new(x, y, z);
 					match self.map.get_blk(p) {
-						Some(MapBlock::Air) => continue,
+						Some(v) if v == air_bl => continue,
 						None => (),
 						Some(_) => (),
 					}
@@ -690,10 +695,11 @@ impl<C :NetworkClientConn> Game<C> {
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 					let dug_block = blk.get();
 					self.sel_inventory.put(Stack::with(dug_block, 1));
-					blk.set(MapBlock::Air);
+					let air_bl = self.params.as_ref().unwrap().block_roles.air;
+					blk.set(air_bl);
 					let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
 					let _ = self.srv_conn.send(msg);
-					let msg = ClientToServerMsg::SetBlock(selected_pos, MapBlock::Air);
+					let msg = ClientToServerMsg::SetBlock(selected_pos, air_bl);
 					let _ = self.srv_conn.send(msg);
 					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;
 				}
