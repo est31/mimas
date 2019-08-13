@@ -66,10 +66,10 @@ impl BlockRoles {
 }
 
 impl Schematics {
-	pub fn new() -> Self {
+	pub fn new(roles :&BlockRoles) -> Self {
 		Self {
-			tree_schematic : mapgen::tree_schematic(),
-			cactus_schematic : mapgen::cactus_schematic(),
+			tree_schematic : mapgen::tree_schematic(roles),
+			cactus_schematic : mapgen::cactus_schematic(roles),
 		}
 	}
 }
@@ -143,11 +143,13 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		})
 		.collect::<Result<HashMap<_, _>, StrErr>>()?;
 
+	let block_roles = BlockRoles::new();
+	let schematics = Schematics::new(&block_roles);
 	Ok(GameParams {
 		recipes,
 		block_params,
-		schematics : Schematics::new(),
-		block_roles : BlockRoles::new(),
+		schematics,
+		block_roles,
 	})
 }
 

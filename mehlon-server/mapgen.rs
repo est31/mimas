@@ -10,7 +10,7 @@ use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
 use map_storage::PlayerIdPair;
-use game_params::GameParamsHdl;
+use game_params::{GameParamsHdl, BlockRoles};
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -275,25 +275,25 @@ fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector
 	(Vector3::new(min_x, min_y, min_z), Vector3::new(max_x, max_y, max_z))
 }
 
-pub(super) fn tree_schematic() -> Schematic {
+pub(super) fn tree_schematic(roles :&BlockRoles) -> Schematic {
 	let mut items = Vec::new();
 	for x in -1 ..= 1 {
 		for y in -1 ..= 1 {
-			items.push((Vector3::new(x, y, 3), MapBlock::Leaves));
-			items.push((Vector3::new(x, y, 4), MapBlock::Leaves));
-			items.push((Vector3::new(x, y, 5), MapBlock::Leaves));
+			items.push((Vector3::new(x, y, 3), roles.leaves));
+			items.push((Vector3::new(x, y, 4), roles.leaves));
+			items.push((Vector3::new(x, y, 5), roles.leaves));
 		}
 	}
 	for z in 0 .. 4 {
-		items.push((Vector3::new(0, 0, z), MapBlock::Tree));
+		items.push((Vector3::new(0, 0, z), roles.tree));
 	}
 	Schematic::from_items(items)
 }
 
-pub(super) fn cactus_schematic() -> Schematic {
+pub(super) fn cactus_schematic(roles :&BlockRoles) -> Schematic {
 	let mut items = Vec::new();
 	for z in 0 .. 4 {
-		items.push((Vector3::new(0, 0, z), MapBlock::Cactus));
+		items.push((Vector3::new(0, 0, z), roles.cactus));
 	}
 	Schematic::from_items(items)
 }
