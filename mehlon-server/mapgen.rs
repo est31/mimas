@@ -247,6 +247,7 @@ impl NoiseMag {
 	}*/
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Schematic {
 	pub(super) items :Vec<(Vector3<isize>, MapBlock)>,
 	pub(super) aabb_min :Vector3<isize>,
@@ -279,7 +280,7 @@ fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector
 	(Vector3::new(min_x, min_y, min_z), Vector3::new(max_x, max_y, max_z))
 }
 
-fn tree_schematic() -> Schematic {
+pub(super) fn tree_schematic() -> Schematic {
 	let mut items = Vec::new();
 	for x in -1 ..= 1 {
 		for y in -1 ..= 1 {
@@ -294,7 +295,7 @@ fn tree_schematic() -> Schematic {
 	Schematic::from_items(items)
 }
 
-fn cactus_schematic() -> Schematic {
+pub(super) fn cactus_schematic() -> Schematic {
 	let mut items = Vec::new();
 	for z in 0 .. 4 {
 		items.push((Vector3::new(0, 0, z), MapBlock::Cactus));
@@ -302,19 +303,12 @@ fn cactus_schematic() -> Schematic {
 	Schematic::from_items(items)
 }
 
-fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>, schematic :&Schematic) {
+fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>,
+		schematic :&Schematic) {
 	for (bpos, mb) in schematic.items.iter() {
 		let blk = map.get_blk_p1_mut(pos + bpos).unwrap();
 		*blk = *mb;
 	}
-}
-fn spawn_tree_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
-	spawn_schematic_mapgen(map, pos, &TREE_SCHEMATIC);
-}
-
-
-fn spawn_cactus_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
-	spawn_schematic_mapgen(map, pos, &CACTUS_SCHEMATIC);
 }
 
 impl MapgenMap {
@@ -347,11 +341,13 @@ impl MapgenMap {
 			chnk.generation_phase = GenerationPhase::PhaseTwo;
 			replace(&mut chnk.tree_spawn_points, Vec::new())
 		};
+		// We clone the RC because of Rust's aliasing rules
+		let schematics = &self.params.clone().schematics;
 		for (p, in_desert) in tree_spawn_points {
 			if in_desert {
-				spawn_cactus_mapgen(self, p);
+				spawn_schematic_mapgen(self, p, &schematics.tree_schematic);
 			} else {
-				spawn_tree_mapgen(self, p);
+				spawn_schematic_mapgen(self, p, &schematics.cactus_schematic);
 			}
 		}
 	}

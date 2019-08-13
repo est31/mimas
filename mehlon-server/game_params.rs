@@ -7,6 +7,7 @@ use map::MapBlock;
 use super::StrErr;
 use toml_util::TomlReadExt;
 use std::collections::HashMap;
+use mapgen::{Schematic, self};
 
 pub type GameParamsHdl = Arc<GameParams>;
 
@@ -32,10 +33,17 @@ pub struct BlockRoles {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Schematics {
+	pub tree_schematic :Schematic,
+	pub cactus_schematic :Schematic,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
 	pub block_params :HashMap<MapBlock, BlockParams>,
 	pub block_roles :BlockRoles,
+	pub schematics :Schematics,
 }
 
 impl BlockRoles {
@@ -53,6 +61,15 @@ impl BlockRoles {
 			cactus : Cactus,
 			coal : Coal,
 			iron_ore : IronOre,
+		}
+	}
+}
+
+impl Schematics {
+	pub fn new() -> Self {
+		Self {
+			tree_schematic : mapgen::tree_schematic(),
+			cactus_schematic : mapgen::cactus_schematic(),
 		}
 	}
 }
@@ -129,6 +146,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 	Ok(GameParams {
 		recipes,
 		block_params,
+		schematics : Schematics::new(),
 		block_roles : BlockRoles::new(),
 	})
 }
