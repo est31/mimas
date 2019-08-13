@@ -10,6 +10,7 @@ use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
 use map_storage::PlayerIdPair;
+use game_params::GameParamsHdl;
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -33,6 +34,7 @@ pub struct MapChunk {
 
 pub struct MapgenMap {
 	seed :u64,
+	params :GameParamsHdl,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
 	storage :DynStorageBackend,
 }
@@ -56,7 +58,9 @@ fn pos_hash(pos :Vector3<isize>) -> u64 {
 	mh.finish()
 }
 
-fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
+fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
+		params :&GameParamsHdl) -> MapChunk {
+	let role = &params.block_roles;
 	macro_rules! s {
 		($e:expr) => {
 			s!($e, u32)
@@ -122,7 +126,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 				let els = els.min(CHUNKSIZE).max(0);
 				let elg = elev_blocks.min(CHUNKSIZE).max(0);
 				for z in 0 .. els {
-					*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Stone;
+					*res.get_blk_mut(Vector3::new(x, y, z)) = role.stone;
 					let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
 					let coal_limit = if pos.z + z < -30 {
 						0.5
@@ -131,7 +135,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 					};
 					if cnoise.get_3d(p3) > coal_limit {
 						if cpcg.gen::<f64>() > 0.6 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Coal;
+							*res.get_blk_mut(Vector3::new(x, y, z)) = role.coal;
 						}
 					}
 					let iron_limit = if pos.z + z < -60 {
@@ -141,7 +145,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 					};
 					if inoise.get_3d(p3) > iron_limit {
 						if ipcg.gen::<f64>() > 0.6 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::IronOre;
+							*res.get_blk_mut(Vector3::new(x, y, z)) = role.iron_ore;
 						}
 					}
 					// Generate caves,
@@ -152,24 +156,24 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 					// maxing with CHUNKSIZE above.
 					let cave_block = mca_noise.get_3d(p3) > 0.498 || ca_noise.get_3d(p3) > 0.45 ;
 					if z + 10 < elev_blocks && cave_block {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Air;
+						*res.get_blk_mut(Vector3::new(x, y, z)) = role.air;
 					}
 				}
 				if pos.z < 0 {
 					for z in  els .. CHUNKSIZE {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = MapBlock::Water;
+						*res.get_blk_mut(Vector3::new(x, y, z)) = role.water;
 					}
 				} else {
 					let ground_block = if binoise.get(p) + mbinoise.get(p) < 0.3 {
-						MapBlock::Ground
+						role.ground
 					} else {
-						MapBlock::Sand
+						role.sand
 					};
 					for z in els .. elg {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_block;
 					}
 					if pos.z == 0 && elg <= 0 {
-						*res.get_blk_mut(Vector3::new(x, y, 0)) = MapBlock::Water;
+						*res.get_blk_mut(Vector3::new(x, y, 0)) = role.water;
 					}
 					if elg > 0 && elg < CHUNKSIZE {
 						// Tree spawning
@@ -185,7 +189,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>) -> MapChunk {
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
 							if tpcg.gen::<f64>() > 0.9 {
-								let in_desert = ground_block == MapBlock::Sand;
+								let in_desert = ground_block == role.sand;
 								res.tree_spawn_points.push((pos + Vector3::new(x, y, elg), in_desert));
 							}
 						}
@@ -314,9 +318,11 @@ fn spawn_cactus_mapgen(map :&mut MapgenMap, pos :Vector3<isize>) {
 }
 
 impl MapgenMap {
-	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
+	pub fn new(seed :u64, params :GameParamsHdl,
+			storage :DynStorageBackend) -> Self {
 		MapgenMap {
 			seed,
+			params,
 			chunks : HashMap::new(),
 			storage,
 		}
@@ -329,7 +335,7 @@ impl MapgenMap {
 	}
 	fn gen_chunk_phase_one(&mut self, pos :Vector3<isize>) {
 		if let Entry::Vacant(v) = self.chunks.entry(pos) {
-			v.insert(gen_chunk_phase_one(self.seed, pos));
+			v.insert(gen_chunk_phase_one(self.seed, pos, &self.params));
 		}
 	}
 	fn gen_chunk_phase_two(&mut self, pos :Vector3<isize>) {
@@ -458,8 +464,9 @@ pub struct MapgenThread {
 }
 
 impl MapgenThread {
-	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
-		let mut mapgen_map = MapgenMap::new(seed, storage);
+	pub fn new(seed :u64, params :GameParamsHdl,
+			storage :DynStorageBackend) -> Self {
+		let mut mapgen_map = MapgenMap::new(seed, params, storage);
 		let (area_s, area_r) = channel();
 		let (result_s, result_r) = channel();
 		let (result_kv_s, result_kv_r) = channel();
@@ -525,7 +532,8 @@ impl MapBackend for MapgenThread {
 }
 
 impl Map<MapgenThread> {
-	pub fn new(seed :u64, storage :DynStorageBackend) -> Self {
-		Map::from_backend(MapgenThread::new(seed, storage))
+	pub fn new(seed :u64, params :GameParamsHdl,
+			storage :DynStorageBackend) -> Self {
+		Map::from_backend(MapgenThread::new(seed, params, storage))
 	}
 }

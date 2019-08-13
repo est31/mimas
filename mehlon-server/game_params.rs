@@ -17,9 +17,44 @@ pub struct BlockParams {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BlockRoles {
+	pub air :MapBlock,
+	pub water :MapBlock,
+	pub sand :MapBlock,
+	pub ground :MapBlock,
+	pub wood :MapBlock,
+	pub stone :MapBlock,
+	pub leaves :MapBlock,
+	pub tree :MapBlock,
+	pub cactus :MapBlock,
+	pub coal :MapBlock,
+	pub iron_ore :MapBlock,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
 	pub block_params :HashMap<MapBlock, BlockParams>,
+	pub block_roles :BlockRoles,
+}
+
+impl BlockRoles {
+	pub fn new() -> Self {
+		use MapBlock::*;
+		Self {
+			air : Air,
+			water : Water,
+			sand : Sand,
+			ground : Ground,
+			wood : Wood,
+			stone : Stone,
+			leaves : Leaves,
+			tree : Tree,
+			cactus : Cactus,
+			coal : Coal,
+			iron_ore : IronOre,
+		}
+	}
 }
 
 impl GameParams {
@@ -94,6 +129,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 	Ok(GameParams {
 		recipes,
 		block_params,
+		block_roles : BlockRoles::new(),
 	})
 }
 

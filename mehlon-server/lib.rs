@@ -175,7 +175,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			singleplayer :bool, mut config :Config) -> Self {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
 		let (storage_back, auth_back) = backends;
-		let mut map = ServerMap::new(config.mapgen_seed, storage_back);
+		let mut map = ServerMap::new(config.mapgen_seed,
+			params.clone(), storage_back);
 
 		let unauthenticated_players = Vec::<_>::new();
 		let players = Rc::new(RefCell::new(HashMap::<_, Player<S::Conn>>::new()));
