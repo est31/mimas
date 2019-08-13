@@ -672,6 +672,8 @@ impl<C :NetworkClientConn> Game<C> {
 					if let Some(m) = self.inventory_menu.take() {
 						maybe_inventory_change!(m, self);
 					} else {
+						// TODO unwrap below is a bit bad because players might
+						// want to open inventory before the server has sent the params
 						self.inventory_menu = Some(InventoryMenu::new(
 							self.params.as_ref().unwrap().clone(),
 							self.sel_inventory.clone(),
