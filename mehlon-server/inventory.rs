@@ -94,7 +94,7 @@ pub const HUD_SLOT_COUNT :usize = 8;
 
 impl SelectableInventory {
 	pub fn new() -> Self {
-		Self::with_stuff_inside()
+		Self::from_stacks(vec![Stack::Empty; 16].into_boxed_slice())
 	}
 	pub fn from_stacks(stacks :Box<[Stack]>) -> Self {
 		Self {
@@ -104,28 +104,6 @@ impl SelectableInventory {
 	}
 	pub fn crafting_inv() -> Self {
 		Self::from_stacks(vec![Stack::Empty; 9].into_boxed_slice())
-	}
-	pub fn with_stuff_inside() -> Self {
-		use map::MapBlock::*;
-		Self::from_stacks(vec![
-			Stack::with(Water, 1),
-			Stack::with(Ground, 1),
-			Stack::with(Sand, 1),
-			Stack::with(Wood, 1),
-			Stack::with(Stone, 1),
-			Stack::with(Leaves, 1),
-			Stack::with(Tree, 1),
-			Stack::with(Cactus, 1),
-			Stack::with(Coal, 1),
-			Stack::Empty,
-			Stack::Empty,
-			Stack::Empty,
-			Stack::Empty,
-			Stack::Empty,
-			Stack::Empty,
-			Stack::Empty,
-			].into_boxed_slice(),
-		)
 	}
 	pub fn get_selected(&self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
