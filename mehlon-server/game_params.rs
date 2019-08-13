@@ -29,7 +29,7 @@ impl GameParams {
 	pub fn get_color_for_blk(&self, blk :&MapBlock) -> Option<[f32; 4]> {
 		self.block_params.get(blk)
 			.map(|p| p.color)
-			.unwrap_or(None)
+			.unwrap_or(Some([0.0, 0.0, 0.0, 1.0]))
 	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
 		self.block_params.get(blk)
