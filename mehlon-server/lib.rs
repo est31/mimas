@@ -788,7 +788,7 @@ impl<S :NetworkServerSocket> Server<S> {
 						}
 					},
 					PlaceTree(p) => {
-						map::spawn_tree(&mut self.map, p);
+						map::spawn_tree(&mut self.map, p, &self.params);
 					},
 					SetPos(_p) => unreachable!(),
 					SetInventory(_inv) => unreachable!(),

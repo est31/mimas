@@ -2,8 +2,9 @@ use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
 use map_storage::{PlayerIdPair, number_to_mapblock};
+use game_params::GameParamsHdl;
 
-use super::mapgen::{TREE_SCHEMATIC, Schematic, MapgenThread};
+use super::mapgen::{Schematic, MapgenThread};
 
 pub const CHUNKSIZE :isize = 16;
 
@@ -91,8 +92,9 @@ fn spawn_schematic<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, schemat
 	}
 }
 
-pub fn spawn_tree<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>) {
-	spawn_schematic(map, pos, &TREE_SCHEMATIC);
+pub fn spawn_tree<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>,
+		params :&GameParamsHdl) {
+	spawn_schematic(map, pos, &params.schematics.tree_schematic);
 }
 
 pub struct MapBlockHandle<'a, B :MapBackend> {

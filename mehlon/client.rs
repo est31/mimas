@@ -790,9 +790,10 @@ impl<C :NetworkClientConn> Game<C> {
 							} else if button == glutin::MouseButton::Right {
 								self.camera.handle_mouse_right(pressed);
 							}
-							if let Some((_selected_pos, before_selected)) = self.selected_pos {
+							if let (Some((_selected_pos, before_selected)), Some(params))
+									= (self.selected_pos, &self.params) {
 								if pressed && button == glutin::MouseButton::Middle {
-									spawn_tree(&mut self.map, before_selected);
+									spawn_tree(&mut self.map, before_selected, params);
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
 									let _ = self.srv_conn.send(msg);
 								}

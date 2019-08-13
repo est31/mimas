@@ -265,11 +265,6 @@ impl Schematic {
 	}
 }
 
-lazy_static! {
-    pub static ref TREE_SCHEMATIC :Schematic = tree_schematic();
-    pub static ref CACTUS_SCHEMATIC :Schematic = cactus_schematic();
-}
-
 fn aabb_min_max(items :&[(Vector3<isize>, MapBlock)]) -> (Vector3<isize>, Vector3<isize>) {
 	let min_x = items.iter().map(|(pos, _)| pos.x).min().unwrap();
 	let min_y = items.iter().map(|(pos, _)| pos.y).min().unwrap();
