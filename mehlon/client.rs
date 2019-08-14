@@ -891,12 +891,6 @@ fn clamp(a :f32, min :f32, max :f32) -> f32 {
 	}
 }
 
-// TODO: once euclidean division stabilizes,
-// use it: https://github.com/rust-lang/rust/issues/49048
-fn mod_euc(a :f32, b :f32) -> f32 {
-	((a % b) + b) % b
-}
-
 /// Degrees to radians
 fn dtr(v :f32) -> f32 {
 	v / 180.0 * std::f32::consts::PI
@@ -1039,7 +1033,7 @@ impl Camera {
 		const MAX_PITCH :f32 = 89.0;
 		self.pitch = clamp(factor * delta.y as f32 + self.pitch, -MAX_PITCH, MAX_PITCH);
 		self.yaw += factor * delta.x as f32;
-		self.yaw = mod_euc(self.yaw + 180.0, 360.0) - 180.0;
+		self.yaw = (self.yaw + 180.0).rem_euclid(360.0) - 180.0;
 	}
 	fn fast_speed(&self) -> bool {
 		self.fast_mode || self.fast_pressed

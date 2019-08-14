@@ -824,12 +824,6 @@ fn durtofl(d :Duration) -> f32 {
 	d.as_millis() as f32 / 1_000.0
 }
 
-// TODO: once euclidean division stabilizes,
-// use it: https://github.com/rust-lang/rust/issues/49048
-fn mod_euc(a :f32, b :f32) -> f32 {
-	((a % b) + b) % b
-}
-
 /// Block position to chunk position
 pub fn btchn(v :Vector3<isize>) -> Vector3<isize> {
 	fn r(x :isize) -> isize {
@@ -841,5 +835,5 @@ pub fn btchn(v :Vector3<isize>) -> Vector3<isize> {
 
 /// Block position to position inside chunk
 fn btpic(v :Vector3<isize>) -> Vector3<isize> {
-	v.map(|v| mod_euc(v as f32, CHUNKSIZE as f32) as isize)
+	v.map(|v| (v as f32).rem_euclid(CHUNKSIZE as f32) as isize)
 }
