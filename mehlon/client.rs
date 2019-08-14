@@ -10,7 +10,7 @@ use glium_glyph::glyph_brush::{
 	rusttype::Font, Section,
 };
 use std::collections::{HashMap, VecDeque};
-use std::time::{Instant, Duration};
+use std::time::Instant;
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
@@ -211,7 +211,7 @@ impl<C :NetworkClientConn> Game<C> {
 	/// Update the stored fps value and return the delta time
 	fn update_fps(&mut self) -> f32 {
 		let cur_time = Instant::now();
-		let float_delta = durtofl(cur_time - self.last_frame_time);
+		let float_delta = (cur_time - self.last_frame_time).as_secs_f32();
 		self.last_frame_time = cur_time;
 
 		const EPS :f32 = 0.1;
@@ -873,10 +873,6 @@ fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
 		[pos.x, pos.y, pos.z],
 		color, colorh, 0.5, |_| false);
 	vertices
-}
-
-fn durtofl(d :Duration) -> f32 {
-	d.as_millis() as f32 / 1_000.0
 }
 
 fn clamp(a :f32, min :f32, max :f32) -> f32 {

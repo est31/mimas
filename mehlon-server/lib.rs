@@ -213,7 +213,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	/// Update the stored fps value and return the delta time
 	fn update_fps(&mut self) -> f32 {
 		let cur_time = Instant::now();
-		let float_delta = durtofl(cur_time - self.last_frame_time);
+		let float_delta = (cur_time - self.last_frame_time).as_secs_f32();
 		self.last_frame_time = cur_time;
 
 		const EPS :f32 = 0.1;
@@ -818,10 +818,6 @@ fn close_connections(conns_to_close :&[PlayerIdPair], connections :&mut HashMap<
 		println!("closing connection");
 		connections.remove(&id);
 	}
-}
-
-fn durtofl(d :Duration) -> f32 {
-	d.as_millis() as f32 / 1_000.0
 }
 
 /// Block position to chunk position
