@@ -364,6 +364,22 @@ fn test_player_id_pair() {
 	}
 }
 
+fn load_name_id_map<B :StorageBackend>(backend :&mut B) -> Result<NameIdMap, StrErr> {
+	let buf = if let Some(v) = backend.get_global_kv("name_id_map")? {
+		v
+	} else {
+		return Ok(NameIdMap::builtin_name_list());
+	};
+	let nm = deserialize_name_id_map(&buf)?;
+	Ok(nm)
+}
+
+fn save_name_id_map<B :StorageBackend>(backend :&mut B, nm :&NameIdMap) -> Result<(), StrErr> {
+	let buf = serialize_name_id_map(nm);
+	backend.set_global_kv("name_id_map", &buf)?;
+	Ok(())
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct MapgenMetaToml {
 	seed :u64,
