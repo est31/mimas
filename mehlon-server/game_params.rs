@@ -61,17 +61,17 @@ impl BlockRoles {
 				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
 		};
 		Ok(Self {
-			air : get_id("Air")?,
-			water : get_id("Water")?,
-			sand : get_id("Sand")?,
-			ground : get_id("Ground")?,
-			wood : get_id("Wood")?,
-			stone : get_id("Stone")?,
-			leaves : get_id("Leaves")?,
-			tree : get_id("Tree")?,
-			cactus : get_id("Cactus")?,
-			coal : get_id("Coal")?,
-			iron_ore : get_id("IronOre")?,
+			air : get_id("default::air")?,
+			water : get_id("default::water")?,
+			sand : get_id("default::sand")?,
+			ground : get_id("default::ground")?,
+			wood : get_id("default::wood")?,
+			stone : get_id("default::stone")?,
+			leaves : get_id("default::leaves")?,
+			tree : get_id("default::tree")?,
+			cactus : get_id("default::cactus")?,
+			coal : get_id("default::coal")?,
+			iron_ore : get_id("default::iron_ore")?,
 		})
 	}
 }
@@ -88,17 +88,17 @@ impl Schematics {
 impl NameIdMap {
 	pub fn builtin_name_list() -> Self {
 		Self::from_name_list(vec![
-			"Air",
-			"Water",
-			"Sand",
-			"Ground",
-			"Wood",
-			"Stone",
-			"Leaves",
-			"Tree",
-			"Cactus",
-			"Coal",
-			"IronOre",
+			"default::air",
+			"default::water",
+			"default::sand",
+			"default::ground",
+			"default::wood",
+			"default::stone",
+			"default::leaves",
+			"default::tree",
+			"default::cactus",
+			"default::coal",
+			"default::iron_ore",
 		])
 	}
 	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
