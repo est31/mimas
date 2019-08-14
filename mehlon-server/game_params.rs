@@ -170,6 +170,27 @@ impl GameParams {
 	}
 }
 
+/// Ensures that the modname::name format is used and
+/// returns (modname, name) tuple if it is
+fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
+	fn check_chars(v :&str) -> bool {
+		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
+	}
+	let mut cit = name.split("::");
+	if let (Some(mn), Some(n), None) = (cit.next(), cit.next(), cit.next()) {
+		if !check_chars(mn) {
+			Err(format!("Invalid mod name '{}'. Only alphanumeric chars and _ allowed.", mn))?;
+		}
+		if !check_chars(n) {
+			Err(format!("Invalid name '{}'. Only alphanumeric chars and _ allowed.", n))?;
+		}
+		Ok((mn, n))
+	} else {
+		Err(format!("Invalid name '{}'. Must be in format modname::name.", name))?;
+		unreachable!()
+	}
+}
+
 fn from_val(val :Value) -> Result<GameParams, StrErr> {
 
 	let name_id_map = NameIdMap::builtin_name_list();
@@ -205,6 +226,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		.iter()
 		.map(|block| {
 			let name = block.read::<str>("name")?;
+			let _name_components = check_name_format(name)?;
 			let id = name_id_map.get_id(name)
 				.ok_or("invalid name")?;
 			let color = block.read::<Value>("color")?
