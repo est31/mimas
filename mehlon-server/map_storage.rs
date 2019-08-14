@@ -12,6 +12,7 @@ use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use local_auth::SqliteLocalAuth;
 use std::num::NonZeroU64;
+use game_params::NameIdMap;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -125,8 +126,8 @@ pub fn mapblock_to_number(b :MapBlock) -> u8 {
 	b.id()
 }
 
-pub fn number_to_mapblock(b :u8) -> Option<MapBlock> {
-	MapBlock::from_id(b)
+pub fn number_to_mapblock(b :u8, m :&NameIdMap) -> Option<MapBlock> {
+	unimplemented!()
 }
 
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
@@ -144,7 +145,7 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	r
 }
 
-fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
+fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData, StrErr> {
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
 	if version != 0 {
@@ -158,7 +159,7 @@ fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
 	let mut r = MapChunkData::uninitialized();
 	for v in r.0.iter_mut() {
 		let n = rdr.read_u8()?;
-		*v = number_to_mapblock(n).ok_or("invalid block number")?;
+		*v = m.mb_from_id(n).ok_or("invalid block number")?;
 	}
 	Ok(r)
 }
@@ -182,7 +183,7 @@ impl StorageBackend for SqliteStorageBackend {
 		}
 		Ok(())
 	}
-	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
+	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr> {
 		let pos = pos / CHUNKSIZE;
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM chunks WHERE x=? AND y=? AND z=?")?;
 		let data :Option<Vec<u8>> = stmt.query_row(
@@ -190,7 +191,7 @@ impl StorageBackend for SqliteStorageBackend {
 			|row| row.get(0)
 		).optional()?;
 		if let Some(data) = data {
-			let chunk = deserialize_mapchunk_data(&data)?;
+			let chunk = deserialize_mapchunk_data(&data, m)?;
 			Ok(Some(chunk))
 		} else {
 			Ok(None)
@@ -257,7 +258,7 @@ impl StorageBackend for NullStorageBackend {
 	fn tick(&mut self) -> Result<(), StrErr> {
 		Ok(())
 	}
-	fn load_chunk(&mut self, _pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr> {
+	fn load_chunk(&mut self, _pos :Vector3<isize>, _m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr> {
 		Ok(None)
 	}
 	fn get_global_kv(&mut self, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
@@ -457,7 +458,7 @@ pub trait StorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
 			data :&MapChunkData) -> Result<(), StrErr>;
 	fn tick(&mut self) -> Result<(), StrErr>;
-	fn load_chunk(&mut self, pos :Vector3<isize>) -> Result<Option<MapChunkData>, StrErr>;
+	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr>;
 	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
 	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr>;
 	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr>;

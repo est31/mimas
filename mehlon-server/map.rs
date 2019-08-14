@@ -36,13 +36,6 @@ impl MapBlock {
 	pub fn id(self) -> u8 {
 		self.0
 	}
-	pub fn from_id(id :u8) -> Option<Self> {
-		// TODO this is a hack :p
-		if id > map_block::IRON_ORE.id() {
-			return None;
-		}
-		Some(MapBlock(id))
-	}
 	pub(super) fn from_id_unchecked(id :u8) -> Self {
 		MapBlock(id)
 	}

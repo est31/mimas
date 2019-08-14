@@ -1,7 +1,8 @@
 use map::MapBlock;
 use std::num::NonZeroU16;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
-use map_storage::{mapblock_to_number, number_to_mapblock};
+use map_storage::mapblock_to_number;
+use game_params::NameIdMap;
 use StrErr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -213,7 +214,7 @@ impl SelectableInventory {
 			res.write_u16::<BigEndian>(count).unwrap();
 		}
 	}
-	pub fn deserialize(buf :&[u8]) -> Result<Self, StrErr> {
+	pub fn deserialize(buf :&[u8], m :&NameIdMap) -> Result<Self, StrErr> {
 		let mut rdr = buf;
 		let version = rdr.read_u8()?;
 		if version != 0 {
@@ -233,7 +234,7 @@ impl SelectableInventory {
 			let item_id = rdr.read_u8()?;
 			let count = rdr.read_u16::<BigEndian>()?;
 			if let Some(count) = NonZeroU16::new(count) {
-				let item = number_to_mapblock(item_id)
+				let item = m.mb_from_id(item_id)
 					.ok_or_else(|| "invalid item id".to_owned())?;
 				stacks.push(Stack::Content {
 					item,

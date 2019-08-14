@@ -40,6 +40,7 @@ pub struct Schematics {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NameIdMap {
+	first_invalid_id :u8,
 	name_to_id :HashMap<String, MapBlock>,
 	id_to_name :HashMap<MapBlock, String>,
 }
@@ -109,9 +110,16 @@ impl NameIdMap {
 			id += 1;
 		}
 		Self {
+			first_invalid_id : id,
 			name_to_id,
 			id_to_name,
 		}
+	}
+	pub fn mb_from_id(&self, id :u8) -> Option<MapBlock> {
+		if id >= self.first_invalid_id {
+			return None;
+		}
+		Some(MapBlock::from_id_unchecked(id))
 	}
 	pub fn get_name(&self, mb :MapBlock) -> Option<&str> {
 		self.id_to_name.get(&mb)

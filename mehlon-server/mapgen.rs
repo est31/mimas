@@ -383,7 +383,8 @@ impl MapgenMap {
 							}
 						}
 					} else {
-						if let Some(data) = self.storage.load_chunk(pos).unwrap() {
+						let m = &self.params.name_id_map;
+						if let Some(data) = self.storage.load_chunk(pos, m).unwrap() {
 							let chn = MapChunk {
 								data,
 								generation_phase : GenerationPhase::Done,
