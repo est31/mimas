@@ -172,7 +172,7 @@ fn serialize_name_id_map(m :&NameIdMap) -> Vec<u8> {
 	r
 }
 
-fn deserialize_name_id_map(data :&[u8]) -> Result<Vec<String>, StrErr> {
+fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
 	use std::io::Read;
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
@@ -193,7 +193,7 @@ fn deserialize_name_id_map(data :&[u8]) -> Result<Vec<String>, StrErr> {
 		rdr.read_exact(&mut s)?;
 		res.push(String::from_utf8(s)?);
 	}
-	Ok(res)
+	Ok(NameIdMap::from_name_list(res))
 }
 
 impl StorageBackend for SqliteStorageBackend {
