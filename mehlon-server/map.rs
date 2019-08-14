@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
-use map_storage::{PlayerIdPair, number_to_mapblock};
+use map_storage::PlayerIdPair;
 use game_params::GameParamsHdl;
 
 use super::mapgen::{Schematic, MapgenThread};
@@ -43,32 +43,8 @@ impl MapBlock {
 		}
 		Some(MapBlock(id))
 	}
-	pub fn name(self) -> &'static str {
-		use self::map_block::*;
-		match self {
-			AIR => "Air",
-			WATER => "Water",
-			SAND => "Sand",
-			GROUND => "Ground",
-			WOOD => "Wood",
-			STONE => "Stone",
-			LEAVES => "Leaves",
-			TREE => "Tree",
-			CACTUS => "Cactus",
-			COAL => "Coal",
-			IRON_ORE => "IronOre",
-			_ => panic!(),
-		}
-	}
-	pub fn from_str(s :&str) -> Option<Self> {
-		let mut id = 0;
-		while let Some(mb) = number_to_mapblock(id) {
-			if mb.name().eq_ignore_ascii_case(s) {
-				return Some(mb);
-			}
-			id += 1;
-		}
-		None
+	pub(super) fn from_id_unchecked(id :u8) -> Self {
+		MapBlock(id)
 	}
 }
 

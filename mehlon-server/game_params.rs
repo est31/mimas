@@ -39,11 +39,18 @@ pub struct Schematics {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NameIdMap {
+	name_to_id :HashMap<String, MapBlock>,
+	id_to_name :HashMap<MapBlock, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
 	pub block_params :HashMap<MapBlock, BlockParams>,
 	pub block_roles :BlockRoles,
 	pub schematics :Schematics,
+	pub name_id_map :NameIdMap,
 }
 
 impl BlockRoles {
@@ -74,6 +81,51 @@ impl Schematics {
 	}
 }
 
+impl NameIdMap {
+	pub fn builtin_name_list() -> Self {
+		Self::from_name_list(vec![
+			"Air",
+			"Water",
+			"Sand",
+			"Ground",
+			"Wood",
+			"Stone",
+			"Leaves",
+			"Tree",
+			"Cactus",
+			"Coal",
+			"IronOre",
+		])
+	}
+	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
+		let mut name_to_id = HashMap::new();
+		let mut id_to_name = HashMap::new();
+		let mut id = 0;
+		for name in names.into_iter() {
+			let name = name.into();
+			let mb = MapBlock::from_id_unchecked(id);
+			name_to_id.insert(name.clone(), mb);
+			id_to_name.insert(mb, name);
+			id += 1;
+		}
+		Self {
+			name_to_id,
+			id_to_name,
+		}
+	}
+	pub fn get_name(&self, mb :MapBlock) -> Option<&str> {
+		self.id_to_name.get(&mb)
+			.map(|v| {
+				let v :&str = &*v;
+				v
+			})
+	}
+	pub fn get_id<'a>(&self, s :impl Into<&'a str>) -> Option<MapBlock> {
+		self.name_to_id.get(s.into())
+			.map(|v| *v)
+	}
+}
+
 impl GameParams {
 	pub fn load() -> GameParamsHdl {
 		load_params_failible().expect("Couldn't load game params")
@@ -92,6 +144,8 @@ impl GameParams {
 
 fn from_val(val :Value) -> Result<GameParams, StrErr> {
 
+	let name_id_map = NameIdMap::builtin_name_list();
+
 	let recipes_list = val.read::<Array>("recipe")?;
 	let recipes = recipes_list.iter()
 		.map(|recipe| {
@@ -102,13 +156,13 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 					if name == "" {
 						Ok(None)
 					} else {
-						let mb = MapBlock::from_str(name).ok_or("invalid name")?;
+						let mb = name_id_map.get_id(name).ok_or("invalid name")?;
 						Ok(Some(mb))
 					}
 				})
 				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
 			let output_itm = recipe.read::<str>("output-itm")?;
-			let output_itm = MapBlock::from_str(output_itm)
+			let output_itm = name_id_map.get_id(output_itm)
 				.ok_or("invalid name")?;
 			let output_qty = *recipe.read::<i64>("output-qty")?;
 
@@ -123,7 +177,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		.iter()
 		.map(|block| {
 			let name = block.read::<str>("name")?;
-			let id = MapBlock::from_str(name)
+			let id = name_id_map.get_id(name)
 				.ok_or("invalid name")?;
 			let color = block.read::<Value>("color")?
 				.clone();
@@ -150,6 +204,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		block_params,
 		schematics,
 		block_roles,
+		name_id_map,
 	})
 }
 

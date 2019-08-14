@@ -635,7 +635,8 @@ impl<S :NetworkServerSocket> Server<S> {
 			"gime" => {
 				let content = params.get(0);
 				let content = if let Some(content) = content {
-					if let Some(mb) = MapBlock::from_str(&content) {
+					// TODO use a function that ignores case
+					if let Some(mb) = self.params.name_id_map.get_id(*content) {
 						mb
 					} else {
 						self.chat_msg_for(issuer_id, format!("Invalid item {}", content));
