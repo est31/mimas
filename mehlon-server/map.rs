@@ -15,16 +15,6 @@ pub mod map_block {
 	use super::MapBlock;
 
 	pub const AIR :MapBlock = MapBlock(0);
-	pub const WATER :MapBlock = MapBlock(1);
-	pub const SAND :MapBlock = MapBlock(2);
-	pub const GROUND :MapBlock = MapBlock(3);
-	pub const WOOD :MapBlock = MapBlock(4);
-	pub const STONE :MapBlock = MapBlock(5);
-	pub const LEAVES :MapBlock = MapBlock(6);
-	pub const TREE :MapBlock = MapBlock(7);
-	pub const CACTUS :MapBlock = MapBlock(8);
-	pub const COAL :MapBlock = MapBlock(9);
-	pub const IRON_ORE :MapBlock = MapBlock(10);
 }
 
 impl Default for MapBlock {
