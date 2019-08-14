@@ -118,6 +118,20 @@ impl NameIdMap {
 	pub fn names(&self) -> &[String] {
 		&self.id_to_name
 	}
+	pub fn extend_existing(mut other :Self,
+			names :Vec<impl Into<String>>) -> Self {
+		let mut id = other.first_invalid_id;
+
+		for name in names.into_iter() {
+			let name = name.into();
+			other.id_to_name.push(name.clone());
+			let mb = MapBlock::from_id_unchecked(id);
+			other.name_to_id.insert(name.clone(), mb);
+			id += 1;
+		}
+		other.first_invalid_id = id;
+		other
+	}
 	pub fn mb_from_id(&self, id :u8) -> Option<MapBlock> {
 		if id >= self.first_invalid_id {
 			return None;
