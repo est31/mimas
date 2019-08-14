@@ -55,27 +55,24 @@ pub struct GameParams {
 }
 
 impl BlockRoles {
-	pub fn new(m :&NameIdMap) -> Self {
+	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
 		let get_id = |n| {
-			if let Some(m) = m.get_id(n) {
-				m
-			} else {
-				panic!("Couldn't find id for builtin role '{}'", n);
-			}
+			m.get_id(n)
+				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
 		};
-		Self {
-			air : get_id("Air"),
-			water : get_id("Water"),
-			sand : get_id("Sand"),
-			ground : get_id("Ground"),
-			wood : get_id("Wood"),
-			stone : get_id("Stone"),
-			leaves : get_id("Leaves"),
-			tree : get_id("Tree"),
-			cactus : get_id("Cactus"),
-			coal : get_id("Coal"),
-			iron_ore : get_id("IronOre"),
-		}
+		Ok(Self {
+			air : get_id("Air")?,
+			water : get_id("Water")?,
+			sand : get_id("Sand")?,
+			ground : get_id("Ground")?,
+			wood : get_id("Wood")?,
+			stone : get_id("Stone")?,
+			leaves : get_id("Leaves")?,
+			tree : get_id("Tree")?,
+			cactus : get_id("Cactus")?,
+			coal : get_id("Coal")?,
+			iron_ore : get_id("IronOre")?,
+		})
 	}
 }
 
@@ -228,7 +225,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		})
 		.collect::<Result<HashMap<_, _>, StrErr>>()?;
 
-	let block_roles = BlockRoles::new(&name_id_map);
+	let block_roles = BlockRoles::new(&name_id_map)?;
 	let schematics = Schematics::new(&block_roles);
 	Ok(GameParams {
 		recipes,
