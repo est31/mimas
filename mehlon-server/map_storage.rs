@@ -182,7 +182,7 @@ fn deserialize_mapchunk_data(data :&[u8]) -> Result<MapChunkData, StrErr> {
 	let mut buffer = Vec::<u8>::new();
 	io::copy(&mut gz_dec, &mut buffer)?;
 	let mut rdr :&[u8] = &buffer;
-	let mut r = MapChunkData::fully_air();
+	let mut r = MapChunkData::uninitialized();
 	for v in r.0.iter_mut() {
 		let n = rdr.read_u8()?;
 		*v = number_to_mapblock(n).ok_or("invalid block number")?;

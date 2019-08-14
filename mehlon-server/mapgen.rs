@@ -112,7 +112,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	let mca_noise = Noise::new(s!(b"mnoi-cav"), mca_f);
 
 	let mut res = MapChunk {
-		data : MapChunkData::fully_air(),
+		data : MapChunkData::filled_with(role.air),
 		generation_phase : GenerationPhase::PhaseOne,
 		tree_spawn_points : Vec::new(),
 	};

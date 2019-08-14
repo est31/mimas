@@ -59,8 +59,11 @@ pub type ServerMap = Map<MapgenThread>;
 pub type ClientMap = Map<ClientBackend>;
 
 impl MapChunkData {
-	pub fn fully_air() -> Self {
-		Self([MapBlock::Air; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize])
+	pub fn uninitialized() -> Self {
+		Self::filled_with(MapBlock::Air)
+	}
+	pub fn filled_with(m :MapBlock) -> Self {
+		Self([m; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize])
 	}
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> &mut MapBlock {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
