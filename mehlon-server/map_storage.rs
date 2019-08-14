@@ -198,6 +198,15 @@ fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
 	Ok(NameIdMap::from_name_list(res))
 }
 
+#[test]
+#[cfg(test)]
+fn ensure_name_id_roundtrip() {
+	let nm = NameIdMap::builtin_name_list();
+	let serialized = serialize_name_id_map(&nm);
+	let round_trip = deserialize_name_id_map(&serialized).unwrap();
+	assert_eq!(nm.names(), round_trip.names());
+}
+
 impl StorageBackend for SqliteStorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
 			data :&MapChunkData) -> Result<(), StrErr> {
