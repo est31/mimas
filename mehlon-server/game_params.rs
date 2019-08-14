@@ -42,7 +42,7 @@ pub struct Schematics {
 pub struct NameIdMap {
 	first_invalid_id :u8,
 	name_to_id :HashMap<String, MapBlock>,
-	id_to_name :HashMap<MapBlock, String>,
+	id_to_name :Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -100,13 +100,13 @@ impl NameIdMap {
 	}
 	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
 		let mut name_to_id = HashMap::new();
-		let mut id_to_name = HashMap::new();
+		let mut id_to_name = Vec::with_capacity(names.len());
 		let mut id = 0;
 		for name in names.into_iter() {
 			let name = name.into();
+			id_to_name.push(name.clone());
 			let mb = MapBlock::from_id_unchecked(id);
 			name_to_id.insert(name.clone(), mb);
-			id_to_name.insert(mb, name);
 			id += 1;
 		}
 		Self {
@@ -122,7 +122,7 @@ impl NameIdMap {
 		Some(MapBlock::from_id_unchecked(id))
 	}
 	pub fn get_name(&self, mb :MapBlock) -> Option<&str> {
-		self.id_to_name.get(&mb)
+		self.id_to_name.get(mb.id() as usize)
 			.map(|v| {
 				let v :&str = &*v;
 				v
