@@ -169,6 +169,20 @@ impl GameParams {
 			.map(|p| p.pointable)
 			.unwrap_or(true)
 	}
+	pub fn search_block_name(&self, name :&str) -> Option<MapBlock> {
+		if let Some(n) = self.name_id_map.get_id(name) {
+			return Some(n);
+		}
+		// Fall back to search for matching display names
+		// TODO use a hashmap instead of linear search
+		self.block_params.iter()
+			.find(|(_id, p)| {
+				p.display_name.eq_ignore_ascii_case(name)
+			})
+			.map(|(id, _p)| {
+				*id
+			})
+	}
 }
 
 /// Ensures that the modname::name format is used and

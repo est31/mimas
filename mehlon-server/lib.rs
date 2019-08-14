@@ -418,7 +418,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn handle_players_waiting_for_kv(&mut self) {
 		let mut players_to_add = Vec::new();
 		let pwfk = &mut self.players_waiting_for_kv;
-		let m = &self.params.name_id_map;
+		let nm = &self.params.name_id_map;
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
 			let mut ready = false;
 			if key == "position" {
@@ -436,7 +436,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			} else if key == "inventory" {
 				if let Some((_conn, _nick, pos, inv)) = pwfk.get_mut(&id) {
 					*inv = Some(if let Some(buf) = value {
-						SelectableInventory::deserialize(&buf, m)
+						SelectableInventory::deserialize(&buf, nm)
 							.ok()
 							.unwrap_or_else(SelectableInventory::new)
 					} else {
@@ -636,8 +636,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			"gime" => {
 				let content = params.get(0);
 				let content = if let Some(content) = content {
-					// TODO use a function that ignores case
-					if let Some(mb) = self.params.name_id_map.get_id(*content) {
+					if let Some(mb) = self.params.search_block_name(*content) {
 						mb
 					} else {
 						self.chat_msg_for(issuer_id, format!("Invalid item {}", content));
