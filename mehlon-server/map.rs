@@ -9,30 +9,61 @@ use super::mapgen::{Schematic, MapgenThread};
 pub const CHUNKSIZE :isize = 16;
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub enum MapBlock {
-	Air,
-	Water,
-	Sand,
-	Ground,
-	Wood,
-	Stone,
-	Leaves,
-	Tree,
-	Cactus,
-	Coal,
-	IronOre,
+pub struct MapBlock(u8);
+
+pub mod map_block {
+	use super::MapBlock;
+
+	pub const AIR :MapBlock = MapBlock(0);
+	pub const WATER :MapBlock = MapBlock(1);
+	pub const SAND :MapBlock = MapBlock(2);
+	pub const GROUND :MapBlock = MapBlock(3);
+	pub const WOOD :MapBlock = MapBlock(4);
+	pub const STONE :MapBlock = MapBlock(5);
+	pub const LEAVES :MapBlock = MapBlock(6);
+	pub const TREE :MapBlock = MapBlock(7);
+	pub const CACTUS :MapBlock = MapBlock(8);
+	pub const COAL :MapBlock = MapBlock(9);
+	pub const IRON_ORE :MapBlock = MapBlock(10);
 }
 
 impl Default for MapBlock {
 	fn default() -> Self {
-		MapBlock::Air
+		map_block::AIR
 	}
 }
 impl MapBlock {
+	pub fn id(self) -> u8 {
+		self.0
+	}
+	pub fn from_id(id :u8) -> Option<Self> {
+		// TODO this is a hack :p
+		if id > map_block::IRON_ORE.id() {
+			return None;
+		}
+		Some(MapBlock(id))
+	}
+	pub fn name(self) -> &'static str {
+		use self::map_block::*;
+		match self {
+			AIR => "Air",
+			WATER => "Water",
+			SAND => "Sand",
+			GROUND => "Ground",
+			WOOD => "Wood",
+			STONE => "Stone",
+			LEAVES => "Leaves",
+			TREE => "Tree",
+			CACTUS => "Cactus",
+			COAL => "Coal",
+			IRON_ORE => "IronOre",
+			_ => panic!(),
+		}
+	}
 	pub fn from_str(s :&str) -> Option<Self> {
 		let mut id = 0;
 		while let Some(mb) = number_to_mapblock(id) {
-			if format!("{:?}", mb).eq_ignore_ascii_case(s) {
+			if mb.name().eq_ignore_ascii_case(s) {
 				return Some(mb);
 			}
 			id += 1;
@@ -60,7 +91,7 @@ pub type ClientMap = Map<ClientBackend>;
 
 impl MapChunkData {
 	pub fn uninitialized() -> Self {
-		Self::filled_with(MapBlock::Air)
+		Self::filled_with(MapBlock::default())
 	}
 	pub fn filled_with(m :MapBlock) -> Self {
 		Self([m; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize])

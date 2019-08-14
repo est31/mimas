@@ -48,19 +48,19 @@ pub struct GameParams {
 
 impl BlockRoles {
 	pub fn new() -> Self {
-		use MapBlock::*;
+		use map::map_block::*;
 		Self {
-			air : Air,
-			water : Water,
-			sand : Sand,
-			ground : Ground,
-			wood : Wood,
-			stone : Stone,
-			leaves : Leaves,
-			tree : Tree,
-			cactus : Cactus,
-			coal : Coal,
-			iron_ore : IronOre,
+			air : AIR,
+			water : WATER,
+			sand : SAND,
+			ground : GROUND,
+			wood : WOOD,
+			stone : STONE,
+			leaves : LEAVES,
+			tree : TREE,
+			cactus : CACTUS,
+			coal : COAL,
+			iron_ore : IRON_ORE,
 		}
 	}
 }

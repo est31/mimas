@@ -122,38 +122,11 @@ impl SqliteStorageBackend {
 }
 
 pub fn mapblock_to_number(b :MapBlock) -> u8 {
-	use MapBlock::*;
-	match b {
-		Air => 0,
-		Water => 1,
-		Sand => 2,
-		Ground => 3,
-		Wood => 4,
-		Stone => 5,
-		Leaves => 6,
-		Tree => 7,
-		Cactus => 8,
-		Coal => 9,
-		IronOre => 10,
-	}
+	b.id()
 }
 
 pub fn number_to_mapblock(b :u8) -> Option<MapBlock> {
-	use MapBlock::*;
-	Some(match b {
-		0 => Air,
-		1 => Water,
-		2 => Sand,
-		3 => Ground,
-		4 => Wood,
-		5 => Stone,
-		6 => Leaves,
-		7 => Tree,
-		8 => Cactus,
-		9 => Coal,
-		10 => IronOre,
-		_ => return None,
-	})
+	MapBlock::from_id(b)
 }
 
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
