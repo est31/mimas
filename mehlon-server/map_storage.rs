@@ -1,6 +1,6 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
-use map::{MapChunkData, MapBlock, CHUNKSIZE};
+use map::{MapChunkData, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
 use std::{str, io, path::Path};
@@ -122,18 +122,10 @@ impl SqliteStorageBackend {
 	}
 }
 
-pub fn mapblock_to_number(b :MapBlock) -> u8 {
-	b.id()
-}
-
-pub fn number_to_mapblock(b :u8, m :&NameIdMap) -> Option<MapBlock> {
-	unimplemented!()
-}
-
 fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	let mut blocks = Vec::new();
 	for b in data.0.iter() {
-		blocks.write_u8(mapblock_to_number(*b)).unwrap();
+		blocks.write_u8(b.id()).unwrap();
 	}
 	let rdr :&[u8] = &blocks;
 	let mut gz_enc = GzBuilder::new().read(rdr, Compression::fast());

@@ -1,7 +1,6 @@
 use map::MapBlock;
 use std::num::NonZeroU16;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
-use map_storage::mapblock_to_number;
 use game_params::NameIdMap;
 use StrErr;
 
@@ -208,7 +207,7 @@ impl SelectableInventory {
 		res.write_u16::<BigEndian>(self.stacks.len() as u16).unwrap();
 		for st in self.stacks.iter() {
 			let (id, count) = st.content()
-				.map(|(b, cnt)| (mapblock_to_number(b), cnt))
+				.map(|(b, cnt)| (b.id(), cnt))
 				.unwrap_or((0, 0)); // id doesn't matter if count is 0
 			res.write_u8(id).unwrap();
 			res.write_u16::<BigEndian>(count).unwrap();
