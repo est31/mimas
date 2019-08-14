@@ -15,6 +15,7 @@ pub type GameParamsHdl = Arc<GameParams>;
 pub struct BlockParams {
 	pub color :Option<[f32; 4]>,
 	pub pointable :bool,
+	pub display_name :String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -226,7 +227,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 		.iter()
 		.map(|block| {
 			let name = block.read::<str>("name")?;
-			let _name_components = check_name_format(name)?;
+			let name_components = check_name_format(name)?;
 			let id = name_id_map.get_id(name)
 				.ok_or("invalid name")?;
 			let color = block.read::<Value>("color")?
@@ -239,9 +240,15 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 			let pointable = block.get("pointable")
 				.unwrap_or(&Value::Boolean(true));
 			let pointable = *pointable.convert::<bool>()?;
+			let display_name = if let Some(n) = block.get("display-name") {
+				n.convert::<str>()?.to_owned()
+			} else {
+				name_components.1.to_owned()
+			};
 			let block_params = BlockParams {
 				color,
 				pointable,
+				display_name,
 			};
 			Ok((id, block_params))
 		})
