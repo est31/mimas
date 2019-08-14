@@ -218,7 +218,7 @@ impl SelectableInventory {
 		let version = rdr.read_u8()?;
 		if version != 0 {
 			// The version is too recent
-			Err(format!("Unsupported map chunk version {}", version))?;
+			Err(format!("Unsupported serialized inventory version {}", version))?;
 		}
 		let selection_id = rdr.read_u16::<BigEndian>()?;
 		let selection = if selection_id == 0 {
