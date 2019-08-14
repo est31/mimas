@@ -447,7 +447,15 @@ impl<C :NetworkClientConn> Game<C> {
 		let mut selbuff = Vec::new();
 		if let Some((selected_pos, _)) = self.selected_pos {
 			let blk = self.map.get_blk(selected_pos).unwrap();
-			sel_text = format!("sel = ({}, {}, {}), {:?}", selected_pos.x, selected_pos.y, selected_pos.z, blk);
+			let blk_name = if let Some(n) = self.params
+					.as_ref()
+					.and_then(|p| p.name_id_map.get_name(blk)) {
+				n.to_owned()
+			} else {
+				format!("{:?}", blk)
+			};
+			sel_text = format!("sel = ({}, {}, {}), {}",
+				selected_pos.x, selected_pos.y, selected_pos.z, blk_name);
 
 			// TODO: only update if the position actually changed from the prior one
 			// this spares us needless chatter with the GPU
