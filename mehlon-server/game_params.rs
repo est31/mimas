@@ -115,6 +115,9 @@ impl NameIdMap {
 			id_to_name,
 		}
 	}
+	pub fn names(&self) -> &[String] {
+		&self.id_to_name
+	}
 	pub fn mb_from_id(&self, id :u8) -> Option<MapBlock> {
 		if id >= self.first_invalid_id {
 			return None;

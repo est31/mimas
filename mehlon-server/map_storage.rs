@@ -4,7 +4,7 @@ use map::{MapChunkData, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
 use std::{str, io, path::Path};
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use flate2::{Compression, GzBuilder, read::GzDecoder};
 use config::Config;
 use toml::{from_str, to_string};
@@ -154,6 +154,46 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 		*v = m.mb_from_id(n).ok_or("invalid block number")?;
 	}
 	Ok(r)
+}
+
+fn serialize_name_id_map(m :&NameIdMap) -> Vec<u8> {
+	use std::io::Write;
+	let names = m.names();
+	let mut r = Vec::new();
+	// Version
+	r.write_u8(0).unwrap();
+	assert!(names.len() < u16::max_value() as usize);
+	r.write_u16::<BigEndian>(names.len() as u16);
+	for n in names {
+		assert!(n.len() < u8::max_value() as usize);
+		r.write_u8(n.len() as u8).unwrap();
+		r.write(&n.as_bytes()).unwrap();
+	}
+	r
+}
+
+fn deserialize_name_id_map(data :&[u8]) -> Result<Vec<String>, StrErr> {
+	use std::io::Read;
+	let mut rdr = data;
+	let version = rdr.read_u8()?;
+	if version != 0 {
+		// The version is too recent
+		Err(format!("Unsupported name id map version {}", version))?;
+	}
+	let count = rdr.read_u16::<BigEndian>()?;
+	if count >= u8::max_value() as u16 {
+		// We use u8 as storage for now so we don't support
+		// any counts above 256. 255 is reserved.
+		Err(format!("Too many id's stored in name id map {}", count))?;
+	}
+	let mut res = Vec::with_capacity(count as usize);
+	for _ in 0 .. count {
+		let len = rdr.read_u8()? as usize;
+		let mut s = vec![0; len];
+		rdr.read_exact(&mut s)?;
+		res.push(String::from_utf8(s)?);
+	}
+	Ok(res)
 }
 
 impl StorageBackend for SqliteStorageBackend {
