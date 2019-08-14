@@ -172,7 +172,7 @@ impl GameParams {
 
 /// Ensures that the modname::name format is used and
 /// returns (modname, name) tuple if it is
-fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
+pub(crate) fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
 	fn check_chars(v :&str) -> bool {
 		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
 	}
