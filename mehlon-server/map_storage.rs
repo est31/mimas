@@ -163,7 +163,7 @@ fn serialize_name_id_map(m :&NameIdMap) -> Vec<u8> {
 	// Version
 	r.write_u8(0).unwrap();
 	assert!(names.len() < u16::max_value() as usize);
-	r.write_u16::<BigEndian>(names.len() as u16);
+	r.write_u16::<BigEndian>(names.len() as u16).unwrap();
 	for n in names {
 		assert!(n.len() < u8::max_value() as usize);
 		r.write_u8(n.len() as u8).unwrap();
