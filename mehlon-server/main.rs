@@ -7,7 +7,6 @@ use mehlon_server::{Server, StrErr};
 //use mehlon_server::generic_net::TcpServerSocket;
 use mehlon_server::quic_net::QuicServerSocket;
 use mehlon_server::config::load_config;
-use mehlon_server::game_params::GameParams;
 
 use structopt::StructOpt;
 
@@ -29,8 +28,7 @@ fn main() -> Result<(), StrErr> {
 		QuicServerSocket::new()?
 	};
 	let config = load_config();
-	let game_params = GameParams::load();
-	let mut server = Server::new(server_socket, game_params, false, config);
+	let mut server = Server::new(server_socket, false, config);
 	server.run_loop();
 
 	Ok(())

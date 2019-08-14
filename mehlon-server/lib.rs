@@ -169,10 +169,11 @@ pub struct Server<S :NetworkServerSocket> {
 }
 
 impl<S :NetworkServerSocket> Server<S> {
-	pub fn new(srv_socket :S, params :GameParamsHdl,
+	pub fn new(srv_socket :S,
 			singleplayer :bool, mut config :Config) -> Self {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
 		let (storage_back, auth_back) = backends;
+		let params = GameParams::load();
 		let mut map = ServerMap::new(config.mapgen_seed,
 			params.clone(), storage_back);
 
