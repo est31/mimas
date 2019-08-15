@@ -340,9 +340,9 @@ impl MapgenMap {
 		let schematics = &self.params.clone().schematics;
 		for (p, in_desert) in tree_spawn_points {
 			if in_desert {
-				spawn_schematic_mapgen(self, p, &schematics.tree_schematic);
-			} else {
 				spawn_schematic_mapgen(self, p, &schematics.cactus_schematic);
+			} else {
+				spawn_schematic_mapgen(self, p, &schematics.tree_schematic);
 			}
 		}
 	}
