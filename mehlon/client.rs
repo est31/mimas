@@ -572,10 +572,13 @@ impl<C :NetworkClientConn> Game<C> {
 					&self.program, &uniforms, &params).unwrap();
 			}
 		}
-		render_inventory_hud(
-			&self.sel_inventory,
-			&mut self.display,
-			&self.program, glyph_brush, &mut target);
+		if let Some(params) = &self.params {
+			render_inventory_hud(
+				&self.sel_inventory,
+				&mut self.display,
+				&self.program, glyph_brush,
+				params, &mut target);
+		}
 		if self.in_background() {
 			if self.menu_enabled {
 				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);

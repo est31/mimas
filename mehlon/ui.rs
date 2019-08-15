@@ -259,6 +259,7 @@ impl InventoryMenu {
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			},
 			glyph_brush,
+			&self.params,
 		));
 
 		let mut craft_output_inv = self.craft_output_inv();
@@ -297,6 +298,7 @@ impl InventoryMenu {
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			},
 			glyph_brush,
+			&self.params,
 		));
 
 		// Inventory slots
@@ -336,6 +338,7 @@ impl InventoryMenu {
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			},
 			glyph_brush,
+			&self.params,
 		));
 
 		let mut swap_command = None;
@@ -409,7 +412,8 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		mut color_fn :impl FnMut(usize, i32, i32) -> [f32; 4],
 		mesh_y_fn :impl Fn(usize) -> i32,
 		text_y_fn :impl Fn(usize) -> f32,
-		glyph_brush :&mut GlyphBrush<'a, 'b>) -> Vec<Vertex> {
+		glyph_brush :&mut GlyphBrush<'a, 'b>,
+		params :&GameParamsHdl) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 	for i in 0 .. slot_count {
 		let col = i % slot_count_x;
@@ -425,7 +429,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 			.get(i)
 			.unwrap_or(&Stack::Empty);
 		let text = if let Stack::Content { item, count } = content {
-			format!("{:?} ({})", item, count)
+			format!("{} ({})", params.block_display_name(*item), count)
 		} else {
 			String::from("")
 		};
@@ -448,7 +452,8 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		display :&glium::Display, program :&glium::Program,
-		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+		glyph_brush :&mut GlyphBrush<'a, 'b>, gm_params :&GameParamsHdl,
+		target :&mut glium::Frame) {
 
 	let screen_dims = display.get_framebuffer_dimensions();
 
@@ -515,6 +520,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 			screen_dims.1 as f32 - hud_height * 0.5
 		},
 		glyph_brush,
+		&gm_params,
 	));
 
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();

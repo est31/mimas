@@ -7,6 +7,7 @@ use map::MapBlock;
 use super::StrErr;
 use toml_util::TomlReadExt;
 use std::collections::HashMap;
+use std::fmt::Display;
 use mapgen::{Schematic, self};
 
 pub type GameParamsHdl = Arc<GameParams>;
@@ -167,6 +168,13 @@ impl GameParams {
 		self.block_params.get(blk)
 			.map(|p| p.pointable)
 			.unwrap_or(true)
+	}
+	pub fn block_display_name(&self, mb :MapBlock) -> impl Display {
+		if let Some(bp) = self.block_params.get(&mb) {
+			bp.display_name.to_owned()
+		} else {
+			format!("{:?}", mb)
+		}
 	}
 	pub fn search_block_name(&self, name :&str) -> Option<MapBlock> {
 		if let Some(n) = self.name_id_map.get_id(name) {
