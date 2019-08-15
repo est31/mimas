@@ -122,24 +122,18 @@ impl NameIdMap {
 	pub fn names(&self) -> &[String] {
 		&self.id_to_name
 	}
-	pub fn extend_existing(mut other :Self,
-			names :Vec<impl Into<String>>) -> Self {
-		let mut id = other.first_invalid_id;
-
-		let o_name_to_id = &mut other.name_to_id;
-		let o_id_to_name = &mut other.id_to_name;
-		for name in names.into_iter() {
-			let name = name.into();
-			o_name_to_id.entry(name.clone())
-				.or_insert_with(|| {
-					o_id_to_name.push(name.clone());
-					let mb = MapBlock::from_id_unchecked(id);
-					id += 1;
-					mb
-				});
-		}
-		other.first_invalid_id = id;
-		other
+	fn get_or_extend(&mut self, name :impl Into<String>) -> MapBlock {
+		let name = name.into();
+		let id_to_name = &mut self.id_to_name;
+		let first_invalid_id = &mut self.first_invalid_id;
+		let mb = self.name_to_id.entry(name.clone())
+			.or_insert_with(|| {
+				id_to_name.push(name.clone());
+				let mb = MapBlock::from_id_unchecked(*first_invalid_id);
+				*first_invalid_id += 1;
+				mb
+			});
+		*mb
 	}
 	pub fn mb_from_id(&self, id :u8) -> Option<MapBlock> {
 		if id >= self.first_invalid_id {
@@ -211,9 +205,37 @@ pub(crate) fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
 	}
 }
 
-fn from_val(val :Value, _nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
-
-	let name_id_map = NameIdMap::builtin_name_list();
+fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
+	let mut name_id_map = nm_from_db;
+	let block_params = val.read::<Array>("block")?
+		.iter()
+		.map(|block| {
+			let name = block.read::<str>("name")?;
+			let name_components = check_name_format(name)?;
+			let id = name_id_map.get_or_extend(name);
+			let color = block.read::<Value>("color")?
+				.clone();
+			let color = if color == Value::Boolean(false) {
+				None
+			} else {
+				Some(color.try_into()?)
+			};
+			let pointable = block.get("pointable")
+				.unwrap_or(&Value::Boolean(true));
+			let pointable = *pointable.convert::<bool>()?;
+			let display_name = if let Some(n) = block.get("display-name") {
+				n.convert::<str>()?.to_owned()
+			} else {
+				name_components.1.to_owned()
+			};
+			let block_params = BlockParams {
+				color,
+				pointable,
+				display_name,
+			};
+			Ok((id, block_params))
+		})
+		.collect::<Result<HashMap<_, _>, StrErr>>()?;
 
 	let recipes_list = val.read::<Array>("recipe")?;
 	let recipes = recipes_list.iter()
@@ -241,37 +263,6 @@ fn from_val(val :Value, _nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			})
 		})
 		.collect::<Result<Vec<Recipe>, StrErr>>()?;
-
-	let block_params = val.read::<Array>("block")?
-		.iter()
-		.map(|block| {
-			let name = block.read::<str>("name")?;
-			let name_components = check_name_format(name)?;
-			let id = name_id_map.get_id(name)
-				.ok_or("invalid name")?;
-			let color = block.read::<Value>("color")?
-				.clone();
-			let color = if color == Value::Boolean(false) {
-				None
-			} else {
-				Some(color.try_into()?)
-			};
-			let pointable = block.get("pointable")
-				.unwrap_or(&Value::Boolean(true));
-			let pointable = *pointable.convert::<bool>()?;
-			let display_name = if let Some(n) = block.get("display-name") {
-				n.convert::<str>()?.to_owned()
-			} else {
-				name_components.1.to_owned()
-			};
-			let block_params = BlockParams {
-				color,
-				pointable,
-				display_name,
-			};
-			Ok((id, block_params))
-		})
-		.collect::<Result<HashMap<_, _>, StrErr>>()?;
 
 	let block_roles = BlockRoles::new(&name_id_map)?;
 	let schematics = Schematics::new(&block_roles);
