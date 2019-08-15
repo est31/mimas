@@ -126,12 +126,17 @@ impl NameIdMap {
 			names :Vec<impl Into<String>>) -> Self {
 		let mut id = other.first_invalid_id;
 
+		let o_name_to_id = &mut other.name_to_id;
+		let o_id_to_name = &mut other.id_to_name;
 		for name in names.into_iter() {
 			let name = name.into();
-			other.id_to_name.push(name.clone());
-			let mb = MapBlock::from_id_unchecked(id);
-			other.name_to_id.insert(name.clone(), mb);
-			id += 1;
+			o_name_to_id.entry(name.clone())
+				.or_insert_with(|| {
+					o_id_to_name.push(name.clone());
+					let mb = MapBlock::from_id_unchecked(id);
+					id += 1;
+					mb
+				});
 		}
 		other.first_invalid_id = id;
 		other
