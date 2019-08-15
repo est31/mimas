@@ -6,6 +6,11 @@
 # mapgen_radius_xy = 5
 # mapgen_radius_z = 2
 
+# The radius of from how far away from the player
+# the server sends chunks to the player
+# sent_chunks_radius_xy = 6
+# sent_chunks_radius_z = 3
+
 #
 # draw_poly_lines = false
 

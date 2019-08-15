@@ -12,6 +12,10 @@ pub struct Config {
 	pub mapgen_radius_xy :isize,
 	#[serde(default = "mapgen_radius_z_default")]
 	pub mapgen_radius_z :isize,
+	#[serde(default = "sent_chunks_radius_xy_default")]
+	pub sent_chunks_radius_xy :isize,
+	#[serde(default = "sent_chunks_radius_z_default")]
+	pub sent_chunks_radius_z :isize,
 	#[serde(default)]
 	pub map_storage_path :Option<String>,
 
@@ -33,6 +37,8 @@ pub struct Config {
 fn mapgen_seed_default() -> u64 { 78 }
 fn mapgen_radius_xy_default() -> isize { 5 }
 fn mapgen_radius_z_default() -> isize { 2 }
+fn sent_chunks_radius_xy_default() -> isize { 6 }
+fn sent_chunks_radius_z_default() -> isize { 3 }
 fn viewing_range_default() -> f32 { 128.0 }
 fn fog_near_default() -> f32 { 40.0 }
 fn fog_far_default() -> f32 { 60.0 }
@@ -43,6 +49,8 @@ impl Default for Config {
 			mapgen_seed : 78,
 			mapgen_radius_xy : 5,
 			mapgen_radius_z : 2,
+			sent_chunks_radius_xy : 6,
+			sent_chunks_radius_z : 3,
 			map_storage_path : None,
 
 			draw_poly_lines : false,

@@ -496,7 +496,8 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	fn send_chunks_to_player(&mut self, player :&mut Player<S::Conn>) -> Result<(), NetErr> {
 		let isize_pos = player.pos().map(|v| v as isize);
-		let (pmin, pmax) = chunk_positions_around(isize_pos, 6, 3);
+		let (pmin, pmax) = chunk_positions_around(isize_pos,
+			self.config.sent_chunks_radius_xy, self.config.sent_chunks_radius_z);
 		let pmin = pmin / CHUNKSIZE;
 		let pmax = pmax / CHUNKSIZE;
 		for x in pmin.x .. pmax.x {
