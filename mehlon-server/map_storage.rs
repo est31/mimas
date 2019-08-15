@@ -183,7 +183,7 @@ fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
 	let count = rdr.read_u16::<BigEndian>()?;
 	if count >= u8::max_value() as u16 {
 		// We use u8 as storage for now so we don't support
-		// any counts above 256. 255 is reserved.
+		// any counts above 255. 255 is reserved.
 		Err(format!("Too many id's stored in name id map {}", count))?;
 	}
 	let mut res = Vec::with_capacity(count as usize);
