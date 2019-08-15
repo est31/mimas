@@ -156,8 +156,8 @@ impl NameIdMap {
 }
 
 impl GameParams {
-	pub fn load() -> GameParamsHdl {
-		load_params_failible().expect("Couldn't load game params")
+	pub fn load(nm :NameIdMap) -> GameParamsHdl {
+		load_params_failible(nm).expect("Couldn't load game params")
 	}
 	pub fn get_color_for_blk(&self, blk :&MapBlock) -> Option<[f32; 4]> {
 		self.block_params.get(blk)
@@ -206,7 +206,7 @@ pub(crate) fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
 	}
 }
 
-fn from_val(val :Value) -> Result<GameParams, StrErr> {
+fn from_val(val :Value, _nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 
 	let name_id_map = NameIdMap::builtin_name_list();
 
@@ -279,7 +279,7 @@ fn from_val(val :Value) -> Result<GameParams, StrErr> {
 	})
 }
 
-pub fn load_params_failible() -> Result<GameParamsHdl, StrErr> {
+pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);
@@ -287,7 +287,7 @@ pub fn load_params_failible() -> Result<GameParamsHdl, StrErr> {
 		});
 
 	let val = from_str(&file_str)?;
-	let res = from_val(val)?;
+	let res = from_val(val, nm)?;
 	Ok(Arc::new(res))
 }
 
@@ -297,6 +297,7 @@ static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
 #[test]
 fn default_game_params_parse_test() {
 	let file_str = DEFAULT_GAME_PARAMS_STR;
+	let nm = NameIdMap::builtin_name_list();
 	let val = from_str(&file_str).unwrap();
-	let _res = from_val(val).unwrap();
+	let _res = from_val(val, nm).unwrap();
 }

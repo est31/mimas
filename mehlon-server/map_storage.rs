@@ -364,7 +364,9 @@ fn test_player_id_pair() {
 	}
 }
 
-fn load_name_id_map<B :StorageBackend>(backend :&mut B) -> Result<NameIdMap, StrErr> {
+// This function is not generic on the backend because of a limitation of the language:
+// Box<dyn Trait> does not impl Trait.
+pub(crate) fn load_name_id_map(backend :&mut DynStorageBackend) -> Result<NameIdMap, StrErr> {
 	let buf = if let Some(v) = backend.get_global_kv("name_id_map")? {
 		v
 	} else {
@@ -374,7 +376,9 @@ fn load_name_id_map<B :StorageBackend>(backend :&mut B) -> Result<NameIdMap, Str
 	Ok(nm)
 }
 
-fn save_name_id_map<B :StorageBackend>(backend :&mut B, nm :&NameIdMap) -> Result<(), StrErr> {
+// This function is not generic on the backend because of a limitation of the language:
+// Box<dyn Trait> does not impl Trait.
+pub(crate) fn save_name_id_map(backend :&mut DynStorageBackend, nm :&NameIdMap) -> Result<(), StrErr> {
 	let buf = serialize_name_id_map(nm);
 	backend.set_global_kv("name_id_map", &buf)?;
 	Ok(())

@@ -172,8 +172,10 @@ impl<S :NetworkServerSocket> Server<S> {
 	pub fn new(srv_socket :S,
 			singleplayer :bool, mut config :Config) -> Self {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
-		let (storage_back, auth_back) = backends;
-		let params = GameParams::load();
+		let (mut storage_back, auth_back) = backends;
+		let nm = map_storage::load_name_id_map(&mut storage_back).unwrap();
+		let params = GameParams::load(nm);
+		map_storage::save_name_id_map(&mut storage_back, &params.name_id_map).unwrap();
 		let mut map = ServerMap::new(config.mapgen_seed,
 			params.clone(), storage_back);
 
