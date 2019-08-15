@@ -649,7 +649,8 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.chat_msg_for(issuer_id, "No content to give specified");
 					return;
 				};
-				self.chat_msg_for(issuer_id, format!("Giving {:?}", content));
+				let content_disp = self.params.block_display_name(content);
+				self.chat_msg_for(issuer_id, format!("Giving {}", content_disp));
 				let mut players = self.players.borrow_mut();
 				let remove_player = {
 					let player = players.get_mut(&issuer_id).unwrap();
