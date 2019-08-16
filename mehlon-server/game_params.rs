@@ -8,6 +8,8 @@ use super::StrErr;
 use toml_util::TomlReadExt;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::num::NonZeroU16;
+use std::str::FromStr;
 use inventory::Stack;
 use mapgen::{Schematic, self};
 
@@ -214,6 +216,25 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	}
 }
 
+pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
+		-> Result<Stack, StrErr> {
+	if sp.is_empty() {
+		return Ok(Stack::Empty);
+	}
+	let mut nit = sp.split(' ');
+	if let (Some(name), Some(count), None) = (nit.next(), nit.next(), nit.next()) {
+		let item = nm.get_id(name)
+			.ok_or_else(|| format!("Can't find any item named '{}'.", name))?;
+		let count = u16::from_str(count)?;
+		let count = NonZeroU16::new(count)
+			.ok_or_else(|| format!("Count may not be 0. Use \"\" instead."))?;
+		Ok(Stack::Content { item, count })
+	} else {
+		Err(format!("Invalid stack specifier '{}'. Must be in format 'modname:name count'.", sp))?;
+		unreachable!()
+	}
+}
+
 fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 	let mut name_id_map = nm_from_db;
 	let block_params = val.read::<Array>("block")?
@@ -261,14 +282,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 					}
 				})
 				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
-			let output_itm = recipe.read::<str>("output-itm")?;
-			let output_itm = name_id_map.get_id(output_itm)
-				.ok_or("invalid name")?;
-			let output_qty = *recipe.read::<i64>("output-qty")?;
+			let output_sp = recipe.read::<str>("output")?;
+			let output = resolve_stack_specifier(&name_id_map, output_sp)?;
 
 			Ok(Recipe {
 				inputs,
-				output : Stack::with(output_itm, output_qty as u16),
+				output,
 			})
 		})
 		.collect::<Result<Vec<Recipe>, StrErr>>()?;
