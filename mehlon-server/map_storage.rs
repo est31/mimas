@@ -12,7 +12,7 @@ use sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use local_auth::SqliteLocalAuth;
 use std::num::NonZeroU64;
-use game_params::{NameIdMap, check_name_format};
+use game_params::{NameIdMap, parse_block_name};
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -192,7 +192,8 @@ fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
 		let mut s = vec![0; len];
 		rdr.read_exact(&mut s)?;
 		let name = String::from_utf8(s)?;
-		let _components = check_name_format(&name)?;
+		// To ensure the block is correctly named
+		let _components = parse_block_name(&name)?;
 		res.push(name);
 	}
 	Ok(NameIdMap::from_name_list(res))

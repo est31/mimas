@@ -194,7 +194,7 @@ impl GameParams {
 
 /// Ensures that the modname::name format is used and
 /// returns (modname, name) tuple if it is
-pub(crate) fn check_name_format(name :&str) -> Result<(&str, &str), StrErr> {
+pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	fn check_chars(v :&str) -> bool {
 		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
 	}
@@ -219,7 +219,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		.iter()
 		.map(|block| {
 			let name = block.read::<str>("name")?;
-			let name_components = check_name_format(name)?;
+			let name_components = parse_block_name(name)?;
 			let id = name_id_map.get_or_extend(name);
 			let color = block.read::<Value>("color")?
 				.clone();
