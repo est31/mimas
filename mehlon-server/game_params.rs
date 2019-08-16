@@ -20,6 +20,7 @@ pub struct BlockParams {
 	pub color :Option<[f32; 4]>,
 	pub pointable :bool,
 	pub display_name :String,
+	pub drops :Stack,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -237,12 +238,22 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 
 fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 	let mut name_id_map = nm_from_db;
-	let block_params = val.read::<Array>("block")?
-		.iter()
+	// First pass: populate the name id map.
+	// This allows us to refer to blocks other than our own
+	// regardless of order.
+	let blocks = val.read::<Array>("block")?;
+	for block in blocks.iter() {
+		let name = block.read::<str>("name")?;
+		let _name_components = parse_block_name(name)?;
+		let _id = name_id_map.get_or_extend(name);
+	}
+
+	let block_params = blocks.iter()
 		.map(|block| {
 			let name = block.read::<str>("name")?;
 			let name_components = parse_block_name(name)?;
-			let id = name_id_map.get_or_extend(name);
+			// unwrap is okay because we have added it in the first pass
+			let id = name_id_map.get_id(name).unwrap();
 			let color = block.read::<Value>("color")?
 				.clone();
 			let color = if color == Value::Boolean(false) {
@@ -258,10 +269,17 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			} else {
 				name_components.1.to_owned()
 			};
+			let drops = if let Some(drops) = block.get("drops") {
+				let drops_sp = drops.convert::<str>()?;
+				resolve_stack_specifier(&name_id_map, drops_sp)?
+			} else {
+				Stack::with(id, 1)
+			};
 			let block_params = BlockParams {
 				color,
 				pointable,
 				display_name,
+				drops,
 			};
 			Ok((id, block_params))
 		})
