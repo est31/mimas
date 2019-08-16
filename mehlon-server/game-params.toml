@@ -1,49 +1,49 @@
 [[block]]
-name = "default::air"
+name = "default:air"
 color = false
 pointable = false
 
 [[block]]
-name = "default::ground"
+name = "default:ground"
 color = [0.0, 1.0, 0.0, 1.0]
 
 [[block]]
-name = "default::sand"
+name = "default:sand"
 color = [1.0, 1.0, 0.3, 1.0]
 
 [[block]]
-name = "default::water"
+name = "default:water"
 color = [0.0, 0.0, 1.0, 1.0]
 
 [[block]]
-name = "default::wood"
+name = "default:wood"
 color = [0.5, 0.25, 0.0, 1.0]
 
 [[block]]
-name = "default::stone"
+name = "default:stone"
 color = [0.5, 0.5, 0.5, 1.0]
 
 [[block]]
-name = "default::tree"
+name = "default:tree"
 color = [0.38, 0.25, 0.125, 1.0]
 
 [[block]]
-name = "default::leaves"
+name = "default:leaves"
 color = [0.0, 0.4, 0.0, 1.0]
 
 [[block]]
-name = "default::cactus"
+name = "default:cactus"
 color = [0.0, 0.2, 0.0, 1.0]
 
 [[block]]
-name = "default::coal"
+name = "default:coal"
 color = [0.05, 0.05, 0.05, 1.0]
 
 [[block]]
-name = "default::iron_ore"
+name = "default:iron_ore"
 color = [0.4, 0.30, 0.0, 1.0]
 
 [[recipe]]
-inputs = ["default::tree"]
-output-itm = "default::wood"
+inputs = ["default:tree"]
+output-itm = "default:wood"
 output-qty = 4

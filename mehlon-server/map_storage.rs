@@ -192,6 +192,10 @@ fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
 		let mut s = vec![0; len];
 		rdr.read_exact(&mut s)?;
 		let name = String::from_utf8(s)?;
+		// For backwards compatibility with a few
+		// (unreleased) git versions that used ::
+		// instead of :
+		let name = name.replace("::", ":");
 		// To ensure the block is correctly named
 		let _components = parse_block_name(&name)?;
 		res.push(name);

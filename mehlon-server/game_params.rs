@@ -63,17 +63,17 @@ impl BlockRoles {
 				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
 		};
 		Ok(Self {
-			air : get_id("default::air")?,
-			water : get_id("default::water")?,
-			sand : get_id("default::sand")?,
-			ground : get_id("default::ground")?,
-			wood : get_id("default::wood")?,
-			stone : get_id("default::stone")?,
-			leaves : get_id("default::leaves")?,
-			tree : get_id("default::tree")?,
-			cactus : get_id("default::cactus")?,
-			coal : get_id("default::coal")?,
-			iron_ore : get_id("default::iron_ore")?,
+			air : get_id("default:air")?,
+			water : get_id("default:water")?,
+			sand : get_id("default:sand")?,
+			ground : get_id("default:ground")?,
+			wood : get_id("default:wood")?,
+			stone : get_id("default:stone")?,
+			leaves : get_id("default:leaves")?,
+			tree : get_id("default:tree")?,
+			cactus : get_id("default:cactus")?,
+			coal : get_id("default:coal")?,
+			iron_ore : get_id("default:iron_ore")?,
 		})
 	}
 }
@@ -90,17 +90,17 @@ impl Schematics {
 impl NameIdMap {
 	pub fn builtin_name_list() -> Self {
 		Self::from_name_list(vec![
-			"default::air",
-			"default::water",
-			"default::sand",
-			"default::ground",
-			"default::wood",
-			"default::stone",
-			"default::leaves",
-			"default::tree",
-			"default::cactus",
-			"default::coal",
-			"default::iron_ore",
+			"default:air",
+			"default:water",
+			"default:sand",
+			"default:ground",
+			"default:wood",
+			"default:stone",
+			"default:leaves",
+			"default:tree",
+			"default:cactus",
+			"default:coal",
+			"default:iron_ore",
 		])
 	}
 	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
@@ -198,7 +198,7 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	fn check_chars(v :&str) -> bool {
 		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
 	}
-	let mut cit = name.split("::");
+	let mut cit = name.split(':');
 	if let (Some(mn), Some(n), None) = (cit.next(), cit.next(), cit.next()) {
 		if !check_chars(mn) {
 			Err(format!("Invalid mod name '{}'. Only alphanumeric chars and _ allowed.", mn))?;
@@ -208,7 +208,7 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 		}
 		Ok((mn, n))
 	} else {
-		Err(format!("Invalid name '{}'. Must be in format modname::name.", name))?;
+		Err(format!("Invalid name '{}'. Must be in format modname:name.", name))?;
 		unreachable!()
 	}
 }
