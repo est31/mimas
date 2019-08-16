@@ -8,6 +8,7 @@ use super::StrErr;
 use toml_util::TomlReadExt;
 use std::collections::HashMap;
 use std::fmt::Display;
+use inventory::Stack;
 use mapgen::{Schematic, self};
 
 pub type GameParamsHdl = Arc<GameParams>;
@@ -267,7 +268,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 
 			Ok(Recipe {
 				inputs,
-				output : (output_itm, output_qty as u16),
+				output : Stack::with(output_itm, output_qty as u16),
 			})
 		})
 		.collect::<Result<Vec<Recipe>, StrErr>>()?;

@@ -157,7 +157,7 @@ impl InventoryMenu {
 	fn craft_output_inv(&self) -> SelectableInventory {
 		let recipe = get_matching_recipe(&self.craft_inv, &self.params);
 		let stack = recipe
-			.map(|r| Stack::with(r.output.0, r.output.1))
+			.map(|r| r.output)
 			.unwrap_or(Stack::Empty);
 		let stacks = vec![stack].into_boxed_slice();
 		SelectableInventory::from_stacks(stacks)

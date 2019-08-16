@@ -1,11 +1,11 @@
-use inventory::SelectableInventory;
+use inventory::{SelectableInventory, Stack};
 use game_params::GameParams;
 use map::MapBlock;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Recipe {
 	pub inputs :Vec<Option<MapBlock>>,
-	pub output : (MapBlock, u16),
+	pub output :Stack,
 }
 
 impl Recipe {
