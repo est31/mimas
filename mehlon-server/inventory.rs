@@ -115,7 +115,7 @@ impl SelectableInventory {
 			self.stacks[idx].take_one().map(|(it, _emptied)| it)
 		})
 	}
-	pub fn merge_or_swap(invs :&mut [&mut SelectableInventory],
+	pub fn merge_or_swap(invs :&mut [SelectableInventory],
 			from :(usize, usize), to :(usize, usize)) {
 		if from == to {
 			return;
@@ -133,7 +133,7 @@ impl SelectableInventory {
 			invs[from.0].stacks[from.1] = tmp;
 		}
 	}
-	pub fn move_n_if_possible(invs :&mut [&mut SelectableInventory],
+	pub fn move_n_if_possible(invs :&mut [SelectableInventory],
 			from :(usize, usize), to :(usize, usize), count :u16) {
 		let stack_from = invs[from.0].stacks[from.1].take_n(count).0;
 		let new_stack = invs[to.0].stacks[to.1]

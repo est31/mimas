@@ -120,10 +120,13 @@ impl ChatWindow {
 	}
 }
 
+const CRAFTING_ID :usize = 0;
+const CRAFTING_OUTPUT_ID :usize = 1;
+const NORMAL_INV_ID :usize = 2;
+
 pub struct InventoryMenu {
 	params :GameParamsHdl,
-	inv :SelectableInventory,
-	craft_inv :SelectableInventory,
+	invs :[SelectableInventory; 3],
 	last_mouse_pos :Option<LogicalPosition>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
@@ -133,20 +136,21 @@ impl InventoryMenu {
 	pub fn new(params :GameParamsHdl,
 			inv :SelectableInventory,
 			craft_inv :SelectableInventory) -> Self {
+		let output_inv = SelectableInventory::from_stacks(vec![Stack::Empty].into_boxed_slice());
+		let invs = [craft_inv, output_inv, inv];
 		Self {
 			params,
-			inv,
-			craft_inv,
+			invs,
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
 		}
 	}
 	pub fn inventory(&self) -> &SelectableInventory {
-		&self.inv
+		&self.invs[NORMAL_INV_ID]
 	}
 	pub fn craft_inv(&self) -> &SelectableInventory {
-		&self.craft_inv
+		&self.invs[CRAFTING_ID]
 	}
 	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
 		self.last_mouse_pos = Some(pos);
@@ -154,13 +158,13 @@ impl InventoryMenu {
 	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {
 		self.mouse_input_ev = Some((state, button));
 	}
-	fn craft_output_inv(&self) -> SelectableInventory {
-		let recipe = get_matching_recipe(&self.craft_inv, &self.params);
+	fn update_craft_output_inv(&mut self) {
+		let recipe = get_matching_recipe(&self.invs[CRAFTING_ID], &self.params);
 		let stack = recipe
 			.map(|r| r.output)
 			.unwrap_or(Stack::Empty);
 		let stacks = vec![stack].into_boxed_slice();
-		SelectableInventory::from_stacks(stacks)
+		self.invs[CRAFTING_OUTPUT_ID] = SelectableInventory::from_stacks(stacks);
 	}
 	pub fn render<'a, 'b>(&mut self,
 			display :&glium::Display, program :&glium::Program,
@@ -197,8 +201,8 @@ impl InventoryMenu {
 		const CRAFT_SLOT_COUNT_X_F32 :f32 = CRAFT_SLOT_COUNT_X as f32;
 
 		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
-		let inv_height_units = (self.craft_inv.stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
-		let craft_height_units = (self.craft_inv.stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
+		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
+		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
 		let height_units = inv_height_units + craft_height_units;
 		let height = height_units * unit * 1.1 + 0.1 * unit;
 
@@ -219,14 +223,10 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		const CRAFTING_ID :usize = 0;
-		const CRAFTING_OUTPUT_ID :usize = 1;
-		const NORMAL_INV_ID :usize = 2;
-
 		// Crafting inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.craft_inv,
-			self.craft_inv.stacks().len(),
+			&self.invs[CRAFTING_ID],
+			self.invs[CRAFTING_ID].stacks().len(),
 			CRAFT_SLOT_COUNT_X,
 			unit,
 			(0, 0),
@@ -262,10 +262,9 @@ impl InventoryMenu {
 			&self.params,
 		));
 
-		let mut craft_output_inv = self.craft_output_inv();
 		vertices.extend_from_slice(&inventory_slots_mesh(
-			&craft_output_inv,
-			craft_output_inv.stacks().len(),
+			&self.invs[CRAFTING_OUTPUT_ID],
+			self.invs[CRAFTING_OUTPUT_ID].stacks().len(),
 			CRAFT_SLOT_COUNT_X,
 			unit,
 			((width / 2.0) as i32, 0),
@@ -303,8 +302,8 @@ impl InventoryMenu {
 
 		// Inventory slots
 		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.inv,
-			self.inv.stacks().len(),
+			&self.invs[NORMAL_INV_ID],
+			self.invs[NORMAL_INV_ID].stacks().len(),
 			SLOT_COUNT_X,
 			unit,
 			(0, -(craft_height_units * 1.1 * unit) as i32),
@@ -358,9 +357,9 @@ impl InventoryMenu {
 						// If we click onto the crafting output menu,
 						// add the output to the inventory immediately.
 						// TODO figure out something for the remainder stack
-						self.inv.put(craft_output_inv.stacks()[0]);
+						self.invs[NORMAL_INV_ID].put(self.invs[CRAFTING_OUTPUT_ID].stacks()[0]);
 						// Reduce inputs.
-						for st in self.craft_inv.stacks_mut().iter_mut() {
+						for st in self.invs[CRAFTING_ID].stacks_mut().iter_mut() {
 							st.take_n(1);
 						}
 					} else {
@@ -372,23 +371,24 @@ impl InventoryMenu {
 
 		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos, button)) = swap_command {
-			let invs = &mut [&mut self.craft_inv, &mut craft_output_inv,
-				&mut self.inv];
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
 				// Putting into the crafting menu is not possible
 			} else {
 				if button == MouseButton::Left {
 					SelectableInventory::merge_or_swap(
-						invs,
+						&mut self.invs,
 						from_pos, to_pos);
 				}
 				if button == MouseButton::Right {
 					SelectableInventory::move_n_if_possible(
-						invs,
+						&mut self.invs,
 						from_pos, to_pos, 1);
 				}
 			}
 		}
+
+		// TODO this is hacky, we change state in RENDERING code!!
+		self.update_craft_output_inv();
 
 		let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 		target.draw(&vbuff,
