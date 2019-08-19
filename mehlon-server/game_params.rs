@@ -237,7 +237,24 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 }
 
 fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
-	let mut name_id_map = nm_from_db;
+
+	let override_default = val.get("override-default")
+		.unwrap_or(&Value::Boolean(false));
+	let mut params = if !*override_default.convert::<bool>()? {
+		default_game_params(nm_from_db)?
+	} else {
+		let block_roles = BlockRoles::new(&nm_from_db)?;
+		let schematics = Schematics::new(&block_roles);
+		GameParams {
+			recipes : Vec::new(),
+			block_params : HashMap::new(),
+			schematics,
+			block_roles,
+			name_id_map : nm_from_db,
+		}
+	};
+	let name_id_map = &mut params.name_id_map;
+
 	// First pass: populate the name id map.
 	// This allows us to refer to blocks other than our own
 	// regardless of order.
@@ -248,77 +265,65 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let _id = name_id_map.get_or_extend(name);
 	}
 
-	let block_params = blocks.iter()
-		.map(|block| {
-			let name = block.read::<str>("name")?;
-			let name_components = parse_block_name(name)?;
-			// unwrap is okay because we have added it in the first pass
-			let id = name_id_map.get_id(name).unwrap();
-			let color = block.read::<Value>("color")?
-				.clone();
-			let color = if color == Value::Boolean(false) {
-				None
-			} else {
-				Some(color.try_into()?)
-			};
-			let pointable = block.get("pointable")
-				.unwrap_or(&Value::Boolean(true));
-			let pointable = *pointable.convert::<bool>()?;
-			let display_name = if let Some(n) = block.get("display-name") {
-				n.convert::<str>()?.to_owned()
-			} else {
-				name_components.1.to_owned()
-			};
-			let drops = if let Some(drops) = block.get("drops") {
-				let drops_sp = drops.convert::<str>()?;
-				resolve_stack_specifier(&name_id_map, drops_sp)?
-			} else {
-				Stack::with(id, 1)
-			};
-			let block_params = BlockParams {
-				color,
-				pointable,
-				display_name,
-				drops,
-			};
-			Ok((id, block_params))
-		})
-		.collect::<Result<HashMap<_, _>, StrErr>>()?;
+	for block in blocks.iter() {
+		let name = block.read::<str>("name")?;
+		let name_components = parse_block_name(name)?;
+		// unwrap is okay because we have added it in the first pass
+		let id = name_id_map.get_id(name).unwrap();
+		let color = block.read::<Value>("color")?
+			.clone();
+		let color = if color == Value::Boolean(false) {
+			None
+		} else {
+			Some(color.try_into()?)
+		};
+		let pointable = block.get("pointable")
+			.unwrap_or(&Value::Boolean(true));
+		let pointable = *pointable.convert::<bool>()?;
+		let display_name = if let Some(n) = block.get("display-name") {
+			n.convert::<str>()?.to_owned()
+		} else {
+			name_components.1.to_owned()
+		};
+		let drops = if let Some(drops) = block.get("drops") {
+			let drops_sp = drops.convert::<str>()?;
+			resolve_stack_specifier(&name_id_map, drops_sp)?
+		} else {
+			Stack::with(id, 1)
+		};
+		let block_params = BlockParams {
+			color,
+			pointable,
+			display_name,
+			drops,
+		};
+		params.block_params.insert(id, block_params);
+	}
 
 	let recipes_list = val.read::<Array>("recipe")?;
-	let recipes = recipes_list.iter()
-		.map(|recipe| {
-			let inputs = recipe.read::<Array>("inputs")?;
-			let inputs = inputs.iter()
-				.map(|input| {
-					let name = input.convert::<str>()?;
-					if name == "" {
-						Ok(None)
-					} else {
-						let mb = name_id_map.get_id(name).ok_or("invalid name")?;
-						Ok(Some(mb))
-					}
-				})
-				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
-			let output_sp = recipe.read::<str>("output")?;
-			let output = resolve_stack_specifier(&name_id_map, output_sp)?;
-
-			Ok(Recipe {
-				inputs,
-				output,
+	for recipe in recipes_list.iter() {
+		let inputs = recipe.read::<Array>("inputs")?;
+		let inputs = inputs.iter()
+			.map(|input| {
+				let name = input.convert::<str>()?;
+				if name == "" {
+					Ok(None)
+				} else {
+					let mb = name_id_map.get_id(name).ok_or("invalid name")?;
+					Ok(Some(mb))
+				}
 			})
-		})
-		.collect::<Result<Vec<Recipe>, StrErr>>()?;
+			.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
+		let output_sp = recipe.read::<str>("output")?;
+		let output = resolve_stack_specifier(&name_id_map, output_sp)?;
 
-	let block_roles = BlockRoles::new(&name_id_map)?;
-	let schematics = Schematics::new(&block_roles);
-	Ok(GameParams {
-		recipes,
-		block_params,
-		schematics,
-		block_roles,
-		name_id_map,
-	})
+		params.recipes.push(Recipe {
+			inputs,
+			output,
+		});
+	}
+
+	Ok(params)
 }
 
 fn default_game_params(nm :NameIdMap) -> Result<GameParams, StrErr> {

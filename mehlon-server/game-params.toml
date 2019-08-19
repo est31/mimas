@@ -1,3 +1,5 @@
+override-default = true
+
 [[block]]
 name = "default:air"
 color = false
