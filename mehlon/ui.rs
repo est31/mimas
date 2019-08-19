@@ -223,122 +223,58 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		// Crafting inventory slots
-		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.invs[CRAFTING_ID],
-			self.invs[CRAFTING_ID].stacks().len(),
-			CRAFT_SLOT_COUNT_X,
-			unit,
-			(0, 0),
-			width,
-			screen_dims,
-			|i, mesh_x, mesh_y| { // color_fn
-				let dims = (unit as i32, unit as i32);
-				let hovering = self.last_mouse_pos
-					.map(|pos| {
-						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-					})
-					.unwrap_or(false);
-				if hovering {
-					hover_idx = Some((CRAFTING_ID, i));
-				}
-				if self.from_pos == Some((CRAFTING_ID, i)) {
-					SELECTED_SLOT_COLOR
-				} else if hovering {
-					HOVERED_SLOT_COLOR
-				} else {
-					SLOT_COLOR
-				}
-			},
-			|line| { // mesh_y_fn
-				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
-			},
-			|line| { // text_y_fn
+		let inventory_params :&[(usize, _, Box<dyn Fn(usize) -> f32>)] = &[
+			(CRAFT_SLOT_COUNT_X, (0, 0), Box::new(|line| { // text_y_fn
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			},
-			glyph_brush,
-			&self.params,
-		));
-
-		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.invs[CRAFTING_OUTPUT_ID],
-			self.invs[CRAFTING_OUTPUT_ID].stacks().len(),
-			CRAFT_SLOT_COUNT_X,
-			unit,
-			((width / 2.0) as i32, 0),
-			width,
-			screen_dims,
-			|i, mesh_x, mesh_y| { // color_fn
-				let dims = (unit as i32, unit as i32);
-				let hovering = self.last_mouse_pos
-					.map(|pos| {
-						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-					})
-					.unwrap_or(false);
-				if hovering {
-					hover_idx = Some((CRAFTING_OUTPUT_ID, i));
-				}
-				if self.from_pos == Some((CRAFTING_OUTPUT_ID, i)) {
-					SELECTED_SLOT_COLOR
-				} else if hovering {
-					HOVERED_SLOT_COLOR
-				} else {
-					SLOT_COLOR
-				}
-			},
-			|line| { // mesh_y_fn
-				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
-			},
-			|line| { // text_y_fn
+			})),
+			(CRAFT_SLOT_COUNT_X, ((width / 2.0) as i32, 0), Box::new(|line| { // text_y_fn
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			},
-			glyph_brush,
-			&self.params,
-		));
-
-		// Inventory slots
-		vertices.extend_from_slice(&inventory_slots_mesh(
-			&self.invs[NORMAL_INV_ID],
-			self.invs[NORMAL_INV_ID].stacks().len(),
-			SLOT_COUNT_X,
-			unit,
-			(0, -(craft_height_units * 1.1 * unit) as i32),
-			width,
-			screen_dims,
-			|i, mesh_x, mesh_y| { // color_fn
-				let dims = (unit as i32, unit as i32);
-				let hovering = self.last_mouse_pos
-					.map(|pos| {
-						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-					})
-					.unwrap_or(false);
-				if hovering {
-					hover_idx = Some((NORMAL_INV_ID, i));
-				}
-				if self.from_pos == Some((NORMAL_INV_ID, i)) {
-					SELECTED_SLOT_COLOR
-				} else if hovering {
-					HOVERED_SLOT_COLOR
-				} else {
-					SLOT_COLOR
-				}
-			},
-			|line| { // mesh_y_fn
-				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
-			},
-			|line| { // text_y_fn
+			})),
+			(SLOT_COUNT_X, (0, -(craft_height_units * 1.1 * unit) as i32), Box::new(|line| { // text_y_fn
 				(craft_height_units * 1.1 * unit) / 2.0 +
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			},
-			glyph_brush,
-			&self.params,
-		));
+			})),
+		];
+
+		for (inv_id, inv_param) in inventory_params.iter().enumerate() {
+			vertices.extend_from_slice(&inventory_slots_mesh(
+				&self.invs[inv_id],
+				self.invs[inv_id].stacks().len(),
+				inv_param.0,
+				unit,
+				inv_param.1,
+				width,
+				screen_dims,
+				|i, mesh_x, mesh_y| { // color_fn
+					let dims = (unit as i32, unit as i32);
+					let hovering = self.last_mouse_pos
+						.map(|pos| {
+							(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
+							(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
+						})
+						.unwrap_or(false);
+					if hovering {
+						hover_idx = Some((inv_id, i));
+					}
+					if self.from_pos == Some((inv_id, i)) {
+						SELECTED_SLOT_COLOR
+					} else if hovering {
+						HOVERED_SLOT_COLOR
+					} else {
+						SLOT_COLOR
+					}
+				},
+				|line| { // mesh_y_fn
+					(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
+				},
+				&inv_param.2,
+				glyph_brush,
+				&self.params,
+			));
+		}
 
 		let mut swap_command = None;
 
