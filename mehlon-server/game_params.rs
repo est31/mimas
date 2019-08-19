@@ -321,6 +321,20 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 	})
 }
 
+fn default_game_params(nm :NameIdMap) -> Result<GameParams, StrErr> {
+	let file_str = DEFAULT_GAME_PARAMS_STR;
+	let val = from_str(&file_str)?;
+	let res = from_val(val, nm)?;
+	Ok(res)
+}
+
+#[cfg(test)]
+#[test]
+fn default_game_params_parse_test() {
+	let nm = NameIdMap::builtin_name_list();
+	default_game_params(nm).unwrap();
+}
+
 pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
@@ -335,11 +349,3 @@ pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
 
 static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
 
-#[cfg(test)]
-#[test]
-fn default_game_params_parse_test() {
-	let file_str = DEFAULT_GAME_PARAMS_STR;
-	let nm = NameIdMap::builtin_name_list();
-	let val = from_str(&file_str).unwrap();
-	let _res = from_val(val, nm).unwrap();
-}
