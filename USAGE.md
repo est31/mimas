@@ -46,6 +46,24 @@ cargo run --release -p mehlon-server -- --help
 Currently, it reads the `settings.toml` file from the current working directory.
 Descriptions of the available settings are obtainable in [settings.toml.example](settings.toml.example).
 
+### Game customization
+
+You can customize/mod the game using the `game-params.toml` file.
+It is read from the current working directory and contains
+ability to add custom blocks and recipes.
+
+Explanation of possible keys:
+
+* `override-default = <bool>` if set to true, the builtin
+  game params are not being read, if set to false they are
+  and the file is extending the set of defaults.
+  If you are only interested in adding new blocks and recipes,
+  it is recommended to not specify the key.
+* `[[block]]` defines a new block.
+* `[[recipe]]` defines a new recipe.
+
+Please see the `game-params.toml` included in the source code for
+examples.
 
 ### Controls
 
