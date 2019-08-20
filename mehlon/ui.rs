@@ -203,7 +203,7 @@ impl InventoryMenu {
 		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
 		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
 		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
-		let height_units = inv_height_units + craft_height_units;
+		let height_units = inv_height_units + craft_height_units + 0.2;
 		let height = height_units * unit * 1.1 + 0.1 * unit;
 
 		let mut vertices = Vec::new();
@@ -232,8 +232,8 @@ impl InventoryMenu {
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			})),
-			(SLOT_COUNT_X, (0, -(craft_height_units * 1.1 * unit) as i32), Box::new(|line| { // text_y_fn
-				(craft_height_units * 1.1 * unit) / 2.0 +
+			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32), Box::new(|line| { // text_y_fn
+				((craft_height_units * 1.1 + 0.2) * unit) / 2.0 +
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			})),
