@@ -1,5 +1,19 @@
 # Changelog
 
+## Release 0.3 - August 20, 2019
+
+Minimum required Rust version: 1.38.0
+
+Third internal release. Featuring:
+
+* Items
+* Player inventory
+* Crafting
+* Support for game customization/modding,
+  including custom:
+  - blocks
+  - crafting recipes
+
 ## Release 0.2 - April 14, 2019
 
 Minimum required Rust version: 1.35.0
