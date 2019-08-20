@@ -54,10 +54,21 @@ pub struct NameIdMap {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameParams {
 	pub recipes :Vec<Recipe>,
-	pub block_params :HashMap<MapBlock, BlockParams>,
+	pub block_params :Vec<BlockParams>,
 	pub block_roles :BlockRoles,
 	pub schematics :Schematics,
 	pub name_id_map :NameIdMap,
+}
+
+impl Default for BlockParams {
+	fn default() -> Self {
+		Self {
+			color : Some([0.0, 0.0, 0.0, 1.0]),
+			pointable : true,
+			display_name : String::new(),
+			drops : Stack::Empty,
+		}
+	}
 }
 
 impl BlockRoles {
@@ -164,17 +175,17 @@ impl GameParams {
 		load_params_failible(nm).expect("Couldn't load game params")
 	}
 	pub fn get_color_for_blk(&self, blk :&MapBlock) -> Option<[f32; 4]> {
-		self.block_params.get(blk)
+		self.block_params.get(blk.id() as usize)
 			.map(|p| p.color)
 			.unwrap_or(Some([0.0, 0.0, 0.0, 1.0]))
 	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
-		self.block_params.get(blk)
+		self.block_params.get(blk.id() as usize)
 			.map(|p| p.pointable)
 			.unwrap_or(true)
 	}
 	pub fn block_display_name(&self, mb :MapBlock) -> impl Display {
-		if let Some(bp) = self.block_params.get(&mb) {
+		if let Some(bp) = self.block_params.get(mb.id() as usize) {
 			bp.display_name.to_owned()
 		} else {
 			format!("{:?}", mb)
@@ -186,12 +197,12 @@ impl GameParams {
 		}
 		// Fall back to search for matching display names
 		// TODO use a hashmap instead of linear search
-		self.block_params.iter()
+		self.block_params.iter().enumerate()
 			.find(|(_id, p)| {
 				p.display_name.eq_ignore_ascii_case(name)
 			})
 			.map(|(id, _p)| {
-				*id
+				MapBlock::from_id_unchecked(id as u8)
 			})
 	}
 }
@@ -247,7 +258,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let schematics = Schematics::new(&block_roles);
 		GameParams {
 			recipes : Vec::new(),
-			block_params : HashMap::new(),
+			block_params : Vec::new(),
 			schematics,
 			block_roles,
 			name_id_map : nm_from_db,
@@ -264,6 +275,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let _name_components = parse_block_name(name)?;
 		let _id = name_id_map.get_or_extend(name);
 	}
+
+	params.block_params.resize_with(name_id_map.first_invalid_id as usize,
+		Default::default);
 
 	for block in blocks.iter() {
 		let name = block.read::<str>("name")?;
@@ -297,7 +311,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			display_name,
 			drops,
 		};
-		params.block_params.insert(id, block_params);
+		params.block_params[id.id() as usize] = block_params;
 	}
 
 	let recipes_list = val.read::<Array>("recipe")?;

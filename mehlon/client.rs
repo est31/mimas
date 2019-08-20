@@ -707,7 +707,7 @@ impl<C :NetworkClientConn> Game<C> {
 				if self.camera.mouse_left_cooldown <= 0.0 {
 					let params = self.params.as_ref().unwrap();
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
-					let drops = params.block_params.get(&blk.get()).unwrap().drops;
+					let drops = params.block_params.get(blk.get().id() as usize).unwrap().drops;
 					self.sel_inventory.put(drops);
 					let air_bl = params.block_roles.air;
 					blk.set(air_bl);
