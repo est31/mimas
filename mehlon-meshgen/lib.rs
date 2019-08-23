@@ -108,40 +108,40 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		hdl :&GameParamsHdl) -> Vec<Vertex> {
 	let mut r = Vec::new();
 
-	struct Walker {
-		last :Option<(f32, [f32; 4])>,
+	struct Walker<D> {
+		last :Option<(f32, D)>,
 	}
-	impl Walker {
+	impl<D :PartialEq + Copy> Walker<D> {
 		fn new() -> Self {
 			Walker {
 				last : None,
 			}
 		}
-		fn next<F :FnOnce([f32; 4], f32, f32)>(&mut self,
-				v :f32, color :Option<[f32; 4]>, emit :F) {
-			match (color, self.last).clone() {
-				(None, Some((last_v, l_col))) => {
+		fn next<F :FnOnce(D, f32, f32)>(&mut self,
+				v :f32, item :Option<D>, emit :F) {
+			match (item, self.last) {
+				(None, Some((last_v, l_item))) => {
 					// Some mesh ends here. Emit it.
 					let vlen = v - last_v;
-					emit(l_col, last_v, vlen);
+					emit(l_item, last_v, vlen);
 					self.last = None;
 				},
-				(Some(color), Some((last_v, l_col))) => {
-					if color != l_col {
-						// Color changed. Emit the old color.
+				(Some(item), Some((last_v, l_item))) => {
+					if item != l_item {
+						// Item changed. Emit the old item.
 						let vlen = v - last_v;
-						emit(l_col, last_v, vlen);
-						self.last = Some((v, color));
+						emit(l_item, last_v, vlen);
+						self.last = Some((v, item));
 					} else {
-						// Color is the same. do nothing.
+						// Item is the same. do nothing.
 					}
 				},
 				// Start a new thing.
-				(Some(color), None) => {
-					self.last = Some((v, color));
+				(Some(item), None) => {
+					self.last = Some((v, item));
 				},
-				// Nothing to do if there is no color
-				// and no last color
+				// Nothing to do if there is no item
+				// and no last item
 				(None, None) => (),
 			}
 		}
@@ -166,7 +166,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		}
 		color
 	};
-	fn walk_for_all_blocks<G :FnMut(&mut Walker, Option<[f32; 4]>, Vector3<isize>)>(
+	fn walk_for_all_blocks<G :FnMut(&mut Walker<[f32; 4]>, Option<[f32; 4]>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
 			offsets :[isize; 3],
 			chunk :&MapChunkData, g :&mut G,
