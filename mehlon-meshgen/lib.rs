@@ -8,6 +8,7 @@ extern crate mehlon_server;
 use mehlon_server::map::{MapChunkData,
 	CHUNKSIZE};
 use mehlon_server::game_params::GameParamsHdl;
+use mehlon_server::map::MapBlock;
 use nalgebra::Vector3;
 
 #[derive(Copy, Clone)]
@@ -18,6 +19,26 @@ pub struct Vertex {
 }
 
 implement_vertex!(Vertex, position, color, normal);
+
+pub struct ColorCache {
+	colors :Vec<Option<[f32; 4]>>,
+}
+
+impl ColorCache {
+	pub fn from_hdl(hdl :&GameParamsHdl) -> Self {
+		let colors = hdl.block_params.iter()
+			.map(|p| p.color)
+			.collect::<Vec<_>>();
+		Self {
+			colors
+		}
+	}
+	fn get_color(&self, bl :&MapBlock) -> Option<[f32; 4]> {
+		self.colors.get(bl.id() as usize)
+			.map(|v| *v)
+			.unwrap_or(Some([0.0, 0.0, 0.0, 1.0]))
+	}
+}
 
 // This is NOT the same function as f32::signum!
 // For -0.0, and 0.0, this function returns 0.0,
@@ -105,7 +126,7 @@ pub fn colorh(col :[f32; 4]) -> [f32; 4] {
 }
 
 pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
-		hdl :&GameParamsHdl) -> Vec<Vertex> {
+		cache :&ColorCache) -> Vec<Vertex> {
 	let mut r = Vec::new();
 
 	struct Walker<D> {
@@ -148,20 +169,20 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	}
 	fn blocked(chunk :&MapChunkData,
 			[xo, yo, zo] :[isize; 3], pos :Vector3<isize>,
-			hdl :&GameParamsHdl) -> bool {
+			cache :&ColorCache) -> bool {
 		let pos = Vector3::new(pos.x + xo, pos.y + yo, pos.z + zo);
 		let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 		if outside.x || outside.y || outside.z {
 			return false;
 		}
 		let blk = chunk.get_blk(pos);
-		hdl.get_color_for_blk(blk).is_some()
+		cache.get_color(blk).is_some()
 	};
 	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>,
-			offsets :[isize; 3], hdl :&GameParamsHdl) -> Option<[f32; 4]> {
+			offsets :[isize; 3], cache :&ColorCache) -> Option<[f32; 4]> {
 		let blk = chunk.get_blk(pos);
-		let mut color = hdl.get_color_for_blk(blk);
-		if color.is_some() && blocked(chunk, offsets, pos, hdl) {
+		let mut color = cache.get_color(blk);
+		if color.is_some() && blocked(chunk, offsets, pos, cache) {
 			color = None;
 		}
 		color
@@ -170,13 +191,13 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 			f :fn(isize, isize, isize) -> Vector3<isize>,
 			offsets :[isize; 3],
 			chunk :&MapChunkData, g :&mut G,
-			hdl :&GameParamsHdl) {
+			cache :&ColorCache) {
 		for c1 in 0 .. CHUNKSIZE {
 			for c2 in 0 .. CHUNKSIZE {
 				let mut walker = Walker::new();
 				for cinner in 0 .. CHUNKSIZE {
 					let rel_pos = f(c1, c2, cinner);
-					let color = get_col(chunk, rel_pos, offsets, hdl);
+					let color = get_col(chunk, rel_pos, offsets, cache);
 					g(&mut walker, color, rel_pos)
 				}
 				let rel_pos = f(c1, c2, CHUNKSIZE);
@@ -198,7 +219,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face!(r, (x, last_y, z), (siz, 0.0, ylen, 0.0), l_col);
 			});
 		},
-		hdl
+		cache
 	);
 
 	// X-Z face (unify over x)
@@ -214,7 +235,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), colorh);
 			});
 		},
-		hdl
+		cache
 	);
 
 	// Y-Z face (unify over y)
@@ -230,7 +251,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), colorh);
 			});
 		},
-		hdl
+		cache
 	);
 
 	// X-Y face (z+1) (unify over y)
@@ -245,7 +266,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
 			});
 		},
-		hdl
+		cache
 	);
 
 	// X-Z face (y+1) (unify over x)
@@ -261,7 +282,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), colorh);
 			});
 		},
-		hdl
+		cache
 	);
 
 	// Y-Z face (x+1) (unify over y)
@@ -277,7 +298,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), colorh);
 			});
 		},
-		hdl
+		cache
 	);
 
 	r

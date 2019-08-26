@@ -171,10 +171,10 @@ impl<C :NetworkClientConn> Game<C> {
 
 			meshgen_spawner : Some(Box::new(move |hdl| {
 				thread::spawn(move || {
-					let hdl = hdl;
+					let cache = mehlon_meshgen::ColorCache::from_hdl(&hdl);
 					while let Ok((p, chunk)) = meshgen_r.recv() {
 						//let start = Instant::now();
-						let mesh = mesh_for_chunk(p, &chunk, &hdl);
+						let mesh = mesh_for_chunk(p, &chunk, &cache);
 						let _ = meshres_s.send((p, mesh));
 						//println!("Generated mesh in {:?}", Instant::now() - start);
 					}
