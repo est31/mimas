@@ -6,9 +6,12 @@ cargo-features = ["profile-overrides"]
 members = ["mehlon", "mehlon-server", "mehlon-meshgen"]
 default-members = ["mehlon"]
 
+[profile.dev]
 # Default opt level
-#[profile.dev]
 #opt-level = 0
+# Debuginfo bloats the binary and makes linking
+# very very slow.
+debug = false
 
 # This allows us to optimize dependencies
 # If you aren't on nightly, you can just comment this out.
