@@ -21,22 +21,22 @@ pub struct Vertex {
 implement_vertex!(Vertex, position, color, normal);
 
 pub struct ColorCache {
-	colors :Vec<Option<[f32; 4]>>,
+	colors :Vec<Option<([f32; 4], [f32; 4])>>,
 }
 
 impl ColorCache {
 	pub fn from_hdl(hdl :&GameParamsHdl) -> Self {
 		let colors = hdl.block_params.iter()
-			.map(|p| p.color)
+			.map(|p| p.color.map(|c| (c, colorh(c))))
 			.collect::<Vec<_>>();
 		Self {
 			colors
 		}
 	}
-	fn get_color(&self, bl :&MapBlock) -> Option<[f32; 4]> {
+	fn get_color(&self, bl :&MapBlock) -> Option<([f32; 4], [f32; 4])> {
 		self.colors.get(bl.id() as usize)
 			.map(|v| *v)
-			.unwrap_or(Some([0.0, 0.0, 0.0, 1.0]))
+			.unwrap_or(Some(([0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0])))
 	}
 }
 
@@ -187,9 +187,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 			color = None;
 		}
 		if color_halving {
-			color.map(|c| colorh(c))
+			color.map(|c| c.1)
 		} else {
-			color
+			color.map(|c| c.0)
 		}
 	};
 	fn walk_for_all_blocks<G :FnMut(&mut Walker<[f32; 4]>, Option<[f32; 4]>, Vector3<isize>)>(
