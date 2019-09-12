@@ -179,16 +179,22 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		cache.get_color(blk).is_some()
 	};
 	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>,
+			color_halving :bool,
 			offsets :[isize; 3], cache :&ColorCache) -> Option<[f32; 4]> {
 		let blk = chunk.get_blk(pos);
 		let mut color = cache.get_color(blk);
 		if color.is_some() && blocked(chunk, offsets, pos, cache) {
 			color = None;
 		}
-		color
+		if color_halving {
+			color.map(|c| colorh(c))
+		} else {
+			color
+		}
 	};
 	fn walk_for_all_blocks<G :FnMut(&mut Walker<[f32; 4]>, Option<[f32; 4]>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
+			colorh :bool,
 			offsets :[isize; 3],
 			chunk :&MapChunkData, g :&mut G,
 			cache :&ColorCache) {
@@ -197,7 +203,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				let mut walker = Walker::new();
 				for cinner in 0 .. CHUNKSIZE {
 					let rel_pos = f(c1, c2, cinner);
-					let color = get_col(chunk, rel_pos, offsets, cache);
+					let color = get_col(chunk, rel_pos, colorh, offsets, cache);
 					g(&mut walker, color, rel_pos)
 				}
 				let rel_pos = f(c1, c2, CHUNKSIZE);
@@ -210,6 +216,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
+		false,
 		[0, 0, -1],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -225,14 +232,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Z face (unify over x)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(cinner, c1, c2),
+		true,
 		[0, -1, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
 			walker.next(pos.x as f32, color, |l_col, last_x, xlen| {
 				let (_x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				let colorh = colorh(l_col);
-				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), colorh);
+				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), l_col);
 			});
 		},
 		cache
@@ -241,14 +248,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// Y-Z face (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
+		true,
 		[-1, 0, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
 			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				let colorh = colorh(l_col);
-				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), colorh);
+				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), l_col);
 			});
 		},
 		cache
@@ -257,6 +264,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (z+1) (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
+		false,
 		[0, 0, 1],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -272,14 +280,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Z face (y+1) (unify over x)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(cinner, c1, c2),
+		true,
 		[0, 1, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
 			walker.next(pos.x as f32, color, |l_col, last_x, xlen| {
 				let (_x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				let colorh = colorh(l_col);
-				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), colorh);
+				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), l_col);
 			});
 		},
 		cache
@@ -288,14 +296,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// Y-Z face (x+1) (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
+		true,
 		[1, 0, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
 			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				let colorh = colorh(l_col);
-				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), colorh);
+				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), l_col);
 			});
 		},
 		cache
