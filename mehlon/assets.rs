@@ -29,6 +29,11 @@ fn load_image(path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
 				img_pixel.blend(overlay_pixel);
 			});
 	}
+	// Make all textures non-opaque
+	// as currently, mesh generation can't deal
+	// with opaque textures.
+	image.pixels_mut()
+		.for_each(|px| px.0[3] = 255);
 	let dimensions = image.dimensions();
 	let buf = image.into_raw()
 		.into_iter()
