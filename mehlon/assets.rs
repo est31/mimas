@@ -30,8 +30,12 @@ impl Assets {
 			assets : Vec::new(),
 		}
 	}
-	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> TextureId {
+	fn add_asset(&mut self, asset :(Vec<f32>, (u32, u32))) -> TextureId {
 		let id = self.assets.len();
+		self.assets.push(asset);
+		TextureId(id as u16)
+	}
+	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> TextureId {
 		let asset = match ds {
 			DrawStyle::Colored(color) => {
 				let pixels = std::iter::repeat(color.iter())
@@ -43,8 +47,7 @@ impl Assets {
 			},
 			DrawStyle::Texture(path) => load_image(path).expect("couldn't load image"),
 		};
-		self.assets.push(asset);
-		TextureId(id as u16)
+		self.add_asset(asset)
 	}
 	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {
 		self.add_draw_style(&DrawStyle::Colored(color))
