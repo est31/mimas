@@ -4,6 +4,7 @@ use mehlon_server::game_params::DrawStyle;
 use glium::texture::texture2d_array::Texture2dArray;
 use glium::texture::RawImage2d;
 use glium::backend::Facade;
+use image::{RgbaImage, Pixel};
 
 use mehlon_meshgen::TextureId;
 
@@ -11,11 +12,25 @@ pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
 }
 
-fn load_image(path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+fn load_image_inner(path :&str) -> Result<RgbaImage, StrErr> {
 	let img = image::open(path)?;
-	let img_rgba = img.to_rgba();
-	let dimensions = img_rgba.dimensions();
-	let buf = img_rgba.into_raw()
+	Ok(img.to_rgba())
+}
+
+fn load_image(path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+	let mut imgs_iter = path.split("^")
+		.map(|p| load_image_inner(p));
+	let mut image = imgs_iter.next().ok_or("No image path specified")??;
+	let imgs = imgs_iter.collect::<Result<Vec<_>, StrErr>>()?;
+	for overlay in imgs.iter() {
+		image.pixels_mut()
+			.zip(overlay.pixels())
+			.for_each(|(img_pixel, overlay_pixel)| {
+				img_pixel.blend(overlay_pixel);
+			});
+	}
+	let dimensions = image.dimensions();
+	let buf = image.into_raw()
 		.into_iter()
 		.map(|v| {
 			v as f32 / u8::max_value() as f32
