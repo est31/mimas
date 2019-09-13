@@ -174,11 +174,6 @@ impl GameParams {
 	pub fn load(nm :NameIdMap) -> GameParamsHdl {
 		load_params_failible(nm).expect("Couldn't load game params")
 	}
-	pub fn get_color_for_blk(&self, blk :&MapBlock) -> Option<[f32; 4]> {
-		self.block_params.get(blk.id() as usize)
-			.map(|p| p.color)
-			.unwrap_or(Some([0.0, 0.0, 0.0, 1.0]))
-	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
 		self.block_params.get(blk.id() as usize)
 			.map(|p| p.pointable)
