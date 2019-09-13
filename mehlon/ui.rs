@@ -11,7 +11,9 @@ use mehlon_server::inventory::{SelectableInventory, Stack,
 use mehlon_server::crafting::get_matching_recipe;
 use mehlon_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::Vertex;
+use mehlon_meshgen::{Vertex, TextureId};
+
+use assets::UiColors;
 
 pub const IDENTITY :[[f32; 4]; 4] = [
 	[1.0, 0.0, 0.0, 0.0f32],
@@ -20,7 +22,9 @@ pub const IDENTITY :[[f32; 4]; 4] = [
 	[0.0, 0.0, 0.0, 1.0],
 ];
 
-fn render_text<'a, 'b>(text :&str, display :&glium::Display, program :&glium::Program, glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+fn render_text<'a, 'b>(text :&str, ui_colors :&UiColors,
+		display :&glium::Display, program :&glium::Program,
+		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 	let screen_dims = display.get_framebuffer_dimensions();
 
 	let uniforms = uniform! {
@@ -55,7 +59,7 @@ fn render_text<'a, 'b>(text :&str, display :&glium::Display, program :&glium::Pr
 	section.screen_position.1 -= mesh_dims.height() as f32 / 2.0;
 	let border = 4;
 	let dims = (mesh_dims.width() + border, mesh_dims.height() + border);
-	let vertices = square_mesh(dims, screen_dims, BACKGROUND_COLOR);
+	let vertices = square_mesh(dims, screen_dims, ui_colors.background_color);
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
 			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
@@ -64,8 +68,9 @@ fn render_text<'a, 'b>(text :&str, display :&glium::Display, program :&glium::Pr
 	glyph_brush.draw_queued(display, target);
 }
 
-pub fn render_menu<'a, 'b>(display :&glium::Display, program :&glium::Program, glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
-	render_text("Menu\nPress esc to continue Game", display, program, glyph_brush, target);
+pub fn render_menu<'a, 'b>(ui_colors :&UiColors, display :&glium::Display, program :&glium::Program,
+		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+	render_text("Menu\nPress esc to continue Game", ui_colors, display, program, glyph_brush, target);
 }
 
 pub struct ChatWindow {
@@ -90,10 +95,10 @@ impl ChatWindow {
 	pub fn text(&self) -> &str {
 		&self.text
 	}
-	pub fn render<'a, 'b>(&self, display :&glium::Display, program :&glium::Program,
-			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+	pub fn render<'a, 'b>(&self, ui_colors :&UiColors, display :&glium::Display,
+			program :&glium::Program, glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 		let text = "Type to chat\n".to_owned() + &self.text;
-		render_text(&text, display, program, glyph_brush, target);
+		render_text(&text, ui_colors, display, program, glyph_brush, target);
 	}
 	pub fn handle_character(&mut self, input :char) -> ChatWindowEvent {
 		if input == '\n' {
@@ -167,6 +172,7 @@ impl InventoryMenu {
 		self.invs[CRAFTING_OUTPUT_ID] = SelectableInventory::from_stacks(stacks);
 	}
 	pub fn render<'a, 'b>(&mut self,
+			ui_colors :&UiColors,
 			display :&glium::Display, program :&glium::Program,
 			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 
@@ -213,11 +219,7 @@ impl InventoryMenu {
 		let mesh_x = -(width / 2.0) as i32;
 		let mesh_y = -(height / 2.0) as i32;
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, BACKGROUND_COLOR));
-
-		const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
-		const SELECTED_SLOT_COLOR :[f32; 4] = [0.3, 0.3, 0.3, 0.85];
-		const HOVERED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
+			dims, screen_dims, ui_colors.background_color));
 
 		let mut hover_idx = None;
 
@@ -260,11 +262,11 @@ impl InventoryMenu {
 						hover_idx = Some((inv_id, i));
 					}
 					if self.from_pos == Some((inv_id, i)) {
-						SELECTED_SLOT_COLOR
+						ui_colors.selected_slot_color
 					} else if hovering {
-						HOVERED_SLOT_COLOR
+						ui_colors.hovered_slot_color
 					} else {
-						SLOT_COLOR
+						ui_colors.slot_color
 					}
 				},
 				|line| { // mesh_y_fn
@@ -345,7 +347,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		offsets :(i32, i32),
 		ui_width :f32,
 		screen_dims :(u32, u32),
-		mut color_fn :impl FnMut(usize, i32, i32) -> [f32; 4],
+		mut texture_fn :impl FnMut(usize, i32, i32) -> TextureId,
 		mesh_y_fn :impl Fn(usize) -> i32,
 		text_y_fn :impl Fn(usize) -> f32,
 		glyph_brush :&mut GlyphBrush<'a, 'b>,
@@ -358,9 +360,9 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		let mesh_x = offsets.0 +
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 		let mesh_y = offsets.1 + mesh_y_fn(line);
-		let color = color_fn(i, mesh_x, mesh_y);
+		let tx = texture_fn(i, mesh_x, mesh_y);
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, color));
+			dims, screen_dims, tx));
 		let content = inv.stacks()
 			.get(i)
 			.unwrap_or(&Stack::Empty);
@@ -387,6 +389,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 }
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
+		ui_colors :&UiColors,
 		display :&glium::Display, program :&glium::Program,
 		glyph_brush :&mut GlyphBrush<'a, 'b>, gm_params :&GameParamsHdl,
 		target :&mut glium::Frame) {
@@ -428,10 +431,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 	let mesh_x = -(hud_width / 2.0) as i32;
 	let mesh_y = -(screen_dims.1 as i32) + (hud_height * 0.10) as i32;
 	vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-		dims, screen_dims, BACKGROUND_COLOR));
-
-	const SLOT_COLOR :[f32; 4] = [0.5, 0.5, 0.5, 0.85];
-	const SELECTED_SLOT_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
+		dims, screen_dims, ui_colors.background_color));
 
 	// Item slots
 	vertices.extend_from_slice(&inventory_slots_mesh(
@@ -444,9 +444,9 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		screen_dims,
 		|i, _mesh_x, _mesh_y| { // color_fn
 			if Some(i) == inv.selection() {
-				SELECTED_SLOT_COLOR
+				ui_colors.selected_slot_color
 			} else {
-				SLOT_COLOR
+				ui_colors.slot_color
 			}
 		},
 		|_line| { // mesh_y_fn
@@ -466,9 +466,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 	glyph_brush.draw_queued(display, target);
 }
 
-const BACKGROUND_COLOR :[f32; 4] = [0.4, 0.4, 0.4, 0.85];
-
-pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[f32; 4]) -> Vec<Vertex> {
+pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), tx :TextureId) -> Vec<Vertex> {
 	let size_x = (mesh_dims.0 as f32) / (framebuffer_dims.0 as f32);
 	let size_y = (mesh_dims.1 as f32) / (framebuffer_dims.1 as f32);
 
@@ -477,12 +475,12 @@ pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), color :[
 	let x_max = size_x;
 	let y_max = size_y;
 
-	square_mesh_frac_limits(x_min, y_min, x_max, y_max, color)
+	square_mesh_frac_limits(x_min, y_min, x_max, y_max, tx)
 }
 
 pub fn square_mesh_xy(mesh_x :i32, mesh_y :i32,
 		mesh_dims :(i32, i32), framebuffer_dims :(u32, u32),
-		color :[f32; 4]) -> Vec<Vertex> {
+		tx :TextureId) -> Vec<Vertex> {
 	let mesh_x = (mesh_x as f32) / (framebuffer_dims.0 as f32);
 	let mesh_y = (mesh_y as f32) / (framebuffer_dims.1 as f32);
 
@@ -494,45 +492,46 @@ pub fn square_mesh_xy(mesh_x :i32, mesh_y :i32,
 	let x_max = mesh_x + size_x;
 	let y_max = mesh_y + size_y;
 
-	square_mesh_frac_limits(x_min, y_min, x_max, y_max, color)
+	square_mesh_frac_limits(x_min, y_min, x_max, y_max, tx)
 }
 
 /// Creates a square mesh from limits given in fractions of screen size
 pub fn square_mesh_frac_limits(
 		x_min :f32, y_min :f32, x_max :f32, y_max :f32,
-		color :[f32; 4]) -> Vec<Vertex> {
+		tx :TextureId) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 
 	let z = 0.2;
+	let tex_ind = tx.0;
 
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		color,
+		tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices

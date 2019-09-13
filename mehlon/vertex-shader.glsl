@@ -1,10 +1,12 @@
 #version 140
+in vec2 tex_pos;
+in uint tex_ind;
 in vec3 position;
-in vec4 color;
 in vec3 normal;
 
 out float vlamb;
-out vec4 vcolor;
+out vec2 vtex_pos;
+flat out uint vtex_ind;
 out vec4 vposition;
 
 uniform mat4 pmatrix;
@@ -21,5 +23,6 @@ void main() {
 	// Lambertian shading
 	vlamb = max(dot(dir_light_a, nnormal), 0.2) +
 		max(dot(dir_light_b, nnormal), 0.2);
-	vcolor = color;
+	vtex_pos = vec2(0.0, 0.0);
+	vtex_ind = tex_ind;
 }

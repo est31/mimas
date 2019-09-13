@@ -15,6 +15,7 @@ extern crate sha2;
 extern crate mehlon_server;
 extern crate mehlon_meshgen;
 
+mod assets;
 mod client;
 mod collide;
 mod ui;

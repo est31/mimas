@@ -1,6 +1,7 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
+use glium::texture::texture2d_array::Texture2dArray;
 use glutin::dpi::LogicalPosition;
 use glutin::KeyboardInput;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
@@ -29,7 +30,9 @@ use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mehlon_server::inventory::SelectableInventory;
 use mehlon_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block, ColorCache};
+use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block, TextureIdCache};
+
+use assets::{Assets, UiColors};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
 	InventoryMenu, IDENTITY, render_inventory_hud};
@@ -63,8 +66,11 @@ pub struct Game<C :NetworkClientConn> {
 	config :Config,
 	auth_state :AuthState,
 	params :Option<GameParamsHdl>,
+	ui_colors :Option<UiColors>,
+	texture_id_cache :Option<TextureIdCache>,
+	texture_array :Option<Texture2dArray>,
 
-	meshgen_spawner :Option<Box<dyn FnOnce(ColorCache)>>,
+	meshgen_spawner :Option<Box<dyn FnOnce(TextureIdCache)>>,
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
@@ -168,6 +174,9 @@ impl<C :NetworkClientConn> Game<C> {
 			config,
 			auth_state,
 			params : None,
+			ui_colors : None,
+			texture_id_cache : None,
+			texture_array : None,
 
 			meshgen_spawner : Some(Box::new(move |cache| {
 				thread::spawn(move || {
@@ -290,8 +299,15 @@ impl<C :NetworkClientConn> Game<C> {
 					ServerToClientMsg::GameParams(params) => {
 						let params_arc = Arc::new(params);
 						if let Some(spawner) = self.meshgen_spawner.take() {
-							let cache = mehlon_meshgen::ColorCache::from_hdl(&params_arc);
-							spawner(cache);
+							let mut assets = Assets::new();
+							let cache = TextureIdCache::from_hdl(&params_arc, |color| {
+								assets.add_texture(color)
+							});
+							spawner(cache.clone());
+							self.texture_id_cache = Some(cache);
+							self.ui_colors = Some(UiColors::new(&mut assets));
+							let texture_array = assets.into_texture_array(&self.display).unwrap();
+							self.texture_array = Some(texture_array);
 						} else {
 							// TODO print a warning about duplicate GameParams or sth
 						}
@@ -439,16 +455,22 @@ impl<C :NetworkClientConn> Game<C> {
 			&vmatrix,
 			&pmatrix,
 		);
+		let texture_array = if let Some(texture_array) = &self.texture_array {
+			texture_array
+		} else {
+			return;
+		};
 		// building the uniforms
 		let uniforms = uniform! {
 			vmatrix : vmatrix,
 			pmatrix : pmatrix,
+			texture_arr : texture_array,
 			fog_near_far : [self.config.fog_near, self.config.fog_far]
 		};
 		self.selected_pos = self.params.as_ref().and_then(|params| self.camera.get_selected_pos(&self.map, params));
 		let mut sel_text = "sel = None".to_string();
 		let mut selbuff = Vec::new();
-		if let Some((selected_pos, _)) = self.selected_pos {
+		if let (Some((selected_pos, _)), Some(ui_colors)) = (self.selected_pos, &self.ui_colors) {
 			let blk = self.map.get_blk(selected_pos).unwrap();
 			let blk_name = if let Some(n) = self.params
 					.as_ref()
@@ -462,17 +484,17 @@ impl<C :NetworkClientConn> Game<C> {
 
 			// TODO: only update if the position actually changed from the prior one
 			// this spares us needless chatter with the GPU
-			let vertices = selection_mesh(selected_pos);
+			let vertices = selection_mesh(selected_pos, &ui_colors);
 			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
 		let mut pl_buf = Vec::new();
-		if let Some((own_id, positions)) = &self.player_positions {
+		if let (Some((own_id, positions)), Some(ui_colors)) = (&self.player_positions, &self.ui_colors) {
 			for (id, pos) in positions {
 				if id == own_id {
 					continue;
 				}
-				let v = player_mesh(*pos);
+				let v = player_mesh(*pos, &ui_colors);
 				let vbuff = VertexBuffer::new(&self.display, &v).unwrap();
 				pl_buf.push(vbuff);
 			}
@@ -567,33 +589,35 @@ impl<C :NetworkClientConn> Game<C> {
 				fog_near_far : [40.0f32, 60.0]
 			};
 			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
-			if let (Some(item), Some(game_params)) = (self.sel_inventory.get_selected(), &self.params) {
-				let hand_mesh = hand_mesh(hand_mesh_pos, item, game_params);
+			if let (Some(item), Some(texture_id_cache)) = (self.sel_inventory.get_selected(), &self.texture_id_cache) {
+				let hand_mesh = hand_mesh(hand_mesh_pos, item, texture_id_cache);
 				let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
 				target.draw(&vbuff,
 					&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 					&self.program, &uniforms, &params).unwrap();
 			}
 		}
-		if let Some(params) = &self.params {
+		if let (Some(params), Some(ui_colors)) = (&self.params, &self.ui_colors) {
 			render_inventory_hud(
 				&self.sel_inventory,
+				ui_colors,
 				&mut self.display,
 				&self.program, glyph_brush,
 				params, &mut target);
 		}
 		if self.in_background() {
-			if self.menu_enabled {
-				render_menu(&mut self.display, &self.program, glyph_brush, &mut target);
-			} else if let Some(cw) = &self.chat_window {
-				cw.render(&mut self.display, &self.program, glyph_brush, &mut target);
-			} else if let Some(m) = &mut self.inventory_menu {
+			if let (true, Some(ui_colors)) = (self.menu_enabled, &self.ui_colors) {
+				render_menu(ui_colors, &mut self.display, &self.program, glyph_brush, &mut target);
+			} else if let (Some(cw), Some(ui_colors)) = (&self.chat_window, &self.ui_colors) {
+				cw.render(ui_colors, &mut self.display, &self.program, glyph_brush, &mut target);
+			} else if let (Some(m), Some(ui_colors)) = (&mut self.inventory_menu, &self.ui_colors) {
 				m.render(
+					ui_colors,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 				maybe_inventory_change!(m, self);
 			}
-		} else {
+		} else if let Some(ui_colors) = &self.ui_colors {
 			let params = glium::draw_parameters::DrawParameters {
 				blend :glium::Blend::alpha_blending(),
 				.. Default::default()
@@ -605,9 +629,8 @@ impl<C :NetworkClientConn> Game<C> {
 				fog_near_far : [40.0f32, 60.0]
 			};
 			// Draw crosshair
-			const CROSSHAIR_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
-			let vertices_horiz = square_mesh((20, 2), screen_dims, CROSSHAIR_COLOR);
-			let vertices_vert = square_mesh((2, 20), screen_dims, CROSSHAIR_COLOR);
+			let vertices_horiz = square_mesh((20, 2), screen_dims, ui_colors.crosshair_color);
+			let vertices_vert = square_mesh((2, 20), screen_dims, ui_colors.crosshair_color);
 			let mut vertices = vertices_horiz;
 			vertices.extend_from_slice(&vertices_vert);
 			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
@@ -846,48 +869,44 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 }
 
-fn selection_mesh(pos :Vector3<isize>) -> Vec<Vertex> {
+fn selection_mesh(pos :Vector3<isize>, ui_colors :&UiColors) -> Vec<Vertex> {
 	const DELTA :f32 = 0.05;
 	const DELTAH :f32 = DELTA / 2.0;
-	const COLOR :[f32; 4] = [0.0, 0.0, 0.3, 0.5];
 	let mut vertices = Vec::new();
 
 	push_block(&mut vertices,
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
-		COLOR, COLOR, 1.0 + DELTA, |_| false);
+		ui_colors.block_selection_color, ui_colors.block_selection_color, 1.0 + DELTA, |_| false);
 	vertices
 }
 
-fn player_mesh(pos :Vector3<f32>) -> Vec<Vertex> {
-	const COLORB :[f32; 4] = [0.3, 0.3, 0.5, 1.0];
-	const COLOR_HEAD :[f32; 4] = [0.94, 0.76, 0.49, 1.0];
+fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 1.6 - 0.4],
-		COLORB, COLORB, 0.8, |_| false);
+		ui_colors.color_body, ui_colors.color_body, 0.8, |_| false);
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.8 - 0.4],
-		COLORB, COLORB, 0.8, |_| false);
+		ui_colors.color_body, ui_colors.color_body, 0.8, |_| false);
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.4],
-		COLOR_HEAD, COLOR_HEAD, 0.8, |_| false);
+		ui_colors.color_head, ui_colors.color_head, 0.8, |_| false);
 	vertices
 }
 
 fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
-		params :&GameParamsHdl) -> Vec<Vertex> {
+		texture_id_cache :&TextureIdCache) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
-	let color = if let Some(c) = params.get_color_for_blk(&blk) {
+	let color = if let Some(c) = texture_id_cache.get_color(&blk) {
 		c
 	} else {
 		return vec![];
 	};
-	let colorh = mehlon_meshgen::colorh(color);
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z],
-		color, colorh, 0.5, |_| false);
+		color.0, color.1, 0.5, |_| false);
 	vertices
 }
 

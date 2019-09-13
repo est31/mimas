@@ -11,32 +11,41 @@ use mehlon_server::game_params::GameParamsHdl;
 use mehlon_server::map::MapBlock;
 use nalgebra::Vector3;
 
+#[repr(transparent)]
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub struct TextureId(pub u16);
+
 #[derive(Copy, Clone)]
 pub struct Vertex {
+	pub tex_ind :u16,
 	pub position :[f32; 3],
-	pub color :[f32; 4],
 	pub normal :[f32; 3],
 }
 
-implement_vertex!(Vertex, position, color, normal);
+implement_vertex!(Vertex, tex_ind, position, normal);
 
-pub struct ColorCache {
-	colors :Vec<Option<([f32; 4], [f32; 4])>>,
+#[derive(Clone)]
+pub struct TextureIdCache {
+	fallback_id :TextureId,
+	colors :Vec<Option<(TextureId, TextureId)>>,
 }
 
-impl ColorCache {
-	pub fn from_hdl(hdl :&GameParamsHdl) -> Self {
+impl TextureIdCache {
+	pub fn from_hdl(hdl :&GameParamsHdl,
+			mut col_to_id :impl FnMut([f32; 4]) -> TextureId) -> Self {
+		let fallback_id = col_to_id([0.0, 0.0, 0.0, 1.0]);
 		let colors = hdl.block_params.iter()
-			.map(|p| p.color.map(|c| (c, colorh(c))))
+			.map(|p| p.color.map(|c| (col_to_id(c), col_to_id(colorh(c)))))
 			.collect::<Vec<_>>();
 		Self {
-			colors
+			fallback_id,
+			colors,
 		}
 	}
-	fn get_color(&self, bl :&MapBlock) -> Option<([f32; 4], [f32; 4])> {
+	pub fn get_color(&self, bl :&MapBlock) -> Option<(TextureId, TextureId)> {
 		self.colors.get(bl.id() as usize)
 			.map(|v| *v)
-			.unwrap_or(Some(([0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0])))
+			.unwrap_or(Some((self.fallback_id, self.fallback_id)))
 	}
 }
 
@@ -60,63 +69,63 @@ macro_rules! sign {
 }
 
 macro_rules! rpush_face {
-	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-		$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
 
-		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
 	}
 }
 macro_rules! rpush_face_rev {
-	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { position: [$x, $y, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 
-		$r.push(Vertex { position: [$x, $y + $yd, $z + $zd], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], color: $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { position: [$x + $xsd, $y + $ysd, $z], color : $color, normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 	}
 }
 
 #[inline]
-pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], color :[f32; 4], colorh :[f32; 4], siz :f32, mut blocked :F) {
+pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], tex_ind :TextureId, tex_indh :TextureId, siz :f32, mut blocked :F) {
 	macro_rules! push_face {
-		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-			rpush_face!(r, ($x, $y, $z), ($xsd, $ysd, $yd, $zd), $color);
+		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
+			rpush_face!(r, ($x, $y, $z), ($xsd, $ysd, $yd, $zd), $tex_ind);
 		};
 	}
 	macro_rules! push_face_rev {
-		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $color:expr) => {
-			rpush_face_rev!(r, ($x, $y, $z), ($xsd, $ysd, $yd, $zd), $color);
+		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
+			rpush_face_rev!(r, ($x, $y, $z), ($xsd, $ysd, $yd, $zd), $tex_ind);
 		};
 	}
 	// X-Y face
 	if !blocked([0, 0, -1]) {
-		push_face!((x, y, z), (siz, 0.0, siz, 0.0), color);
+		push_face!((x, y, z), (siz, 0.0, siz, 0.0), tex_ind.0);
 	}
 	// X-Z face
 	if !blocked([0, -1, 0]) {
-		push_face_rev!((x, y, z), (siz, 0.0, 0.0, siz), colorh);
+		push_face_rev!((x, y, z), (siz, 0.0, 0.0, siz), tex_indh.0);
 	}
 	// Y-Z face
 	if !blocked([-1, 0, 0]) {
-		push_face!((x, y, z), (0.0, siz, 0.0, siz), colorh);
+		push_face!((x, y, z), (0.0, siz, 0.0, siz), tex_indh.0);
 	}
 	// X-Y face (z+1)
 	if !blocked([0, 0, 1]) {
-		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), color);
+		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), tex_ind.0);
 	}
 	// X-Z face (y+1)
 	if !blocked([0, 1, 0]) {
-		push_face!((x, y + siz, z), (siz, 0.0, 0.0, siz), colorh);
+		push_face!((x, y + siz, z), (siz, 0.0, 0.0, siz), tex_indh.0);
 	}
 	// Y-Z face (x+1)
 	if !blocked([1, 0, 0]) {
-		push_face_rev!((x + siz, y, z), (0.0, siz, 0.0, siz), colorh);
+		push_face_rev!((x + siz, y, z), (0.0, siz, 0.0, siz), tex_indh.0);
 	}
 }
 
@@ -126,7 +135,7 @@ pub fn colorh(col :[f32; 4]) -> [f32; 4] {
 }
 
 pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
-		cache :&ColorCache) -> Vec<Vertex> {
+		cache :&TextureIdCache) -> Vec<Vertex> {
 	let mut r = Vec::new();
 
 	struct Walker<D> {
@@ -169,7 +178,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	}
 	fn blocked(chunk :&MapChunkData,
 			[xo, yo, zo] :[isize; 3], pos :Vector3<isize>,
-			cache :&ColorCache) -> bool {
+			cache :&TextureIdCache) -> bool {
 		let pos = Vector3::new(pos.x + xo, pos.y + yo, pos.z + zo);
 		let outside = pos.map(|v| v < 0 || v >= CHUNKSIZE);
 		if outside.x || outside.y || outside.z {
@@ -178,33 +187,33 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		let blk = chunk.get_blk(pos);
 		cache.get_color(blk).is_some()
 	};
-	fn get_col(chunk: &MapChunkData, pos :Vector3<isize>,
-			color_halving :bool,
-			offsets :[isize; 3], cache :&ColorCache) -> Option<[f32; 4]> {
+	fn get_tex_ind(chunk: &MapChunkData, pos :Vector3<isize>,
+			side_texture :bool,
+			offsets :[isize; 3], cache :&TextureIdCache) -> Option<TextureId> {
 		let blk = chunk.get_blk(pos);
 		let mut color = cache.get_color(blk);
 		if color.is_some() && blocked(chunk, offsets, pos, cache) {
 			color = None;
 		}
-		if color_halving {
+		if side_texture {
 			color.map(|c| c.1)
 		} else {
 			color.map(|c| c.0)
 		}
 	};
-	fn walk_for_all_blocks<G :FnMut(&mut Walker<[f32; 4]>, Option<[f32; 4]>, Vector3<isize>)>(
+	fn walk_for_all_blocks<G :FnMut(&mut Walker<TextureId>, Option<TextureId>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
 			colorh :bool,
 			offsets :[isize; 3],
 			chunk :&MapChunkData, g :&mut G,
-			cache :&ColorCache) {
+			cache :&TextureIdCache) {
 		for c1 in 0 .. CHUNKSIZE {
 			for c2 in 0 .. CHUNKSIZE {
 				let mut walker = Walker::new();
 				for cinner in 0 .. CHUNKSIZE {
 					let rel_pos = f(c1, c2, cinner);
-					let color = get_col(chunk, rel_pos, colorh, offsets, cache);
-					g(&mut walker, color, rel_pos)
+					let tex_ind = get_tex_ind(chunk, rel_pos, colorh, offsets, cache);
+					g(&mut walker, tex_ind, rel_pos)
 				}
 				let rel_pos = f(c1, c2, CHUNKSIZE);
 				g(&mut walker, None, rel_pos)
@@ -221,9 +230,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
+			walker.next(pos.y as f32, color, |tx, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face!(r, (x, last_y, z), (siz, 0.0, ylen, 0.0), l_col);
+				rpush_face!(r, (x, last_y, z), (siz, 0.0, ylen, 0.0), tx.0);
 			});
 		},
 		cache
@@ -237,9 +246,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.x as f32, color, |l_col, last_x, xlen| {
+			walker.next(pos.x as f32, color, |tx, last_x, xlen| {
 				let (_x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), l_col);
+				rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), tx.0);
 			});
 		},
 		cache
@@ -253,9 +262,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
+			walker.next(pos.y as f32, color, |tx, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), l_col);
+				rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
 			});
 		},
 		cache
@@ -269,9 +278,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
+			walker.next(pos.y as f32, color, |tx, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), l_col);
+				rpush_face_rev!(r, (x, last_y, z + siz), (siz, 0.0, ylen, 0.0), tx.0);
 			});
 		},
 		cache
@@ -285,9 +294,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.x as f32, color, |l_col, last_x, xlen| {
+			walker.next(pos.x as f32, color, |tx, last_x, xlen| {
 				let (_x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), l_col);
+				rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), tx.0);
 			});
 		},
 		cache
@@ -301,9 +310,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		chunk,
 		&mut |walker, color, rel_pos| {
 			let pos = offs + rel_pos;
-			walker.next(pos.y as f32, color, |l_col, last_y, ylen| {
+			walker.next(pos.y as f32, color, |tx, last_y, ylen| {
 				let (x, _y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), l_col);
+				rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
 			});
 		},
 		cache
