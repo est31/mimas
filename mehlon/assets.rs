@@ -7,7 +7,7 @@ use glium::backend::Facade;
 use mehlon_meshgen::TextureId;
 
 pub struct Assets {
-	assets :Vec<[f32; 4]>,
+	assets :Vec<(Vec<f32>, (u32, u32))>,
 }
 
 impl Assets {
@@ -18,20 +18,20 @@ impl Assets {
 	}
 	pub fn add_texture(&mut self, color :[f32; 4]) -> TextureId {
 		let id = self.assets.len();
-		self.assets.push(color);
+		let pixels = color.iter()
+			.chain(color.iter())
+			.chain(color.iter())
+			.chain(color.iter())
+			.map(|v| *v)
+			.collect::<Vec<_>>();
+		self.assets.push((pixels, (2, 2)));
 		TextureId(id as u16)
 	}
 	pub fn into_texture_array<F: Facade>(self,
 			facade :&F) -> Result<Texture2dArray, StrErr> {
-		let imgs = self.assets.iter()
-			.map(|col| {
-				let pixels = col.iter()
-					.chain(col.iter())
-					.chain(col.iter())
-					.chain(col.iter())
-					.map(|v| *v)
-					.collect::<Vec<_>>();
-				RawImage2d::from_raw_rgba(pixels, (2, 2))
+		let imgs = self.assets.into_iter()
+			.map(|(pixels, dimensions)| {
+				RawImage2d::from_raw_rgba(pixels, dimensions)
 			})
 			.collect::<Vec<_>>();
 		let res = Texture2dArray::new(facade, imgs)?;
