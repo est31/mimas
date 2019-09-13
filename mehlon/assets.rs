@@ -47,6 +47,13 @@ impl Assets {
 				let id = self.add_asset(asset);
 				(id, id)
 			},
+			DrawStyle::TextureSidesTop(path_s, path_tb) => {
+				let image_s = load_image(path_s).expect("couldn't load image");
+				let image_tb = load_image(path_tb).expect("couldn't load image");
+				let id_s = self.add_asset(image_s);
+				let id_tb = self.add_asset(image_tb);
+				(id_tb, id_s)
+			},
 		}
 	}
 	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {

@@ -19,6 +19,7 @@ pub type GameParamsHdl = Arc<GameParams>;
 pub enum DrawStyle {
 	Colored([f32; 4]),
 	Texture(String),
+	TextureSidesTop(String, String),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -291,11 +292,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let name_components = parse_block_name(name)?;
 		// unwrap is okay because we have added it in the first pass
 		let id = name_id_map.get_id(name).unwrap();
-		let texture = if let Some(texture) = block.get("texture") {
-			Some(texture.convert::<str>()?)
-		} else {
-			None
-		};
+		let texture = block.get("texture");
 		let color = if let Some(color) = block.get("color") {
 			if color == &Value::Boolean(false) {
 				None
@@ -308,7 +305,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let draw_style = match (color, texture) {
 			(Some(_), Some(_)) => Err("Both color and texture specified")?,
 			(Some(col), None) => Some(DrawStyle::Colored(col)),
-			(None, Some(texture)) => Some(DrawStyle::Texture(texture.to_owned())),
+			(None, Some(Value::String(texture))) => Some(DrawStyle::Texture(texture.to_owned())),
+			(None, Some(arr @ Value::Array(_))) => {
+				let arr :[String; 2] = arr.clone().try_into()?;
+				Some(DrawStyle::TextureSidesTop(arr[0].clone(), arr[1].clone()))
+			},
+			(None, Some(_)) => Err("false type")?,
 			(None, None) => None,
 		};
 		let pointable = block.get("pointable")
