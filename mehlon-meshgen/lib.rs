@@ -78,23 +78,23 @@ macro_rules! sign {
 macro_rules! rpush_face {
 	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
 		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 0.0], position: [$x, $y, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 1.0], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $yd + $zd], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
 
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 1.0], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 1.0], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, $yd + $zd], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $yd + $zd], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
 	}
 }
 macro_rules! rpush_face_rev {
 	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 1.0], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $yd + $zd], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 0.0], position: [$x, $y, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 1.0], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 1.0], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
-		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [1.0, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $yd + $zd], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, $yd + $zd], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xsd + $ysd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
 	}
 }
 

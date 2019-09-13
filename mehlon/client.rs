@@ -2,7 +2,7 @@ use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::texture2d_array::Texture2dArray;
-use glium::uniforms::MagnifySamplerFilter;
+use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
 use glutin::dpi::LogicalPosition;
 use glutin::KeyboardInput;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
@@ -462,6 +462,7 @@ impl<C :NetworkClientConn> Game<C> {
 			return;
 		};
 		let texture_arr = texture_array.sampled()
+			.wrap_function(SamplerWrapFunction::Repeat)
 			.magnify_filter(MagnifySamplerFilter::Nearest);
 		// building the uniforms
 		let uniforms = uniform! {
