@@ -35,22 +35,27 @@ impl Assets {
 		self.assets.push(asset);
 		TextureId(id as u16)
 	}
-	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> TextureId {
-		let asset = match ds {
+	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> (TextureId, TextureId) {
+		match ds {
 			DrawStyle::Colored(color) => {
-				let pixels = std::iter::repeat(color.iter())
-					.take(256)
-					.flatten()
-					.map(|v| *v)
-					.collect::<Vec<_>>();
-				(pixels, (16, 16))
+				let id = self.add_color(*color);
+				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
+				(id, id_h)
 			},
-			DrawStyle::Texture(path) => load_image(path).expect("couldn't load image"),
-		};
-		self.add_asset(asset)
+			DrawStyle::Texture(path) => {
+				let asset = load_image(path).expect("couldn't load image");
+				let id = self.add_asset(asset);
+				(id, id)
+			},
+		}
 	}
 	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {
-		self.add_draw_style(&DrawStyle::Colored(color))
+		let pixels = std::iter::repeat(color.iter())
+			.take(256)
+			.flatten()
+			.map(|v| *v)
+			.collect::<Vec<_>>();
+		self.add_asset((pixels, (16, 16)))
 	}
 	pub fn into_texture_array<F: Facade>(self,
 			facade :&F) -> Result<Texture2dArray, StrErr> {

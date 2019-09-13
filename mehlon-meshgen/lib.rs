@@ -27,22 +27,16 @@ implement_vertex!(Vertex, tex_ind, tex_pos, position, normal);
 
 #[derive(Clone)]
 pub struct TextureIdCache {
-	fallback_id :TextureId,
+	fallback_id :(TextureId, TextureId),
 	texture_ids :Vec<Option<(TextureId, TextureId)>>,
 }
 
 impl TextureIdCache {
 	pub fn from_hdl(hdl :&GameParamsHdl,
-			mut style_to_id :impl FnMut(&DrawStyle) -> TextureId) -> Self {
+			mut style_to_id :impl FnMut(&DrawStyle) -> (TextureId, TextureId)) -> Self {
 		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0]));
 		let texture_ids = hdl.block_params.iter()
-			.map(|p| p.draw_style.as_ref().map(|st| {
-				match st {
-					DrawStyle::Colored(c) => (style_to_id(&DrawStyle::Colored(*c)),
-						style_to_id(&DrawStyle::Colored(colorh(*c)))),
-					ds => (style_to_id(ds), style_to_id(ds)),
-				}
-			}))
+			.map(|p| p.draw_style.as_ref().map(&mut style_to_id))
 			.collect::<Vec<_>>();
 		Self {
 			fallback_id,
@@ -52,7 +46,7 @@ impl TextureIdCache {
 	pub fn get_color(&self, bl :&MapBlock) -> Option<(TextureId, TextureId)> {
 		self.texture_ids.get(bl.id() as usize)
 			.map(|v| *v)
-			.unwrap_or(Some((self.fallback_id, self.fallback_id)))
+			.unwrap_or(Some(self.fallback_id))
 	}
 }
 
