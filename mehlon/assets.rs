@@ -83,7 +83,7 @@ impl Assets {
 			facade :&F) -> Result<Texture2dArray, StrErr> {
 		let imgs = self.assets.into_iter()
 			.map(|(pixels, dimensions)| {
-				RawImage2d::from_raw_rgba(pixels, dimensions)
+				RawImage2d::from_raw_rgba_reversed(&pixels, dimensions)
 			})
 			.collect::<Vec<_>>();
 		let res = Texture2dArray::new(facade, imgs)?;
