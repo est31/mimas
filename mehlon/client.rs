@@ -2,6 +2,7 @@ use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::texture2d_array::Texture2dArray;
+use glium::uniforms::MagnifySamplerFilter;
 use glutin::dpi::LogicalPosition;
 use glutin::KeyboardInput;
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
@@ -460,11 +461,13 @@ impl<C :NetworkClientConn> Game<C> {
 		} else {
 			return;
 		};
+		let texture_arr = texture_array.sampled()
+			.magnify_filter(MagnifySamplerFilter::Nearest);
 		// building the uniforms
 		let uniforms = uniform! {
 			vmatrix : vmatrix,
 			pmatrix : pmatrix,
-			texture_arr : texture_array,
+			texture_arr : texture_arr,
 			fog_near_far : [self.config.fog_near, self.config.fog_far]
 		};
 		self.selected_pos = self.params.as_ref().and_then(|params| self.camera.get_selected_pos(&self.map, params));
