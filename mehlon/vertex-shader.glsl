@@ -23,6 +23,6 @@ void main() {
 	// Lambertian shading
 	vlamb = max(dot(dir_light_a, nnormal), 0.2) +
 		max(dot(dir_light_b, nnormal), 0.2);
-	vtex_pos = vec2(0.0, 0.0);
+	vtex_pos = tex_pos;
 	vtex_ind = tex_ind;
 }

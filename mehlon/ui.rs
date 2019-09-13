@@ -503,35 +503,36 @@ pub fn square_mesh_frac_limits(
 
 	let z = 0.2;
 	let tex_ind = tx.0;
+	let tex_pos = [0.0, 0.0];
 
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		tex_ind,
+		tex_pos, tex_ind,
 		normal :[0.0, 1.0, 0.0],
 	});
 	vertices
