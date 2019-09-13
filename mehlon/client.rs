@@ -29,7 +29,7 @@ use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mehlon_server::inventory::SelectableInventory;
 use mehlon_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block};
+use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block, ColorCache};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
 	InventoryMenu, IDENTITY, render_inventory_hud};
@@ -64,7 +64,7 @@ pub struct Game<C :NetworkClientConn> {
 	auth_state :AuthState,
 	params :Option<GameParamsHdl>,
 
-	meshgen_spawner :Option<Box<dyn FnOnce(GameParamsHdl)>>,
+	meshgen_spawner :Option<Box<dyn FnOnce(ColorCache)>>,
 	meshres_r :MeshResReceiver,
 
 	display :glium::Display,
@@ -169,9 +169,9 @@ impl<C :NetworkClientConn> Game<C> {
 			auth_state,
 			params : None,
 
-			meshgen_spawner : Some(Box::new(move |hdl| {
+			meshgen_spawner : Some(Box::new(move |cache| {
 				thread::spawn(move || {
-					let cache = mehlon_meshgen::ColorCache::from_hdl(&hdl);
+					let cache = cache;
 					while let Ok((p, chunk)) = meshgen_r.recv() {
 						//let start = Instant::now();
 						let mesh = mesh_for_chunk(p, &chunk, &cache);
@@ -290,7 +290,8 @@ impl<C :NetworkClientConn> Game<C> {
 					ServerToClientMsg::GameParams(params) => {
 						let params_arc = Arc::new(params);
 						if let Some(spawner) = self.meshgen_spawner.take() {
-							spawner(params_arc.clone());
+							let cache = mehlon_meshgen::ColorCache::from_hdl(&params_arc);
+							spawner(cache);
 						} else {
 							// TODO print a warning about duplicate GameParams or sth
 						}
