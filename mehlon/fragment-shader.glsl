@@ -12,7 +12,7 @@ uniform vec2 fog_near_far;
 const vec4 fog = vec4(0.5, 0.5, 0.5, 1.0);
 
 void main() {
-	vec4 tcolor = texture(texture_arr, vec3(vtex_pos * 2, vtex_ind));
+	vec4 tcolor = texture(texture_arr, vec3(vtex_pos, vtex_ind));
 
 	vec4 color_lamb = vlamb * tcolor;
 	color_lamb.a = tcolor.a;
