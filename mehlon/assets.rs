@@ -1,4 +1,5 @@
 use mehlon_server::StrErr;
+use mehlon_server::game_params::DrawStyle;
 
 use glium::texture::texture2d_array::Texture2dArray;
 use glium::texture::RawImage2d;
@@ -10,22 +11,43 @@ pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
 }
 
+fn load_image(path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+	let img = image::open(path)?;
+	let img_rgba = img.to_rgba();
+	let dimensions = img_rgba.dimensions();
+	let buf = img_rgba.into_raw()
+		.into_iter()
+		.map(|v| {
+			v as f32 / u8::max_value() as f32
+		})
+		.collect::<Vec<_>>();
+	Ok((buf, dimensions))
+}
+
 impl Assets {
 	pub fn new() -> Self {
 		Self {
 			assets : Vec::new(),
 		}
 	}
-	pub fn add_texture(&mut self, color :[f32; 4]) -> TextureId {
+	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> TextureId {
 		let id = self.assets.len();
-		let pixels = color.iter()
-			.chain(color.iter())
-			.chain(color.iter())
-			.chain(color.iter())
-			.map(|v| *v)
-			.collect::<Vec<_>>();
-		self.assets.push((pixels, (2, 2)));
+		let asset = match ds {
+			DrawStyle::Colored(color) => {
+				let pixels = std::iter::repeat(color.iter())
+					.take(256)
+					.flatten()
+					.map(|v| *v)
+					.collect::<Vec<_>>();
+				(pixels, (16, 16))
+			},
+			DrawStyle::Texture(path) => load_image(path).expect("couldn't load image"),
+		};
+		self.assets.push(asset);
 		TextureId(id as u16)
+	}
+	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {
+		self.add_draw_style(&DrawStyle::Colored(color))
 	}
 	pub fn into_texture_array<F: Facade>(self,
 			facade :&F) -> Result<Texture2dArray, StrErr> {
@@ -53,14 +75,14 @@ pub struct UiColors {
 impl UiColors {
 	pub fn new(assets :&mut Assets) -> Self {
 		Self {
-			background_color : assets.add_texture([0.4, 0.4, 0.4, 0.85]),
-			slot_color : assets.add_texture([0.5, 0.5, 0.5, 0.85]),
-			selected_slot_color : assets.add_texture([0.3, 0.3, 0.3, 0.85]),
-			hovered_slot_color : assets.add_texture([0.8, 0.8, 0.8, 0.85]),
-			block_selection_color : assets.add_texture([0.0, 0.0, 0.3, 0.5]),
-			crosshair_color : assets.add_texture([0.8, 0.8, 0.8, 0.85]),
-			color_body : assets.add_texture([0.3, 0.3, 0.5, 1.0]),
-			color_head : assets.add_texture([0.94, 0.76, 0.49, 1.0]),
+			background_color : assets.add_color([0.4, 0.4, 0.4, 0.85]),
+			slot_color : assets.add_color([0.5, 0.5, 0.5, 0.85]),
+			selected_slot_color : assets.add_color([0.3, 0.3, 0.3, 0.85]),
+			hovered_slot_color : assets.add_color([0.8, 0.8, 0.8, 0.85]),
+			block_selection_color : assets.add_color([0.0, 0.0, 0.3, 0.5]),
+			crosshair_color : assets.add_color([0.8, 0.8, 0.8, 0.85]),
+			color_body : assets.add_color([0.3, 0.3, 0.5, 1.0]),
+			color_head : assets.add_color([0.94, 0.76, 0.49, 1.0]),
 		}
 	}
 }

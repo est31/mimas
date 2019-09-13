@@ -16,8 +16,14 @@ use mapgen::{Schematic, self};
 pub type GameParamsHdl = Arc<GameParams>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DrawStyle {
+	Colored([f32; 4]),
+	Texture(String),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlockParams {
-	pub color :Option<[f32; 4]>,
+	pub draw_style :Option<DrawStyle>,
 	pub pointable :bool,
 	pub display_name :String,
 	pub drops :Stack,
@@ -60,10 +66,16 @@ pub struct GameParams {
 	pub name_id_map :NameIdMap,
 }
 
+impl Default for DrawStyle {
+	fn default() -> Self {
+		DrawStyle::Colored([0.0, 0.0, 0.0, 1.0])
+	}
+}
+
 impl Default for BlockParams {
 	fn default() -> Self {
 		Self {
-			color : Some([0.0, 0.0, 0.0, 1.0]),
+			draw_style : Some(DrawStyle::default()),
 			pointable : true,
 			display_name : String::new(),
 			drops : Stack::Empty,
@@ -279,12 +291,25 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let name_components = parse_block_name(name)?;
 		// unwrap is okay because we have added it in the first pass
 		let id = name_id_map.get_id(name).unwrap();
-		let color = block.read::<Value>("color")?
-			.clone();
-		let color = if color == Value::Boolean(false) {
-			None
+		let texture = if let Some(texture) = block.get("texture") {
+			Some(texture.convert::<str>()?)
 		} else {
-			Some(color.try_into()?)
+			None
+		};
+		let color = if let Some(color) = block.get("color") {
+			if color == &Value::Boolean(false) {
+				None
+			} else {
+				Some(color.clone().try_into()?)
+			}
+		} else {
+			None
+		};
+		let draw_style = match (color, texture) {
+			(Some(_), Some(_)) => Err("Both color and texture specified")?,
+			(Some(col), None) => Some(DrawStyle::Colored(col)),
+			(None, Some(texture)) => Some(DrawStyle::Texture(texture.to_owned())),
+			(None, None) => None,
 		};
 		let pointable = block.get("pointable")
 			.unwrap_or(&Value::Boolean(true));
@@ -301,7 +326,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			Stack::with(id, 1)
 		};
 		let block_params = BlockParams {
-			color,
+			draw_style,
 			pointable,
 			display_name,
 			drops,

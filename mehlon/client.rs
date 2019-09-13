@@ -300,8 +300,8 @@ impl<C :NetworkClientConn> Game<C> {
 						let params_arc = Arc::new(params);
 						if let Some(spawner) = self.meshgen_spawner.take() {
 							let mut assets = Assets::new();
-							let cache = TextureIdCache::from_hdl(&params_arc, |color| {
-								assets.add_texture(color)
+							let cache = TextureIdCache::from_hdl(&params_arc, |ds| {
+								assets.add_draw_style(ds)
 							});
 							spawner(cache.clone());
 							self.texture_id_cache = Some(cache);

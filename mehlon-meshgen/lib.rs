@@ -7,7 +7,7 @@ extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
 	CHUNKSIZE};
-use mehlon_server::game_params::GameParamsHdl;
+use mehlon_server::game_params::{GameParamsHdl, DrawStyle};
 use mehlon_server::map::MapBlock;
 use nalgebra::Vector3;
 
@@ -28,23 +28,29 @@ implement_vertex!(Vertex, tex_ind, tex_pos, position, normal);
 #[derive(Clone)]
 pub struct TextureIdCache {
 	fallback_id :TextureId,
-	colors :Vec<Option<(TextureId, TextureId)>>,
+	texture_ids :Vec<Option<(TextureId, TextureId)>>,
 }
 
 impl TextureIdCache {
 	pub fn from_hdl(hdl :&GameParamsHdl,
-			mut col_to_id :impl FnMut([f32; 4]) -> TextureId) -> Self {
-		let fallback_id = col_to_id([0.0, 0.0, 0.0, 1.0]);
-		let colors = hdl.block_params.iter()
-			.map(|p| p.color.map(|c| (col_to_id(c), col_to_id(colorh(c)))))
+			mut style_to_id :impl FnMut(&DrawStyle) -> TextureId) -> Self {
+		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0]));
+		let texture_ids = hdl.block_params.iter()
+			.map(|p| p.draw_style.as_ref().map(|st| {
+				match st {
+					DrawStyle::Colored(c) => (style_to_id(&DrawStyle::Colored(*c)),
+						style_to_id(&DrawStyle::Colored(colorh(*c)))),
+					ds => (style_to_id(ds), style_to_id(ds)),
+				}
+			}))
 			.collect::<Vec<_>>();
 		Self {
 			fallback_id,
-			colors,
+			texture_ids,
 		}
 	}
 	pub fn get_color(&self, bl :&MapBlock) -> Option<(TextureId, TextureId)> {
-		self.colors.get(bl.id() as usize)
+		self.texture_ids.get(bl.id() as usize)
 			.map(|v| *v)
 			.unwrap_or(Some((self.fallback_id, self.fallback_id)))
 	}

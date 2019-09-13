@@ -11,6 +11,7 @@ extern crate rand;
 extern crate structopt;
 extern crate srp;
 extern crate sha2;
+extern crate image;
 
 extern crate mehlon_server;
 extern crate mehlon_meshgen;
