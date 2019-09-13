@@ -604,8 +604,9 @@ impl<C :NetworkClientConn> Game<C> {
 				fog_near_far : [40.0f32, 60.0]
 			};
 			// Draw crosshair
-			let vertices_horiz = square_mesh((20, 2), screen_dims, [0.8, 0.8, 0.8, 0.85]);
-			let vertices_vert = square_mesh((2, 20), screen_dims, [0.8, 0.8, 0.8, 0.85]);
+			const CROSSHAIR_COLOR :[f32; 4] = [0.8, 0.8, 0.8, 0.85];
+			let vertices_horiz = square_mesh((20, 2), screen_dims, CROSSHAIR_COLOR);
+			let vertices_vert = square_mesh((2, 20), screen_dims, CROSSHAIR_COLOR);
 			let mut vertices = vertices_horiz;
 			vertices.extend_from_slice(&vertices_vert);
 			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
