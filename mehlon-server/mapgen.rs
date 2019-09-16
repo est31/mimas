@@ -176,8 +176,13 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = role.water;
 					}
 					if elg > 0 && elg < CHUNKSIZE {
+						let in_desert = ground_block == role.sand;
 						// Tree spawning
-						let tree_density = 0.4;
+						let tree_density = if in_desert {
+							0.1
+						} else {
+							0.4
+						};
 						let macro_density = mtnoise.get(p);
 						let macro_density = if macro_density < 0.0 {
 							0.0
@@ -188,8 +193,12 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
-							if tpcg.gen::<f64>() > 0.9 {
-								let in_desert = ground_block == role.sand;
+							let limit = if in_desert {
+								0.99
+							} else {
+								0.91
+							};
+							if tpcg.gen::<f64>() > limit {
 								res.tree_spawn_points.push((pos + Vector3::new(x, y, elg), in_desert));
 							}
 						}
