@@ -60,7 +60,7 @@ impl Assets {
 			DrawStyle::Colored(color) => {
 				let id = self.add_color(*color);
 				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
-				BlockTextureIds::new(id, id_h)
+				BlockTextureIds::new_tb(id, id_h)
 			},
 			DrawStyle::Texture(path) => {
 				let asset = load_image(path).expect("couldn't load image");
@@ -72,7 +72,16 @@ impl Assets {
 				let image_tb = load_image(path_tb).expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_tb = self.add_asset(image_tb);
-				BlockTextureIds::new(id_tb, id_s)
+				BlockTextureIds::new_tb(id_tb, id_s)
+			},
+			DrawStyle::TextureSidesTopBottom(path_s, path_t, path_b) => {
+				let image_s = load_image(path_s).expect("couldn't load image");
+				let image_t = load_image(path_t).expect("couldn't load image");
+				let image_b = load_image(path_b).expect("couldn't load image");
+				let id_s = self.add_asset(image_s);
+				let id_t = self.add_asset(image_t);
+				let id_b = self.add_asset(image_b);
+				BlockTextureIds::new(id_s, id_t, id_b)
 			},
 		}
 	}

@@ -28,19 +28,28 @@ implement_vertex!(Vertex, tex_ind, tex_pos, position, normal);
 #[derive(Copy, Clone)]
 pub struct BlockTextureIds {
 	pub id_sides :TextureId,
-	pub id_top_bottom :TextureId,
+	pub id_top :TextureId,
+	pub id_bottom :TextureId,
 }
 
 impl BlockTextureIds {
 	pub fn uniform(id :TextureId) -> Self {
 		Self {
 			id_sides : id,
-			id_top_bottom : id,
+			id_top : id,
+			id_bottom : id,
 		}
 	}
-	pub fn new(id_top_bottom :TextureId, id_sides :TextureId) -> Self {
+	pub fn new_tb(id_top_bottom :TextureId, id_sides :TextureId) -> Self {
 		Self {
-			id_sides, id_top_bottom,
+			id_sides,
+			id_top : id_top_bottom,
+			id_bottom : id_top_bottom,
+		}
+	}
+	pub fn new(id_sides :TextureId, id_top :TextureId, id_bottom :TextureId, ) -> Self {
+		Self {
+			id_sides, id_top, id_bottom,
 		}
 	}
 }
@@ -126,7 +135,7 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 	}
 	// X-Y face
 	if !blocked([0, 0, -1]) {
-		push_face!((x, y, z), (siz, 0.0, siz, 0.0), block_ids.id_top_bottom.0);
+		push_face!((x, y, z), (siz, 0.0, siz, 0.0), block_ids.id_bottom.0);
 	}
 	// X-Z face
 	if !blocked([0, -1, 0]) {
@@ -138,7 +147,7 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 	}
 	// X-Y face (z+1)
 	if !blocked([0, 0, 1]) {
-		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), block_ids.id_top_bottom.0);
+		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), block_ids.id_top.0);
 	}
 	// X-Z face (y+1)
 	if !blocked([0, 1, 0]) {
@@ -243,7 +252,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		|bti| bti.id_top_bottom,
+		|bti| bti.id_bottom,
 		[0, 0, -1],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -291,7 +300,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (z+1) (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		|bti| bti.id_top_bottom,
+		|bti| bti.id_top,
 		[0, 0, 1],
 		chunk,
 		&mut |walker, color, rel_pos| {

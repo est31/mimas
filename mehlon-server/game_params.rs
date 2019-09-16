@@ -20,6 +20,7 @@ pub enum DrawStyle {
 	Colored([f32; 4]),
 	Texture(String),
 	TextureSidesTop(String, String),
+	TextureSidesTopBottom(String, String, String),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -306,10 +307,15 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			(Some(_), Some(_)) => Err("Both color and texture specified")?,
 			(Some(col), None) => Some(DrawStyle::Colored(col)),
 			(None, Some(Value::String(texture))) => Some(DrawStyle::Texture(texture.to_owned())),
-			(None, Some(arr @ Value::Array(_))) => {
-				let arr :[String; 2] = arr.clone().try_into()?;
+			(None, Some(Value::Array(arr))) if arr.len() == 2 => {
+				let arr :[String; 2] = Value::Array(arr.clone()).try_into()?;
 				Some(DrawStyle::TextureSidesTop(arr[0].clone(), arr[1].clone()))
 			},
+			(None, Some(Value::Array(arr))) if arr.len() == 3 => {
+				let arr :[String; 3] = Value::Array(arr.clone()).try_into()?;
+				Some(DrawStyle::TextureSidesTopBottom(arr[0].clone(), arr[1].clone(), arr[2].clone()))
+			},
+			(None, Some(Value::Array(arr))) => Err(format!("false number of textures: {}", arr.len()))?,
 			(None, Some(_)) => Err("false type")?,
 			(None, None) => None,
 		};
