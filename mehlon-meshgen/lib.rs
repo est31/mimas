@@ -209,22 +209,18 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		cache.get_texture_ids(blk).is_some()
 	};
 	fn get_tex_ind(chunk: &MapChunkData, pos :Vector3<isize>,
-			side_texture :bool,
-			offsets :[isize; 3], cache :&TextureIdCache) -> Option<TextureId> {
+			offsets :[isize; 3], cache :&TextureIdCache) -> Option<BlockTextureIds> {
 		let blk = chunk.get_blk(pos);
-		let mut color = cache.get_texture_ids(blk);
-		if color.is_some() && blocked(chunk, offsets, pos, cache) {
-			color = None;
-		}
-		if side_texture {
-			color.map(|c| c.id_sides)
+		let texture_ids = cache.get_texture_ids(blk);
+		if texture_ids.is_some() && blocked(chunk, offsets, pos, cache) {
+			None
 		} else {
-			color.map(|c| c.id_top_bottom)
+			texture_ids
 		}
 	};
 	fn walk_for_all_blocks<G :FnMut(&mut Walker<TextureId>, Option<TextureId>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
-			colorh :bool,
+			face :fn(BlockTextureIds) -> TextureId,
 			offsets :[isize; 3],
 			chunk :&MapChunkData, g :&mut G,
 			cache :&TextureIdCache) {
@@ -233,7 +229,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				let mut walker = Walker::new();
 				for cinner in 0 .. CHUNKSIZE {
 					let rel_pos = f(c1, c2, cinner);
-					let tex_ind = get_tex_ind(chunk, rel_pos, colorh, offsets, cache);
+					let texture_ids = get_tex_ind(chunk, rel_pos, offsets, cache);
+					let tex_ind = texture_ids.map(face);
 					g(&mut walker, tex_ind, rel_pos)
 				}
 				let rel_pos = f(c1, c2, CHUNKSIZE);
@@ -246,7 +243,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		false,
+		|bti| bti.id_top_bottom,
 		[0, 0, -1],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -262,7 +259,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Z face (unify over x)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(cinner, c1, c2),
-		true,
+		|bti| bti.id_sides,
 		[0, -1, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -278,7 +275,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// Y-Z face (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		true,
+		|bti| bti.id_sides,
 		[-1, 0, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -294,7 +291,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Y face (z+1) (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		false,
+		|bti| bti.id_top_bottom,
 		[0, 0, 1],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -310,7 +307,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// X-Z face (y+1) (unify over x)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(cinner, c1, c2),
-		true,
+		|bti| bti.id_sides,
 		[0, 1, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
@@ -326,7 +323,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 	// Y-Z face (x+1) (unify over y)
 	walk_for_all_blocks(
 		|c1, c2, cinner| Vector3::new(c1, cinner, c2),
-		true,
+		|bti| bti.id_sides,
 		[1, 0, 0],
 		chunk,
 		&mut |walker, color, rel_pos| {
