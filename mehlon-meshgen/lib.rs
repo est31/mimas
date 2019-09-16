@@ -38,7 +38,7 @@ impl BlockTextureIds {
 			id_top_bottom : id,
 		}
 	}
-	pub fn new(id_sides :TextureId, id_top_bottom :TextureId) -> Self {
+	pub fn new(id_top_bottom :TextureId, id_sides :TextureId) -> Self {
 		Self {
 			id_sides, id_top_bottom,
 		}
