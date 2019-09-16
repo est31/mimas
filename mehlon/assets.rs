@@ -6,7 +6,7 @@ use glium::texture::RawImage2d;
 use glium::backend::Facade;
 use image::{RgbaImage, Pixel};
 
-use mehlon_meshgen::TextureId;
+use mehlon_meshgen::{TextureId, BlockTextureIds};
 
 pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
@@ -55,24 +55,24 @@ impl Assets {
 		self.assets.push(asset);
 		TextureId(id as u16)
 	}
-	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> (TextureId, TextureId) {
+	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> BlockTextureIds {
 		match ds {
 			DrawStyle::Colored(color) => {
 				let id = self.add_color(*color);
 				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
-				(id, id_h)
+				BlockTextureIds::new(id, id_h)
 			},
 			DrawStyle::Texture(path) => {
 				let asset = load_image(path).expect("couldn't load image");
 				let id = self.add_asset(asset);
-				(id, id)
+				BlockTextureIds::uniform(id)
 			},
 			DrawStyle::TextureSidesTop(path_s, path_tb) => {
 				let image_s = load_image(path_s).expect("couldn't load image");
 				let image_tb = load_image(path_tb).expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_tb = self.add_asset(image_tb);
-				(id_tb, id_s)
+				BlockTextureIds::new(id_tb, id_s)
 			},
 		}
 	}

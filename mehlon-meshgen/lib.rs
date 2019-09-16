@@ -25,15 +25,35 @@ pub struct Vertex {
 
 implement_vertex!(Vertex, tex_ind, tex_pos, position, normal);
 
+#[derive(Copy, Clone)]
+pub struct BlockTextureIds {
+	pub id_sides :TextureId,
+	pub id_top_bottom :TextureId,
+}
+
+impl BlockTextureIds {
+	pub fn uniform(id :TextureId) -> Self {
+		Self {
+			id_sides : id,
+			id_top_bottom : id,
+		}
+	}
+	pub fn new(id_sides :TextureId, id_top_bottom :TextureId) -> Self {
+		Self {
+			id_sides, id_top_bottom,
+		}
+	}
+}
+
 #[derive(Clone)]
 pub struct TextureIdCache {
-	fallback_id :(TextureId, TextureId),
-	texture_ids :Vec<Option<(TextureId, TextureId)>>,
+	fallback_id :BlockTextureIds,
+	texture_ids :Vec<Option<BlockTextureIds>>,
 }
 
 impl TextureIdCache {
 	pub fn from_hdl(hdl :&GameParamsHdl,
-			mut style_to_id :impl FnMut(&DrawStyle) -> (TextureId, TextureId)) -> Self {
+			mut style_to_id :impl FnMut(&DrawStyle) -> BlockTextureIds) -> Self {
 		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0]));
 		let texture_ids = hdl.block_params.iter()
 			.map(|p| p.draw_style.as_ref().map(&mut style_to_id))
@@ -43,7 +63,7 @@ impl TextureIdCache {
 			texture_ids,
 		}
 	}
-	pub fn get_color(&self, bl :&MapBlock) -> Option<(TextureId, TextureId)> {
+	pub fn get_texture_ids(&self, bl :&MapBlock) -> Option<BlockTextureIds> {
 		self.texture_ids.get(bl.id() as usize)
 			.map(|v| *v)
 			.unwrap_or(Some(self.fallback_id))
@@ -186,20 +206,20 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 			return false;
 		}
 		let blk = chunk.get_blk(pos);
-		cache.get_color(blk).is_some()
+		cache.get_texture_ids(blk).is_some()
 	};
 	fn get_tex_ind(chunk: &MapChunkData, pos :Vector3<isize>,
 			side_texture :bool,
 			offsets :[isize; 3], cache :&TextureIdCache) -> Option<TextureId> {
 		let blk = chunk.get_blk(pos);
-		let mut color = cache.get_color(blk);
+		let mut color = cache.get_texture_ids(blk);
 		if color.is_some() && blocked(chunk, offsets, pos, cache) {
 			color = None;
 		}
 		if side_texture {
-			color.map(|c| c.1)
+			color.map(|c| c.id_sides)
 		} else {
-			color.map(|c| c.0)
+			color.map(|c| c.id_top_bottom)
 		}
 	};
 	fn walk_for_all_blocks<G :FnMut(&mut Walker<TextureId>, Option<TextureId>, Vector3<isize>)>(

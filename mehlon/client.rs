@@ -902,15 +902,15 @@ fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
 		texture_id_cache :&TextureIdCache) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
-	let color = if let Some(c) = texture_id_cache.get_color(&blk) {
-		c
+	let texture_ids = if let Some(ids) = texture_id_cache.get_texture_ids(&blk) {
+		ids
 	} else {
 		return vec![];
 	};
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z],
-		color.0, color.1, 0.5, |_| false);
+		texture_ids.id_sides, texture_ids.id_top_bottom, 0.5, |_| false);
 	vertices
 }
 
