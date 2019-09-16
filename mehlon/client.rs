@@ -1,7 +1,7 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
-use glium::texture::texture2d_array::Texture2dArray;
+use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
 use glutin::dpi::LogicalPosition;
 use glutin::KeyboardInput;
@@ -69,7 +69,7 @@ pub struct Game<C :NetworkClientConn> {
 	params :Option<GameParamsHdl>,
 	ui_colors :Option<UiColors>,
 	texture_id_cache :Option<TextureIdCache>,
-	texture_array :Option<Texture2dArray>,
+	texture_array :Option<SrgbTexture2dArray>,
 
 	meshgen_spawner :Option<Box<dyn FnOnce(TextureIdCache)>>,
 	meshres_r :MeshResReceiver,

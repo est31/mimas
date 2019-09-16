@@ -1,7 +1,7 @@
 use mehlon_server::StrErr;
 use mehlon_server::game_params::DrawStyle;
 
-use glium::texture::texture2d_array::Texture2dArray;
+use glium::texture::SrgbTexture2dArray;
 use glium::texture::RawImage2d;
 use glium::backend::Facade;
 use image::{RgbaImage, Pixel};
@@ -85,13 +85,13 @@ impl Assets {
 		self.add_asset((pixels, (16, 16)))
 	}
 	pub fn into_texture_array<F: Facade>(self,
-			facade :&F) -> Result<Texture2dArray, StrErr> {
+			facade :&F) -> Result<SrgbTexture2dArray, StrErr> {
 		let imgs = self.assets.into_iter()
 			.map(|(pixels, dimensions)| {
 				RawImage2d::from_raw_rgba_reversed(&pixels, dimensions)
 			})
 			.collect::<Vec<_>>();
-		let res = Texture2dArray::new(facade, imgs)?;
+		let res = SrgbTexture2dArray::new(facade, imgs)?;
 		Ok(res)
 	}
 }
