@@ -113,7 +113,7 @@ macro_rules! rpush_face_rev {
 }
 
 #[inline]
-pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], tex_ind :TextureId, tex_indh :TextureId, siz :f32, mut blocked :F) {
+pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], block_ids :BlockTextureIds, siz :f32, mut blocked :F) {
 	macro_rules! push_face {
 		(($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), $tex_ind:expr) => {
 			rpush_face!(r, ($x, $y, $z), ($xsd, $ysd, $yd, $zd), $tex_ind);
@@ -126,27 +126,27 @@ pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :
 	}
 	// X-Y face
 	if !blocked([0, 0, -1]) {
-		push_face!((x, y, z), (siz, 0.0, siz, 0.0), tex_ind.0);
+		push_face!((x, y, z), (siz, 0.0, siz, 0.0), block_ids.id_top_bottom.0);
 	}
 	// X-Z face
 	if !blocked([0, -1, 0]) {
-		push_face_rev!((x, y, z), (siz, 0.0, 0.0, siz), tex_indh.0);
+		push_face_rev!((x, y, z), (siz, 0.0, 0.0, siz), block_ids.id_sides.0);
 	}
 	// Y-Z face
 	if !blocked([-1, 0, 0]) {
-		push_face!((x, y, z), (0.0, siz, 0.0, siz), tex_indh.0);
+		push_face!((x, y, z), (0.0, siz, 0.0, siz), block_ids.id_sides.0);
 	}
 	// X-Y face (z+1)
 	if !blocked([0, 0, 1]) {
-		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), tex_ind.0);
+		push_face_rev!((x, y, z + siz), (siz, 0.0, siz, 0.0), block_ids.id_top_bottom.0);
 	}
 	// X-Z face (y+1)
 	if !blocked([0, 1, 0]) {
-		push_face!((x, y + siz, z), (siz, 0.0, 0.0, siz), tex_indh.0);
+		push_face!((x, y + siz, z), (siz, 0.0, 0.0, siz), block_ids.id_sides.0);
 	}
 	// Y-Z face (x+1)
 	if !blocked([1, 0, 0]) {
-		push_face_rev!((x + siz, y, z), (0.0, siz, 0.0, siz), tex_indh.0);
+		push_face_rev!((x + siz, y, z), (0.0, siz, 0.0, siz), block_ids.id_sides.0);
 	}
 }
 

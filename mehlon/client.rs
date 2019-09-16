@@ -31,7 +31,8 @@ use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mehlon_server::inventory::SelectableInventory;
 use mehlon_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block, TextureIdCache};
+use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block,
+	BlockTextureIds, TextureIdCache};
 
 use assets::{Assets, UiColors};
 
@@ -878,24 +879,29 @@ fn selection_mesh(pos :Vector3<isize>, ui_colors :&UiColors) -> Vec<Vertex> {
 	const DELTAH :f32 = DELTA / 2.0;
 	let mut vertices = Vec::new();
 
+	let texture_ids = BlockTextureIds::uniform(ui_colors.block_selection_color);
+
 	push_block(&mut vertices,
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
-		ui_colors.block_selection_color, ui_colors.block_selection_color, 1.0 + DELTA, |_| false);
+		texture_ids, 1.0 + DELTA, |_| false);
 	vertices
 }
 
 fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 
+	let texture_ids_body = BlockTextureIds::uniform(ui_colors.color_body);
+	let texture_ids_head = BlockTextureIds::uniform(ui_colors.color_head);
+
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 1.6 - 0.4],
-		ui_colors.color_body, ui_colors.color_body, 0.8, |_| false);
+		texture_ids_body, 0.8, |_| false);
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.8 - 0.4],
-		ui_colors.color_body, ui_colors.color_body, 0.8, |_| false);
+		texture_ids_body, 0.8, |_| false);
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.4],
-		ui_colors.color_head, ui_colors.color_head, 0.8, |_| false);
+		texture_ids_head, 0.8, |_| false);
 	vertices
 }
 
@@ -910,7 +916,7 @@ fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z],
-		texture_ids.id_sides, texture_ids.id_top_bottom, 0.5, |_| false);
+		texture_ids, 0.5, |_| false);
 	vertices
 }
 
