@@ -17,7 +17,7 @@ glium = "0.25"
 glium-glyph = "0.6"
 rand_pcg = "0.2"
 rand = "0.7"
-structopt = "0.2"
+structopt = "0.3"
 srp = "0.4"
 sha2 = "0.8"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
