@@ -66,56 +66,57 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 
 
 	let (driver, _, incoming) = endpoint.bind(addr)?;
-	runtime.spawn(incoming.fold(conn_send, move |conn_send, conn_tup| {
-		let (connection_drv, connection, incoming) = conn_tup;
-		current_thread::spawn(connection_drv
-			.map_err(|e| eprintln!("Connection driver error: {}", e)));
-		let addr = connection.remote_address();
-		let sender_clone = conn_send.clone();
-		current_thread::spawn(
-			incoming
-				.map_err(move |e| eprintln!("Connection terminated: {}", e))
-				.into_future()
-				// Only regard the first stream as new connection
-				.and_then(move |(stream, _incoming)| {
-					let (wtr, rdr) = match stream {
-						Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
-						None | Some(NewStream::Uni(_)) => return Ok(()),
-					};
-					let (msg_stream, rcv, snd) = QuicMsgStream::new();
+	runtime.spawn(incoming.fold(conn_send, move |conn_send, connecting| {
+		connecting.and_then(|new_conn| {
+			current_thread::spawn(new_conn.driver
+				.map_err(|e| eprintln!("Connection driver error: {}", e)));
+			let addr = new_conn.connection.remote_address();
+			let sender_clone = conn_send.clone();
+			current_thread::spawn(
+				new_conn.streams
+					.map_err(move |e| eprintln!("Connection terminated: {}", e))
+					.into_future()
+					// Only regard the first stream as new connection
+					.and_then(move |(stream, _incoming)| {
+						let (wtr, rdr) = match stream {
+							Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
+							None | Some(NewStream::Uni(_)) => return Ok(()),
+						};
+						let (msg_stream, rcv, snd) = QuicMsgStream::new();
 
-					let conn = QuicServerConn {
-						stream : msg_stream,
-						addr,
-					};
-					sender_clone.send(conn);
+						let conn = QuicServerConn {
+							stream : msg_stream,
+							addr,
+						};
+						sender_clone.send(conn);
 
-					spawn_msg_rcv_task(rdr, snd);
+						spawn_msg_rcv_task(rdr, snd);
 
-					current_thread::spawn(
-						rcv.fold(wtr, |wtr, msg| {
-							let len_buf = (msg.len() as u64).to_be_bytes();
-							tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-								.map(|(wtr, _msg)| wtr)
-								.and_then(|wtr| {
-									tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-										.map(|(wtr, _msg)| wtr)
-								})
-						})
-						// Gracefully terminate the stream
-						.and_then(|wtr| {
-							tokio::io::shutdown(wtr)
-								.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
-						})
-						.map(|_| ())
-					);
+						current_thread::spawn(
+							rcv.fold(wtr, |wtr, msg| {
+								let len_buf = (msg.len() as u64).to_be_bytes();
+								tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
+									.map(|(wtr, _msg)| wtr)
+									.and_then(|wtr| {
+										tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
+											.map(|(wtr, _msg)| wtr)
+									})
+							})
+							// Gracefully terminate the stream
+							.and_then(|wtr| {
+								tokio::io::shutdown(wtr)
+									.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
+							})
+							.map(|_| ())
+						);
 
-					Ok(())
-				})
-				.map_err(move |_e| eprintln!("error"))
-				.map(|_| {}),
-		);
-		Ok(conn_send)
+						Ok(())
+					})
+					.map_err(move |_e| eprintln!("error"))
+					.map(|_| {}),
+			);
+			Ok(conn_send)
+		}).map_err(|_| {})
 	}).map(|_| {}));
     runtime.block_on(driver)?;
 	Ok(())
@@ -173,11 +174,10 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 	runtime.block_on(
 		endpoint_future
 		.map_err(|e| {eprintln!("Net Error: {:?}", e); })
-		.and_then(move |conn| {
+		.and_then(move |new_conn| {
 			println!("connected to server.");
-			let (driver, conn, _incoming) = conn;
-			current_thread::spawn(driver.map_err(|e| eprintln!("connection driver error: {}", e)));
-			let stream = conn.open_bi();
+			current_thread::spawn(new_conn.driver.map_err(|e| eprintln!("connection driver error: {}", e)));
+			let stream = new_conn.connection.open_bi();
 			stream.map_err(|e| {eprintln!("Net Error: {:?}", e); })
 			.and_then(move |stream| {
 				let (wtr, rdr) = stream;
