@@ -303,7 +303,7 @@ impl<C :NetworkClientConn> Game<C> {
 						if let Some(spawner) = self.meshgen_spawner.take() {
 							let mut assets = Assets::new();
 							let cache = TextureIdCache::from_hdl(&params_arc, |ds| {
-								assets.add_draw_style(ds)
+								assets.add_draw_style(&params_arc, ds)
 							});
 							spawner(cache.clone());
 							self.texture_id_cache = Some(cache);

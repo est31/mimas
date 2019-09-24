@@ -1,10 +1,15 @@
 use mehlon_server::StrErr;
-use mehlon_server::game_params::DrawStyle;
+use mehlon_server::game_params::{GameParamsHdl, DrawStyle};
+
+use std::fs::File;
+use std::io::Read;
 
 use glium::texture::SrgbTexture2dArray;
 use glium::texture::RawImage2d;
 use glium::backend::Facade;
 use image::{RgbaImage, Pixel};
+
+use sha2::{Sha256, Digest};
 
 use mehlon_meshgen::{TextureId, BlockTextureIds};
 
@@ -12,14 +17,32 @@ pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
 }
 
-fn load_image_inner(path :&str) -> Result<RgbaImage, StrErr> {
-	let img = image::open(path)?;
+fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage, StrErr> {
+	let mut file = File::open(&path)?;
+	let mut buf = Vec::new();
+	file.read_to_end(&mut buf)?;
+
+	let found_hash = {
+		let mut hasher = Sha256::new();
+		hasher.input(&buf);
+		hasher.result().as_slice().to_owned()
+	};
+	let expected_hash = game_params.texture_hashes.get(&path.to_owned());
+	if let Some(expected_hash) = expected_hash {
+		if found_hash.as_slice() != expected_hash.as_slice() {
+			Err(format!("Hash mismatch for texture {}", path))?
+		}
+	} else {
+		Err(format!("Couldn't find hash for texture {}", path))?
+	}
+
+	let img = image::load_from_memory(&buf)?;
 	Ok(img.to_rgba())
 }
 
-fn load_image(path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+fn load_image(game_params :&GameParamsHdl, path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
 	let mut imgs_iter = path.split("^")
-		.map(|p| load_image_inner(p));
+		.map(|p| load_image_inner(game_params, p));
 	let mut image = imgs_iter.next().ok_or("No image path specified")??;
 	let imgs = imgs_iter.collect::<Result<Vec<_>, StrErr>>()?;
 	for overlay in imgs.iter() {
@@ -55,7 +78,8 @@ impl Assets {
 		self.assets.push(asset);
 		TextureId(id as u16)
 	}
-	pub fn add_draw_style(&mut self, ds :&DrawStyle) -> BlockTextureIds {
+	pub fn add_draw_style(&mut self, game_params :&GameParamsHdl,
+			ds :&DrawStyle) -> BlockTextureIds {
 		match ds {
 			DrawStyle::Colored(color) => {
 				let id = self.add_color(*color);
@@ -63,21 +87,27 @@ impl Assets {
 				BlockTextureIds::new_tb(id, id_h)
 			},
 			DrawStyle::Texture(path) => {
-				let asset = load_image(path).expect("couldn't load image");
+				let asset = load_image(game_params, path)
+					.expect("couldn't load image");
 				let id = self.add_asset(asset);
 				BlockTextureIds::uniform(id)
 			},
 			DrawStyle::TextureSidesTop(path_s, path_tb) => {
-				let image_s = load_image(path_s).expect("couldn't load image");
-				let image_tb = load_image(path_tb).expect("couldn't load image");
+				let image_s = load_image(game_params, path_s)
+					.expect("couldn't load image");
+				let image_tb = load_image(game_params, path_tb)
+					.expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_tb = self.add_asset(image_tb);
 				BlockTextureIds::new_tb(id_tb, id_s)
 			},
 			DrawStyle::TextureSidesTopBottom(path_s, path_t, path_b) => {
-				let image_s = load_image(path_s).expect("couldn't load image");
-				let image_t = load_image(path_t).expect("couldn't load image");
-				let image_b = load_image(path_b).expect("couldn't load image");
+				let image_s = load_image(game_params, path_s)
+					.expect("couldn't load image");
+				let image_t = load_image(game_params, path_t)
+					.expect("couldn't load image");
+				let image_b = load_image(game_params, path_b)
+					.expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_t = self.add_asset(image_t);
 				let id_b = self.add_asset(image_b);

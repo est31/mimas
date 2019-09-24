@@ -2,7 +2,8 @@ use crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
 use toml::value::{Value, Array};
-use std::fs::read_to_string;
+use std::fs::{read_to_string, File};
+use std::path::Path;
 use map::MapBlock;
 use super::StrErr;
 use toml_util::TomlReadExt;
@@ -12,6 +13,7 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use inventory::Stack;
 use mapgen::{Schematic, self};
+use sha2::{Sha256, Digest};
 
 pub type GameParamsHdl = Arc<GameParams>;
 
@@ -66,6 +68,7 @@ pub struct GameParams {
 	pub block_roles :BlockRoles,
 	pub schematics :Schematics,
 	pub name_id_map :NameIdMap,
+	pub texture_hashes :HashMap<String, Vec<u8>>,
 }
 
 impl Default for DrawStyle {
@@ -256,6 +259,24 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 	}
 }
 
+fn texture_hashes(asset_dir :impl AsRef<Path>,
+		textures :Vec<String>) -> Result<Vec<(String, Vec<u8>)>, StrErr> {
+	let asset_dir :&Path = asset_dir.as_ref();
+	textures.iter()
+		// TODO perform proper parsing and share it with the client
+		.flat_map(|p| p.split("^"))
+		.map(|tx| {
+			let path = asset_dir.to_owned().join(&tx);
+			let mut file = File::open(&path)
+				.map_err(|e| format!("Error opening file at {}: {}", path.to_string_lossy(), e))?;
+			let mut hasher = Sha256::new();
+			std::io::copy(&mut file, &mut hasher)?;
+			let hash = hasher.result().as_slice().to_owned();
+			Ok((tx.to_owned(), hash))
+		})
+		.collect::<Result<Vec<_>, StrErr>>()
+}
+
 fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 
 	let override_default = val.get("override-default")
@@ -271,6 +292,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			schematics,
 			block_roles,
 			name_id_map : nm_from_db,
+			texture_hashes : HashMap::new(),
 		}
 	};
 	let name_id_map = &mut params.name_id_map;
@@ -287,6 +309,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 
 	params.block_params.resize_with(name_id_map.first_invalid_id as usize,
 		Default::default);
+
+	let mut textures = Vec::new();
 
 	for block in blocks.iter() {
 		let name = block.read::<str>("name")?;
@@ -306,13 +330,18 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let draw_style = match (color, texture) {
 			(Some(_), Some(_)) => Err("Both color and texture specified")?,
 			(Some(col), None) => Some(DrawStyle::Colored(col)),
-			(None, Some(Value::String(texture))) => Some(DrawStyle::Texture(texture.to_owned())),
+			(None, Some(Value::String(texture))) => {
+				textures.push(texture.to_owned());
+				Some(DrawStyle::Texture(texture.to_owned()))
+			},
 			(None, Some(Value::Array(arr))) if arr.len() == 2 => {
 				let arr :[String; 2] = Value::Array(arr.clone()).try_into()?;
+				textures.extend_from_slice(&arr);
 				Some(DrawStyle::TextureSidesTop(arr[0].clone(), arr[1].clone()))
 			},
 			(None, Some(Value::Array(arr))) if arr.len() == 3 => {
 				let arr :[String; 3] = Value::Array(arr.clone()).try_into()?;
+				textures.extend_from_slice(&arr);
 				Some(DrawStyle::TextureSidesTopBottom(arr[0].clone(), arr[1].clone(), arr[2].clone()))
 			},
 			(None, Some(Value::Array(arr))) => Err(format!("false number of textures: {}", arr.len()))?,
@@ -341,6 +370,13 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		};
 		params.block_params[id.id() as usize] = block_params;
 	}
+
+	let texture_h = &mut params.texture_hashes;
+	texture_hashes(".", textures)?
+		.into_iter()
+		.for_each(|(name, hash)| {
+			texture_h.insert(name, hash);
+		});
 
 	let recipes_list = val.read::<Array>("recipe")?;
 	for recipe in recipes_list.iter() {
@@ -395,4 +431,3 @@ pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
 }
 
 static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
-
