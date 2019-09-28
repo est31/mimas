@@ -193,9 +193,6 @@ impl NameIdMap {
 }
 
 impl GameParams {
-	pub fn load(nm :NameIdMap) -> GameParams {
-		load_params_failible(nm).expect("Couldn't load game params")
-	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
 		self.block_params.get(blk.id() as usize)
 			.map(|p| p.pointable)
@@ -226,10 +223,7 @@ impl GameParams {
 
 impl ServerGameParams {
 	pub fn load(nm :NameIdMap) -> ServerGameParamsHdl {
-		let p = GameParams::load(nm);
-		Arc::new(ServerGameParams {
-			p,
-		})
+		Arc::new(load_params_failible(nm).expect("Couldn't load game params"))
 	}
 }
 
@@ -291,7 +285,7 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 		.collect::<Result<Vec<_>, StrErr>>()
 }
 
-fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
+fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrErr> {
 
 	let override_default = val.get("override-default")
 		.unwrap_or(&Value::Boolean(false));
@@ -300,16 +294,19 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 	} else {
 		let block_roles = BlockRoles::new(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
-		GameParams {
+		let p = GameParams {
 			recipes : Vec::new(),
 			block_params : Vec::new(),
 			schematics,
 			block_roles,
 			name_id_map : nm_from_db,
 			texture_hashes : HashMap::new(),
+		};
+		ServerGameParams {
+			p,
 		}
 	};
-	let name_id_map = &mut params.name_id_map;
+	let name_id_map = &mut params.p.name_id_map;
 
 	// First pass: populate the name id map.
 	// This allows us to refer to blocks other than our own
@@ -321,7 +318,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let _id = name_id_map.get_or_extend(name);
 	}
 
-	params.block_params.resize_with(name_id_map.first_invalid_id as usize,
+	params.p.block_params.resize_with(name_id_map.first_invalid_id as usize,
 		Default::default);
 
 	let mut textures = Vec::new();
@@ -382,10 +379,10 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 			display_name,
 			drops,
 		};
-		params.block_params[id.id() as usize] = block_params;
+		params.p.block_params[id.id() as usize] = block_params;
 	}
 
-	let texture_h = &mut params.texture_hashes;
+	let texture_h = &mut params.p.texture_hashes;
 	texture_hashes(".", textures)?
 		.into_iter()
 		.for_each(|(name, hash)| {
@@ -409,7 +406,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 		let output_sp = recipe.read::<str>("output")?;
 		let output = resolve_stack_specifier(&name_id_map, output_sp)?;
 
-		params.recipes.push(Recipe {
+		params.p.recipes.push(Recipe {
 			inputs,
 			output,
 		});
@@ -418,7 +415,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<GameParams, StrErr> {
 	Ok(params)
 }
 
-fn default_game_params(nm :NameIdMap) -> Result<GameParams, StrErr> {
+fn default_game_params(nm :NameIdMap) -> Result<ServerGameParams, StrErr> {
 	let file_str = DEFAULT_GAME_PARAMS_STR;
 	let val = from_str(&file_str)?;
 	let res = from_val(val, nm)?;
@@ -432,7 +429,7 @@ fn default_game_params_parse_test() {
 	default_game_params(nm).unwrap();
 }
 
-pub fn load_params_failible(nm :NameIdMap) -> Result<GameParams, StrErr> {
+pub fn load_params_failible(nm :NameIdMap) -> Result<ServerGameParams, StrErr> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);
