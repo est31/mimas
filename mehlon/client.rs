@@ -1,4 +1,4 @@
-use mehlon_server::map::{Map, MapBackend, ClientMap, spawn_tree,
+use mehlon_server::map::{Map, MapBackend, ClientMap,
 	CHUNKSIZE, MapBlock};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
@@ -837,10 +837,9 @@ impl<C :NetworkClientConn> Game<C> {
 							} else if button == glutin::MouseButton::Right {
 								self.camera.handle_mouse_right(pressed);
 							}
-							if let (Some((_selected_pos, before_selected)), Some(params))
-									= (self.selected_pos, &self.params) {
+							if let Some((_selected_pos, before_selected))
+									= self.selected_pos {
 								if pressed && button == glutin::MouseButton::Middle {
-									spawn_tree(&mut self.map, before_selected, params);
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
 									let _ = self.srv_conn.send(msg);
 								}

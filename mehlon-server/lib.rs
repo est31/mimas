@@ -56,7 +56,7 @@ use config::Config;
 use map_storage::{PlayerIdPair, PlayerPosition};
 use inventory::{SelectableInventory, Stack};
 use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
-use game_params::{GameParams, GameParamsHdl};
+use game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
 use srp::groups::G_4096;
@@ -153,7 +153,7 @@ impl<C: NetworkServerConn> Player<C> {
 
 pub struct Server<S :NetworkServerSocket> {
 	srv_socket :S,
-	params :GameParamsHdl,
+	params :ServerGameParamsHdl,
 	is_singleplayer :bool,
 	config :Config,
 	auth_back :Option<SqliteLocalAuth>,
@@ -176,8 +176,8 @@ impl<S :NetworkServerSocket> Server<S> {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
 		let (mut storage_back, auth_back) = backends;
 		let nm = map_storage::load_name_id_map(&mut storage_back).unwrap();
-		let params = GameParams::load(nm);
-		map_storage::save_name_id_map(&mut storage_back, &params.name_id_map).unwrap();
+		let params = ServerGameParams::load(nm);
+		map_storage::save_name_id_map(&mut storage_back, &params.p.name_id_map).unwrap();
 		let mut map = ServerMap::new(config.mapgen_seed,
 			params.clone(), storage_back);
 
@@ -423,7 +423,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn handle_players_waiting_for_kv(&mut self) {
 		let mut players_to_add = Vec::new();
 		let pwfk = &mut self.players_waiting_for_kv;
-		let nm = &self.params.name_id_map;
+		let nm = &self.params.p.name_id_map;
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
 			let mut ready = false;
 			if key == "position" {
@@ -592,7 +592,7 @@ impl<S :NetworkServerSocket> Server<S> {
 	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair,
 			nick :String, pos :PlayerPosition, inv :SelectableInventory) {
 		let player_count = {
-			let msg = ServerToClientMsg::GameParams(self.params.as_ref().clone());
+			let msg = ServerToClientMsg::GameParams(self.params.p.clone());
 			// TODO get rid of unwrap
 			conn.send(msg).unwrap();
 
@@ -642,7 +642,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			"gime" => {
 				let content = params.get(0);
 				let content = if let Some(content) = content {
-					if let Some(mb) = self.params.search_block_name(*content) {
+					if let Some(mb) = self.params.p.search_block_name(*content) {
 						mb
 					} else {
 						self.chat_msg_for(issuer_id, format!("Invalid item {}", content));
@@ -652,7 +652,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.chat_msg_for(issuer_id, "No content to give specified");
 					return;
 				};
-				let content_disp = self.params.block_display_name(content);
+				let content_disp = self.params.p.block_display_name(content);
 				self.chat_msg_for(issuer_id, format!("Giving {}", content_disp));
 				let mut players = self.players.borrow_mut();
 				let remove_player = {

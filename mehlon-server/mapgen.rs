@@ -10,7 +10,7 @@ use rand_pcg::Pcg32;
 use rand::Rng;
 use fasthash::{MetroHasher, FastHasher};
 use map_storage::PlayerIdPair;
-use game_params::{GameParamsHdl, BlockRoles};
+use game_params::{ServerGameParamsHdl, BlockRoles};
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
 use map_storage::DynStorageBackend;
@@ -34,7 +34,7 @@ pub struct MapChunk {
 
 pub struct MapgenMap {
 	seed :u64,
-	params :GameParamsHdl,
+	params :ServerGameParamsHdl,
 	chunks :HashMap<Vector3<isize>, MapChunk>,
 	storage :DynStorageBackend,
 }
@@ -59,8 +59,8 @@ fn pos_hash(pos :Vector3<isize>) -> u64 {
 }
 
 fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
-		params :&GameParamsHdl) -> MapChunk {
-	let role = &params.block_roles;
+		params :&ServerGameParamsHdl) -> MapChunk {
+	let role = &params.p.block_roles;
 	macro_rules! s {
 		($e:expr) => {
 			s!($e, u32)
@@ -316,7 +316,7 @@ fn spawn_schematic_mapgen(map :&mut MapgenMap, pos :Vector3<isize>,
 }
 
 impl MapgenMap {
-	pub fn new(seed :u64, params :GameParamsHdl,
+	pub fn new(seed :u64, params :ServerGameParamsHdl,
 			storage :DynStorageBackend) -> Self {
 		MapgenMap {
 			seed,
@@ -346,7 +346,7 @@ impl MapgenMap {
 			replace(&mut chnk.tree_spawn_points, Vec::new())
 		};
 		// We clone the RC because of Rust's aliasing rules
-		let schematics = &self.params.clone().schematics;
+		let schematics = &self.params.clone().p.schematics;
 		for (p, in_desert) in tree_spawn_points {
 			if in_desert {
 				spawn_schematic_mapgen(self, p, &schematics.cactus_schematic);
@@ -392,7 +392,7 @@ impl MapgenMap {
 							}
 						}
 					} else {
-						let m = &self.params.name_id_map;
+						let m = &self.params.p.name_id_map;
 						if let Some(data) = self.storage.load_chunk(pos, m).unwrap() {
 							let chn = MapChunk {
 								data,
@@ -465,7 +465,7 @@ pub struct MapgenThread {
 }
 
 impl MapgenThread {
-	pub fn new(seed :u64, params :GameParamsHdl,
+	pub fn new(seed :u64, params :ServerGameParamsHdl,
 			storage :DynStorageBackend) -> Self {
 		let mut mapgen_map = MapgenMap::new(seed, params, storage);
 		let (area_s, area_r) = channel();
@@ -533,7 +533,7 @@ impl MapBackend for MapgenThread {
 }
 
 impl Map<MapgenThread> {
-	pub fn new(seed :u64, params :GameParamsHdl,
+	pub fn new(seed :u64, params :ServerGameParamsHdl,
 			storage :DynStorageBackend) -> Self {
 		Map::from_backend(MapgenThread::new(seed, params, storage))
 	}

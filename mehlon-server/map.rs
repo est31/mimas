@@ -2,7 +2,7 @@ use nalgebra::Vector3;
 use std::collections::{HashMap};
 use {btchn, btpic};
 use map_storage::PlayerIdPair;
-use game_params::GameParamsHdl;
+use game_params::ServerGameParamsHdl;
 
 use super::mapgen::{Schematic, MapgenThread};
 
@@ -86,8 +86,8 @@ fn spawn_schematic<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, schemat
 }
 
 pub fn spawn_tree<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>,
-		params :&GameParamsHdl) {
-	spawn_schematic(map, pos, &params.schematics.tree_schematic);
+		params :&ServerGameParamsHdl) {
+	spawn_schematic(map, pos, &params.p.schematics.tree_schematic);
 }
 
 pub struct MapBlockHandle<'a, B :MapBackend> {

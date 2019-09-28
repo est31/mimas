@@ -16,6 +16,7 @@ use mapgen::{Schematic, self};
 use sha2::{Sha256, Digest};
 
 pub type GameParamsHdl = Arc<GameParams>;
+pub type ServerGameParamsHdl = Arc<ServerGameParams>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DrawStyle {
@@ -69,6 +70,10 @@ pub struct GameParams {
 	pub schematics :Schematics,
 	pub name_id_map :NameIdMap,
 	pub texture_hashes :HashMap<String, Vec<u8>>,
+}
+
+pub struct ServerGameParams {
+	pub p :GameParams,
 }
 
 impl Default for DrawStyle {
@@ -188,7 +193,7 @@ impl NameIdMap {
 }
 
 impl GameParams {
-	pub fn load(nm :NameIdMap) -> GameParamsHdl {
+	pub fn load(nm :NameIdMap) -> GameParams {
 		load_params_failible(nm).expect("Couldn't load game params")
 	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
@@ -216,6 +221,15 @@ impl GameParams {
 			.map(|(id, _p)| {
 				MapBlock::from_id_unchecked(id as u8)
 			})
+	}
+}
+
+impl ServerGameParams {
+	pub fn load(nm :NameIdMap) -> ServerGameParamsHdl {
+		let p = GameParams::load(nm);
+		Arc::new(ServerGameParams {
+			p,
+		})
 	}
 }
 
@@ -418,7 +432,7 @@ fn default_game_params_parse_test() {
 	default_game_params(nm).unwrap();
 }
 
-pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
+pub fn load_params_failible(nm :NameIdMap) -> Result<GameParams, StrErr> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);
@@ -427,7 +441,7 @@ pub fn load_params_failible(nm :NameIdMap) -> Result<GameParamsHdl, StrErr> {
 
 	let val = from_str(&file_str)?;
 	let res = from_val(val, nm)?;
-	Ok(Arc::new(res))
+	Ok(res)
 }
 
 static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");
