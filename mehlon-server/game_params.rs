@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::num::NonZeroU16;
 use std::str::FromStr;
+use std::io::Read;
 use inventory::Stack;
 use mapgen::{Schematic, self};
 use sha2::{Sha256, Digest};
@@ -74,6 +75,7 @@ pub struct GameParams {
 
 pub struct ServerGameParams {
 	pub p :GameParams,
+	pub textures :HashMap<Vec<u8>, Vec<u8>>,
 }
 
 impl Default for DrawStyle {
@@ -268,7 +270,7 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 }
 
 fn texture_hashes(asset_dir :impl AsRef<Path>,
-		textures :Vec<String>) -> Result<Vec<(String, Vec<u8>)>, StrErr> {
+		textures :Vec<String>) -> Result<Vec<(String, Vec<u8>, Vec<u8>)>, StrErr> {
 	let asset_dir :&Path = asset_dir.as_ref();
 	textures.iter()
 		// TODO perform proper parsing and share it with the client
@@ -277,10 +279,13 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 			let path = asset_dir.to_owned().join(&tx);
 			let mut file = File::open(&path)
 				.map_err(|e| format!("Error opening file at {}: {}", path.to_string_lossy(), e))?;
+			let mut buf = Vec::new();
+			file.read_to_end(&mut buf)?;
 			let mut hasher = Sha256::new();
-			std::io::copy(&mut file, &mut hasher)?;
+			let mut buf_rdr = buf.as_slice();
+			std::io::copy(&mut buf_rdr, &mut hasher)?;
 			let hash = hasher.result().as_slice().to_owned();
-			Ok((tx.to_owned(), hash))
+			Ok((tx.to_owned(), hash, buf))
 		})
 		.collect::<Result<Vec<_>, StrErr>>()
 }
@@ -304,6 +309,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		};
 		ServerGameParams {
 			p,
+			textures :HashMap::new(),
 		}
 	};
 	let name_id_map = &mut params.p.name_id_map;
@@ -383,10 +389,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	}
 
 	let texture_h = &mut params.p.texture_hashes;
+	let texture_bl = &mut params.textures;
 	texture_hashes(".", textures)?
 		.into_iter()
-		.for_each(|(name, hash)| {
-			texture_h.insert(name, hash);
+		.for_each(|(name, hash, blob)| {
+			texture_h.insert(name, hash.clone());
+			texture_bl.insert(hash, blob);
 		});
 
 	let recipes_list = val.read::<Array>("recipe")?;
