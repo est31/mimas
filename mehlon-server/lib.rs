@@ -68,6 +68,7 @@ pub enum ClientToServerMsg {
 	LogIn(String, Vec<u8>),
 	SendHash(PlayerPwHash), // "Auth" for new users
 	SendM1(Vec<u8>), // Auth for existing users
+	GetHashedBlobs(Vec<Vec<u8>>),
 
 	SetBlock(Vector3<isize>, MapBlock),
 	PlaceTree(Vector3<isize>),
@@ -82,6 +83,7 @@ pub enum ServerToClientMsg {
 	HashParamsBpub(HashParams, Vec<u8>),
 	LogInFail(String),
 	GameParams(GameParams),
+	HashedBlobs(Vec<(Vec<u8>, Vec<u8>)>),
 
 	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>),
 
@@ -783,6 +785,9 @@ impl<S :NetworkServerSocket> Server<S> {
 					SendM1(..) => {
 						// Invalid at this state. Ignore.
 						// TODO maybe issue a warning in the log? idk
+					},
+					GetHashedBlobs(blob_list) => {
+						// TODO respond with HashedBlobs
 					},
 					SetBlock(p, b) => {
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {

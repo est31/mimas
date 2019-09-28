@@ -315,6 +315,9 @@ impl<C :NetworkClientConn> Game<C> {
 						}
 						self.params = Some(params_arc);
 					},
+					ServerToClientMsg::HashedBlobs(blobs) => {
+						// TODO receive the blobs
+					},
 					ServerToClientMsg::PlayerPositions(own_id, positions) => {
 						self.player_positions = Some((own_id, positions));
 					},
