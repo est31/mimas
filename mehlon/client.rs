@@ -741,13 +741,17 @@ impl<C :NetworkClientConn> Game<C> {
 		return false;
 	}
 	fn handle_mouse_buttons(&mut self, float_delta :f32) {
+		let params = if let Some(params) = &self.params {
+			params
+		} else {
+			return
+		};
 		const BUTTON_COOLDOWN :f32 = 0.2;
 		self.camera.mouse_left_cooldown -= float_delta;
 		self.camera.mouse_right_cooldown -= float_delta;
 		if let Some((selected_pos, before_selected)) = self.selected_pos {
 			if self.camera.mouse_left_down {
 				if self.camera.mouse_left_cooldown <= 0.0 {
-					let params = self.params.as_ref().unwrap();
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
 					let drops = params.block_params.get(blk.get().id() as usize).unwrap().drops;
 					self.sel_inventory.put(drops);
