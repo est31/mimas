@@ -7,43 +7,53 @@ pointable = false
 
 [[block]]
 name = "default:ground"
-color = [0.0, 1.0, 0.0, 1.0]
+texture = [
+	"assets/textures/default_dirt.png^assets/textures/default_grass_side.png",
+	"assets/textures/default_grass.png",
+	"assets/textures/default_dirt.png"
+]
 
 [[block]]
 name = "default:sand"
-color = [1.0, 1.0, 0.3, 1.0]
+texture = "assets/textures/default_sand.png"
 
 [[block]]
 name = "default:water"
-color = [0.0, 0.0, 1.0, 1.0]
+texture = "assets/textures/default_water.png"
 
 [[block]]
 name = "default:wood"
-color = [0.5, 0.25, 0.0, 1.0]
+texture = "assets/textures/default_wood.png"
 
 [[block]]
 name = "default:stone"
-color = [0.5, 0.5, 0.5, 1.0]
+texture = "assets/textures/default_stone.png"
 
 [[block]]
 name = "default:tree"
-color = [0.38, 0.25, 0.125, 1.0]
+texture = [
+	"assets/textures/default_tree.png",
+	"assets/textures/default_tree_top.png"
+]
 
 [[block]]
 name = "default:leaves"
-color = [0.0, 0.4, 0.0, 1.0]
+texture = "assets/textures/default_leaves.png"
 
 [[block]]
 name = "default:cactus"
-color = [0.0, 0.2, 0.0, 1.0]
+texture = [
+	"assets/textures/default_cactus_side.png",
+	"assets/textures/default_cactus_top.png"
+]
 
 [[block]]
 name = "default:coal"
-color = [0.05, 0.05, 0.05, 1.0]
+texture = "assets/textures/default_stone.png^assets/textures/default_mineral_coal.png"
 
 [[block]]
 name = "default:iron_ore"
-color = [0.4, 0.30, 0.0, 1.0]
+texture = "assets/textures/default_stone.png^assets/textures/default_mineral_iron.png"
 
 [[recipe]]
 inputs = ["default:tree"]
