@@ -31,6 +31,7 @@ pub enum DrawStyle {
 pub struct BlockParams {
 	pub draw_style :Option<DrawStyle>,
 	pub pointable :bool,
+	pub placeable :bool,
 	pub display_name :String,
 	pub drops :Stack,
 }
@@ -89,6 +90,7 @@ impl Default for BlockParams {
 		Self {
 			draw_style : Some(DrawStyle::default()),
 			pointable : true,
+			placeable : true,
 			display_name : String::new(),
 			drops : Stack::Empty,
 		}
@@ -373,6 +375,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		} else {
 			name_components.1.to_owned()
 		};
+		let placeable = block.get("placeable")
+			.unwrap_or(&Value::Boolean(true));
+		let placeable = *placeable.convert::<bool>()?;
 		let drops = if let Some(drops) = block.get("drops") {
 			let drops_sp = drops.convert::<str>()?;
 			resolve_stack_specifier(&name_id_map, drops_sp)?
@@ -382,6 +387,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		let block_params = BlockParams {
 			draw_style,
 			pointable,
+			placeable,
 			display_name,
 			drops,
 		};

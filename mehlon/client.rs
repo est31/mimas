@@ -766,14 +766,20 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			if self.camera.mouse_right_down
 					&& self.camera.mouse_right_cooldown <= 0.0 {
-				if let Some(ith) = self.sel_inventory.take_selected() {
-					let mut blk = self.map.get_blk_mut(before_selected).unwrap();
-					blk.set(ith);
-					let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
-					let _ = self.srv_conn.send(msg);
-					let msg = ClientToServerMsg::SetBlock(before_selected, ith);
-					let _ = self.srv_conn.send(msg);
-					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+				let sel = self.sel_inventory.get_selected();
+				if let Some(sel) = sel {
+					let placeable = params.block_params.get(sel.id() as usize).unwrap().placeable;
+					if placeable {
+						let taken = self.sel_inventory.take_selected();
+						assert_eq!(taken, Some(sel));
+						let mut blk = self.map.get_blk_mut(before_selected).unwrap();
+						blk.set(sel);
+						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+						let _ = self.srv_conn.send(msg);
+						let msg = ClientToServerMsg::SetBlock(before_selected, sel);
+						let _ = self.srv_conn.send(msg);
+						self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+					}
 				}
 			}
 		}
