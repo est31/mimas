@@ -3,6 +3,8 @@ use mehlon_server::game_params::{GameParamsHdl, DrawStyle};
 
 use std::fs::File;
 use std::io::Read;
+use std::io::ErrorKind;
+use std::path::PathBuf;
 
 use glium::texture::SrgbTexture2dArray;
 use glium::texture::RawImage2d;
@@ -18,7 +20,15 @@ pub struct Assets {
 }
 
 fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage, StrErr> {
-	let mut file = File::open(&path)?;
+	let hash = game_params.texture_hashes.get(&path.to_owned());
+	let hash = if let Some(hash) = hash {
+		hash
+	} else {
+		Err(format!("Couldn't find hash for texture {}", path))?
+	};
+
+	let cache_dir = cache_dir()?;
+	let mut file = File::open(&cache_dir.join(format_hex(&hash)))?;
 	let mut buf = Vec::new();
 	file.read_to_end(&mut buf)?;
 
@@ -27,17 +37,68 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 		hasher.input(&buf);
 		hasher.result().as_slice().to_owned()
 	};
-	let expected_hash = game_params.texture_hashes.get(&path.to_owned());
-	if let Some(expected_hash) = expected_hash {
-		if found_hash.as_slice() != expected_hash.as_slice() {
-			Err(format!("Hash mismatch for texture {}", path))?
-		}
-	} else {
-		Err(format!("Couldn't find hash for texture {}", path))?
+
+	if found_hash.as_slice() != hash.as_slice() {
+		Err(format!("Hash mismatch for texture {}", path))?
 	}
 
 	let img = image::load_from_memory(&buf)?;
 	Ok(img.to_rgba())
+}
+
+pub fn find_uncached_hashes(game_params :&GameParamsHdl) -> Result<Vec<Vec<u8>>, StrErr> {
+	let cache_dir = cache_dir()?;
+	let mut uncached_hashes = Vec::new();
+	for (_path, hash) in game_params.texture_hashes.iter() {
+		macro_rules! add {
+			() => {{
+				uncached_hashes.push(hash.to_owned());
+				continue;
+			}};
+		}
+		let path = cache_dir.join(format_hex(&hash));
+		let mut file = match File::open(path) {
+			Ok(f) => f,
+			Err(e) if e.kind() == ErrorKind::NotFound => add!(),
+			Err(e) => Err(e)?,
+		};
+		let mut hasher = Sha256::new();
+
+		std::io::copy(&mut file, &mut hasher)?;
+		let hash_obtained = hasher.result().as_slice().to_owned();
+		if &hash_obtained != hash {
+			// TODO this shouldn't happen (corrupted file etc)
+			// so emit a warning or something
+			add!();
+		}
+	}
+	Ok(uncached_hashes)
+}
+
+fn format_hex(hex :&[u8]) -> String {
+	let hex = hex.iter()
+		.map(|ch| format!("{:02x}", ch))
+		.collect::<String>();
+	hex
+}
+
+fn cache_dir() -> Result<PathBuf, StrErr> {
+	Ok(dirs::cache_dir().ok_or_else(|| "Couldn't find cache dir")?
+		.join("mehlon").join("asset-cache"))
+}
+
+pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), StrErr> {
+	let cache_dir = cache_dir()?;
+	// Avoid creating a directory if there are no blobs to store
+	if hashed_blobs.len() == 0 {
+		return Ok(());
+	}
+	std::fs::create_dir_all(&cache_dir)?;
+	for (hash, blob) in hashed_blobs.iter() {
+		let path = cache_dir.join(format_hex(&hash));
+		std::fs::write(path, blob)?;
+	}
+	Ok(())
 }
 
 fn load_image(game_params :&GameParamsHdl, path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {

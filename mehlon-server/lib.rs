@@ -787,7 +787,18 @@ impl<S :NetworkServerSocket> Server<S> {
 						// TODO maybe issue a warning in the log? idk
 					},
 					GetHashedBlobs(blob_list) => {
-						// TODO respond with HashedBlobs
+						let hashed_blobs = blob_list.iter()
+							.filter_map(|h| self.params.textures.get(h)
+								.map(|b| (h.clone(), b.clone())))
+							.collect::<Vec<_>>();
+						let msg = ServerToClientMsg::HashedBlobs(hashed_blobs);
+						let remove_player = {
+							let player = &self.players.borrow_mut()[&id];
+							player.conn.send(msg.clone()).is_err()
+						};
+						if remove_player {
+							close_connections(&[id], &mut *self.players.borrow_mut());
+						}
 					},
 					SetBlock(p, b) => {
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {

@@ -300,23 +300,30 @@ impl<C :NetworkClientConn> Game<C> {
 					},
 					ServerToClientMsg::GameParams(params) => {
 						let params_arc = Arc::new(params);
-						if let Some(spawner) = self.meshgen_spawner.take() {
-							let mut assets = Assets::new();
-							let cache = TextureIdCache::from_hdl(&params_arc, |ds| {
-								assets.add_draw_style(&params_arc, ds)
-							});
-							spawner(cache.clone());
-							self.texture_id_cache = Some(cache);
-							self.ui_colors = Some(UiColors::new(&mut assets));
-							let texture_array = assets.into_texture_array(&self.display).unwrap();
-							self.texture_array = Some(texture_array);
-						} else {
-							// TODO print a warning about duplicate GameParams or sth
-						}
+
+						let hash_list = crate::assets::find_uncached_hashes(&params_arc).unwrap();
+						let msg = ClientToServerMsg::GetHashedBlobs(hash_list);
+						let _ = self.srv_conn.send(msg);
+
 						self.params = Some(params_arc);
 					},
 					ServerToClientMsg::HashedBlobs(blobs) => {
-						// TODO receive the blobs
+						if let Some(params) = &self.params {
+							crate::assets::store_hashed_blobs(&blobs).unwrap();
+							if let Some(spawner) = self.meshgen_spawner.take() {
+								let mut assets = Assets::new();
+								let cache = TextureIdCache::from_hdl(params, |ds| {
+									assets.add_draw_style(params, ds)
+								});
+								spawner(cache.clone());
+								self.texture_id_cache = Some(cache);
+								self.ui_colors = Some(UiColors::new(&mut assets));
+								let texture_array = assets.into_texture_array(&self.display).unwrap();
+								self.texture_array = Some(texture_array);
+							} else {
+								// TODO print a warning about duplicate GameParams or sth
+							}
+						}
 					},
 					ServerToClientMsg::PlayerPositions(own_id, positions) => {
 						self.player_positions = Some((own_id, positions));
