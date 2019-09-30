@@ -27,7 +27,12 @@ texture = "assets/textures/default_wood.png"
 
 [[block]]
 name = "default:stone"
+drops = "default:cobble 1"
 texture = "assets/textures/default_stone.png"
+
+[[block]]
+name = "default:cobble"
+texture = "assets/textures/default_cobble.png"
 
 [[block]]
 name = "default:tree"
