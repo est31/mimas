@@ -390,7 +390,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 
 	let texture_h = &mut params.p.texture_hashes;
 	let texture_bl = &mut params.textures;
-	texture_hashes(".", textures)?
+	let asset_dir = std::env::current_exe()?
+		.parent()
+		.unwrap_or_else(|| Path::new("."))
+		.join("..")
+		.join("..");
+	texture_hashes(asset_dir, textures)?
 		.into_iter()
 		.for_each(|(name, hash, blob)| {
 			texture_h.insert(name, hash.clone());
