@@ -104,6 +104,13 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	let inoise = Noise::new(s!(b"noi-iron"), iff);
 	// Iron pcg
 	let mut ipcg = Pcg32::new(s!(b"pcg-iron", u64), pos_hash(pos));
+
+	// Copper noise
+	let copper_f = 0.083961;
+	let copper_noise = Noise::new(s!(b"noi-copp"), copper_f);
+	// Copper pcg
+	let mut copper_pcg = Pcg32::new(s!(b"pcg-copp", u64), pos_hash(pos));
+
 	// Cave noise
 	let ca_f = 0.052951;
 	let ca_noise = Noise::new(s!(b"nois-cav"), ca_f);
@@ -139,6 +146,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.coal;
 						}
 					}
+
 					let iron_limit = if z_abs < -60 {
 						0.7
 					} else {
@@ -147,6 +155,17 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 					if inoise.get_3d(p3) > iron_limit {
 						if ipcg.gen::<f64>() > 0.6 {
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.iron_ore;
+						}
+					}
+
+					let copper_limit = if z_abs < -90 {
+						0.8
+					} else {
+						2.0
+					};
+					if copper_noise.get_3d(p3) > copper_limit {
+						if copper_pcg.gen::<f64>() > 0.6 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = role.copper_ore;
 						}
 					}
 					// Generate caves,

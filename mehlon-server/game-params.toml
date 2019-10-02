@@ -65,6 +65,10 @@ texture = "assets/textures/default_stone.png^assets/textures/default_mineral_coa
 name = "default:iron_ore"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_iron.png"
 
+[[block]]
+name = "default:copper_ore"
+texture = "assets/textures/default_stone.png^assets/textures/default_mineral_copper.png"
+
 [[recipe]]
 inputs = ["default:tree"]
 output = "default:wood 4"
