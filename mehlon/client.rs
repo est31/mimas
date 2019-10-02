@@ -603,7 +603,7 @@ impl<C :NetworkClientConn> Game<C> {
 				pmatrix : pmatrix,
 				fog_near_far : [40.0f32, 60.0]
 			};
-			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5);
+			let hand_mesh_pos = Vector3::new(3.0, 1.0, -1.5) * 2.0;
 			if let (Some(item), Some(texture_id_cache)) = (self.sel_inventory.get_selected(), &self.texture_id_cache) {
 				let hand_mesh = hand_mesh(hand_mesh_pos, item, texture_id_cache);
 				let vbuff = VertexBuffer::new(&self.display, &hand_mesh).unwrap();
@@ -935,7 +935,7 @@ fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z],
-		texture_ids, 0.5, |_| false);
+		texture_ids, 1.0, |_| false);
 	vertices
 }
 
