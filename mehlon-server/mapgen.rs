@@ -128,7 +128,8 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 				for z in 0 .. els {
 					*res.get_blk_mut(Vector3::new(x, y, z)) = role.stone;
 					let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
-					let coal_limit = if pos.z + z < -30 {
+					let z_abs = pos.z + z;
+					let coal_limit = if z_abs < -30 {
 						0.5
 					} else {
 						0.75
@@ -138,7 +139,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.coal;
 						}
 					}
-					let iron_limit = if pos.z + z < -60 {
+					let iron_limit = if z_abs < -60 {
 						0.7
 					} else {
 						0.83
@@ -154,7 +155,12 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 					// We need to compare with elev_blocks instead of el
 					// so that there are no artifacts introduced by the
 					// maxing with CHUNKSIZE above.
-					let cave_block = mca_noise.get_3d(p3) > 0.498 || ca_noise.get_3d(p3) > 0.45 ;
+					let mcave_thresh = if z_abs > -400 {
+						2.0
+					} else {
+						1.0 + ((z_abs + 600) as f64 / 300.0).max(-0.502).min(0.0)
+					};
+					let cave_block = mca_noise.get_3d(p3) > mcave_thresh || ca_noise.get_3d(p3) > 0.45;
 					if z + 10 < elev_blocks && cave_block {
 						*res.get_blk_mut(Vector3::new(x, y, z)) = role.air;
 					}
