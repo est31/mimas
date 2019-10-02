@@ -111,6 +111,12 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	// Copper pcg
 	let mut copper_pcg = Pcg32::new(s!(b"pcg-copp", u64), pos_hash(pos));
 
+	// Gold noise
+	let gold_f = 0.083961;
+	let gold_noise = Noise::new(s!(b"noi-gold"), gold_f);
+	// Gold pcg
+	let mut gold_pcg = Pcg32::new(s!(b"pcg-gold", u64), pos_hash(pos));
+
 	// Cave noise
 	let ca_f = 0.052951;
 	let ca_noise = Noise::new(s!(b"nois-cav"), ca_f);
@@ -166,6 +172,17 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 					if copper_noise.get_3d(p3) > copper_limit {
 						if copper_pcg.gen::<f64>() > 0.6 {
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.copper_ore;
+						}
+					}
+
+					let gold_limit = if z_abs < -120 {
+						0.86
+					} else {
+						2.0
+					};
+					if gold_noise.get_3d(p3) > gold_limit {
+						if gold_pcg.gen::<f64>() > 0.8 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = role.gold_ore;
 						}
 					}
 					// Generate caves,
