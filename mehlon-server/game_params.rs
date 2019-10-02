@@ -52,6 +52,7 @@ pub struct BlockRoles {
 	pub iron_ore :MapBlock,
 	pub copper_ore :MapBlock,
 	pub gold_ore :MapBlock,
+	pub diamond_ore :MapBlock,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -121,6 +122,7 @@ impl BlockRoles {
 			iron_ore : get_id("default:iron_ore")?,
 			copper_ore : get_id("default:copper_ore")?,
 			gold_ore : get_id("default:gold_ore")?,
+			diamond_ore : get_id("default:diamond_ore")?,
 		})
 	}
 	pub fn dummy(m :&NameIdMap) -> Result<Self, StrErr> {
@@ -144,6 +146,7 @@ impl BlockRoles {
 			iron_ore : air_id,
 			copper_ore : air_id,
 			gold_ore : air_id,
+			diamond_ore : air_id,
 		})
 	}
 }

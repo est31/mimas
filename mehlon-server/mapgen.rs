@@ -117,6 +117,12 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	// Gold pcg
 	let mut gold_pcg = Pcg32::new(s!(b"pcg-gold", u64), pos_hash(pos));
 
+	// Diamond noise
+	let diamond_f = 0.083961;
+	let diamond_noise = Noise::new(s!(b"noi-diam"), diamond_f);
+	// Diamond pcg
+	let mut diamond_pcg = Pcg32::new(s!(b"pcg-diam", u64), pos_hash(pos));
+
 	// Cave noise
 	let ca_f = 0.052951;
 	let ca_noise = Noise::new(s!(b"nois-cav"), ca_f);
@@ -183,6 +189,17 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 					if gold_noise.get_3d(p3) > gold_limit {
 						if gold_pcg.gen::<f64>() > 0.8 {
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.gold_ore;
+						}
+					}
+
+					let diamond_limit = if z_abs < -240 {
+						0.88
+					} else {
+						2.0
+					};
+					if diamond_noise.get_3d(p3) > diamond_limit {
+						if diamond_pcg.gen::<f64>() > 0.88 {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = role.diamond_ore;
 						}
 					}
 					// Generate caves,
