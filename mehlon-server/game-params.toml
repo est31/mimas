@@ -7,6 +7,10 @@ pointable = false
 
 [[block]]
 name = "default:ground"
+texture = "assets/textures/default_dirt.png"
+
+[[block]]
+name = "default:ground_with_grass"
 texture = [
 	"assets/textures/default_dirt.png^assets/textures/default_grass_side.png",
 	"assets/textures/default_grass.png",

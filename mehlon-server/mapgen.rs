@@ -164,19 +164,22 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						*res.get_blk_mut(Vector3::new(x, y, z)) = role.water;
 					}
 				} else {
-					let ground_block = if binoise.get(p) + mbinoise.get(p) < 0.3 {
-						role.ground
+					let (ground_bl, ground_top) = if binoise.get(p) + mbinoise.get(p) < 0.3 {
+						(role.ground, role.ground_top)
 					} else {
-						role.sand
+						(role.sand, role.sand)
 					};
 					for z in els .. elg {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_block;
+						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_bl;
+					}
+					if let Some(z) = (els .. elg).rev().next() {
+						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_top;
 					}
 					if pos.z == 0 && elg <= 0 {
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = role.water;
 					}
 					if elg > 0 && elg < CHUNKSIZE {
-						let in_desert = ground_block == role.sand;
+						let in_desert = ground_bl == role.sand;
 						// Tree spawning
 						let tree_density = if in_desert {
 							0.1

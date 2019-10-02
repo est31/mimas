@@ -42,6 +42,7 @@ pub struct BlockRoles {
 	pub water :MapBlock,
 	pub sand :MapBlock,
 	pub ground :MapBlock,
+	pub ground_top :MapBlock,
 	pub wood :MapBlock,
 	pub stone :MapBlock,
 	pub leaves :MapBlock,
@@ -108,6 +109,7 @@ impl BlockRoles {
 			water : get_id("default:water")?,
 			sand : get_id("default:sand")?,
 			ground : get_id("default:ground")?,
+			ground_top : get_id("default:ground_with_grass")?,
 			wood : get_id("default:wood")?,
 			stone : get_id("default:stone")?,
 			leaves : get_id("default:leaves")?,
@@ -115,6 +117,27 @@ impl BlockRoles {
 			cactus : get_id("default:cactus")?,
 			coal : get_id("default:coal")?,
 			iron_ore : get_id("default:iron_ore")?,
+		})
+	}
+	pub fn dummy(m :&NameIdMap) -> Result<Self, StrErr> {
+		let get_id = |n| {
+			m.get_id(n)
+				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
+		};
+		let air_id = get_id("default:air")?;
+		Ok(Self {
+			air : air_id,
+			water : air_id,
+			sand : air_id,
+			ground : air_id,
+			ground_top : air_id,
+			wood : air_id,
+			stone : air_id,
+			leaves : air_id,
+			tree : air_id,
+			cactus : air_id,
+			coal : air_id,
+			iron_ore : air_id,
 		})
 	}
 }
@@ -299,7 +322,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	let mut params = if !*override_default.convert::<bool>()? {
 		default_game_params(nm_from_db)?
 	} else {
-		let block_roles = BlockRoles::new(&nm_from_db)?;
+		let block_roles = BlockRoles::dummy(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
 		let p = GameParams {
 			recipes : Vec::new(),
@@ -316,7 +339,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	};
 	let name_id_map = &mut params.p.name_id_map;
 
-	// First pass: populate the name id map.
+	// First step: populate the name id map.
 	// This allows us to refer to blocks other than our own
 	// regardless of order.
 	let blocks = val.read::<Array>("block")?;
@@ -325,6 +348,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		let _name_components = parse_block_name(name)?;
 		let _id = name_id_map.get_or_extend(name);
 	}
+
+	// Second step: non-dummy block roles
+	// (now that we have the name id map).
+	params.p.block_roles = BlockRoles::new(&name_id_map)?;
+	params.p.schematics = Schematics::new(&params.p.block_roles);
 
 	params.p.block_params.resize_with(name_id_map.first_invalid_id as usize,
 		Default::default);
