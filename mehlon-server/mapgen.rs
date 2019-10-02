@@ -232,7 +232,9 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_bl;
 					}
 					if let Some(z) = (els .. elg).rev().next() {
-						*res.get_blk_mut(Vector3::new(x, y, z)) = ground_top;
+						if elev_blocks <= CHUNKSIZE {
+							*res.get_blk_mut(Vector3::new(x, y, z)) = ground_top;
+						}
 					}
 					if pos.z == 0 && elg <= 0 {
 						*res.get_blk_mut(Vector3::new(x, y, 0)) = role.water;
