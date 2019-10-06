@@ -80,6 +80,12 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	// Super macro noise
 	let smf = 0.00043571;
 	let smnoise = NoiseMag::new(s!(b"chn-smcr"), smf, 137.479131);
+	// Amplifier noise
+	let smf = 0.0023473;
+	let ampnoise = Noise::new(s!(b"chn-ampl"), smf);
+	// Amplifier noise 2
+	let smf = 0.0023473;
+	let ampnoise2 = Noise::new(s!(b"chn-ampt"), smf);
 	// Tree noise
 	let tf = 0.0088971;
 	let tnoise = Noise::new(s!(b"trenoise"), tf);
@@ -138,7 +144,11 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
 			let p = [(pos.x + x) as f64, (pos.y + y) as f64];
-			let elev = noise.get(p) + mnoise.get(p) + smnoise.get(p);
+			let sm_elev = smnoise.get(p);
+			let amp = 1.0 + ampnoise.get(p) * 0.9;
+			let amp2 = 0.6 + ampnoise2.get(p) * 0.5;
+			let mut base_noise = amp * noise.get(p) + amp2 * mnoise.get(p);
+			let elev = base_noise + sm_elev;
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
 				let els = elev_blocks - 4;
