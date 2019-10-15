@@ -147,7 +147,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 			let sm_elev = smnoise.get(p);
 			let amp = 1.0 + ampnoise.get(p) * 0.9;
 			let amp2 = 0.6 + ampnoise2.get(p) * 0.5;
-			let mut base_noise = amp * noise.get(p) + amp2 * mnoise.get(p);
+			let base_noise = amp * noise.get(p) + amp2 * mnoise.get(p);
 			let elev = base_noise + sm_elev;
 			let elev_blocks = elev as isize;
 			if let Some(elev_blocks) = elev_blocks.checked_sub(pos.z) {
