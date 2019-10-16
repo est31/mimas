@@ -147,7 +147,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
-			meshgen_s.send((chunk_pos, *chunk)).unwrap();
+			meshgen_s.send((chunk_pos, chunk.clone())).unwrap();
 		}));
 
 		let auth_state = if let Some((nick, pw)) = nick_pw {

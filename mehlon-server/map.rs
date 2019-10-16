@@ -33,7 +33,7 @@ impl MapBlock {
 
 big_array! { BigArray; }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MapChunkData(
 	#[serde(with = "BigArray")]
 	pub(in super) [MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]
@@ -102,7 +102,7 @@ impl<'a, B :MapBackend> MapBlockHandle<'a, B> {
 		let chunk_pos = btchn(self.pos);
 		let pos_in_chunk = btpic(self.pos);
 		*self.chk.get_blk_mut(pos_in_chunk) = b;
-		self.backend.chunk_changed(chunk_pos, *self.chk);
+		self.backend.chunk_changed(chunk_pos, self.chk.clone());
 		(*self.on_change)(chunk_pos, &self.chk);
 	}
 	pub fn get(&mut self) -> MapBlock {
@@ -174,7 +174,7 @@ impl<B :MapBackend> Map<B> {
 		self.chunks.get_mut(&pos)
 	}
 	pub fn set_chunk(&mut self, pos :Vector3<isize>, data :MapChunkData) {
-		self.chunks.insert(pos, data);
+		self.chunks.insert(pos, data.clone());
 		self.backend.chunk_changed(pos, data.clone());
 		(self.on_change)(pos, &data);
 	}
@@ -186,7 +186,7 @@ impl<B :MapBackend> Map<B> {
 		let on_change = &self.on_change;
 		let chunks = &mut self.chunks;
 		self.backend.run_for_generated_chunks(&mut |pos, chn :&MapChunkData| {
-			chunks.insert(pos, *chn);
+			chunks.insert(pos, chn.clone());
 			on_change(pos, chn);
 		});
 	}

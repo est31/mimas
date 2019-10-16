@@ -186,7 +186,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let playersc = players.clone();
 		map.register_on_change(Box::new(move |chunk_pos, chunk| {
 			let mut players = playersc.borrow_mut();
-			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, *chunk);
+			let msg = ServerToClientMsg::ChunkUpdated(chunk_pos, chunk.clone());
 			let mut conns_to_close = Vec::new();
 			for (id, player) in players.iter_mut() {
 				player.sent_chunks.insert(chunk_pos);
@@ -508,7 +508,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					let p = Vector3::new(x, y, z) * CHUNKSIZE;
 					if let Some(c) = self.map.get_chunk(p) {
 						if !player.sent_chunks.contains(&p) {
-							let msg = ServerToClientMsg::ChunkUpdated(p, *c);
+							let msg = ServerToClientMsg::ChunkUpdated(p, c.clone());
 							player.conn.send(msg)?;
 							player.sent_chunks.insert(p);
 						}
