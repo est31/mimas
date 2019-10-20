@@ -462,6 +462,10 @@ impl InventoryMenu {
 							},
 						}),
 						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
+							id : SPACER_ID,
+							dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
+						}),
+						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
 							id : CRAFTING_OUTPUT_ID,
 							dimensions : (1.0 * unit * 1.1, 1.0 * unit * 1.1),
 						}),
