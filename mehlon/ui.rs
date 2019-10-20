@@ -146,6 +146,20 @@ struct LayoutState {
 	offs_absolute_y :Option<f32>,
 }
 
+impl LayoutState {
+	fn offs_absolute(&self) -> Option<(f32, f32)> {
+		if let (Some(x), Some(y)) = (self.offs_absolute_x, self.offs_absolute_y) {
+			Some((x, y))
+		} else {
+			None
+		}
+	}
+	fn offs_absolute_i32(&self) -> Option<(i32, i32)> {
+		let offs = self.offs_absolute();
+		offs.map(|(x, y)| (x as i32, y as i32))
+	}
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum LayoutProgress {
 	Started,
@@ -169,6 +183,24 @@ fn fmax(a :f32, b :f32) -> f32 {
 }
 
 impl LayoutNode {
+	fn find_state(&self, for_id :usize) -> Option<&LayoutState> {
+		use self::LayoutNodeKind::*;
+		match &self.kind {
+			Container { ref children, horizontal :_ } => {
+				for child in children.iter() {
+					if let Some(state) = child.find_state(for_id) {
+						return Some(state);
+					}
+				}
+			},
+			FixedSizeObject { id, dimensions :_ } => {
+				if for_id == *id {
+					return Some(&self.state);
+				}
+			},
+		}
+		return None;
+	}
 	fn from_kind(kind :LayoutNodeKind) -> Self {
 		Self {
 			kind,
@@ -456,6 +488,15 @@ impl InventoryMenu {
 		let height_units = inv_height_units + craft_height_units + 0.2;
 		let height = layout.state.dimension_y.expect("width expected");
 
+		layout.state.offs_absolute_x = Some(0.0); //Some(screen_dims.1 as f32 - height / 2.0);
+		layout.state.offs_absolute_y = Some(0.0);
+
+		layout.layout();
+
+		let crafting_state = layout.find_state(CRAFTING_ID).unwrap();
+		let crafting_output_state = layout.find_state(CRAFTING_OUTPUT_ID).unwrap();
+		let inv_state = layout.find_state(NORMAL_INV_ID).unwrap();
+
 		let mut vertices = Vec::new();
 
 		// Background
@@ -470,11 +511,11 @@ impl InventoryMenu {
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
 		let inventory_params :&[(usize, _, Box<dyn Fn(usize) -> f32>)] = &[
-			(CRAFT_SLOT_COUNT_X, (0, 0), Box::new(|line| { // text_y_fn
+			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute_i32().unwrap(), Box::new(|line| { // text_y_fn
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			})),
-			(CRAFT_SLOT_COUNT_X, ((width / 2.0) as i32, 0), Box::new(|line| { // text_y_fn
+			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute_i32().unwrap(), Box::new(|line| { // text_y_fn
 				(screen_dims.1 as f32 - height / 2.0
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
 			})),
