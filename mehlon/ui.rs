@@ -486,7 +486,7 @@ impl InventoryMenu {
 				offs,
 				width,
 				screen_dims,
-				|i, mesh_x, mesh_y| { // color_fn
+				|i, mesh_x, mesh_y| { // texture_fn
 					let dims = (unit as i32, unit as i32);
 					let hovering = self.last_mouse_pos
 						.map(|pos| {
@@ -681,7 +681,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		(0.0, screen_dims.1 as f32),
 		hud_width,
 		screen_dims,
-		|i, _mesh_x, _mesh_y| { // color_fn
+		|i, _mesh_x, _mesh_y| { // texture_fn
 			if Some(i) == inv.selection() {
 				ui_colors.selected_slot_color
 			} else {
