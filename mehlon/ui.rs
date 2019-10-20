@@ -154,13 +154,9 @@ impl LayoutState {
 			None
 		}
 	}
-	fn offs_absolute_i32(&self) -> Option<(i32, i32)> {
-		let offs = self.offs_absolute();
-		offs.map(|(x, y)| (x as i32, y as i32))
-	}
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 enum LayoutProgress {
 	Started,
 	DimensionsKnown,
@@ -266,8 +262,8 @@ impl LayoutNode {
 					}
 				},
 			}
-			if (self.state.dimension_x.is_some()
-					&& self.state.dimension_y.is_some()) {
+			if self.state.dimension_x.is_some()
+					&& self.state.dimension_y.is_some() {
 				self.progress = LayoutProgress::DimensionsKnown;
 			}
 		}
@@ -487,13 +483,13 @@ impl InventoryMenu {
 		layout.layout();
 
 		let width = layout.state.dimension_x.expect("width expected");
-		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
 		let height = layout.state.dimension_y.expect("width expected");
 
 		layout.state.offs_absolute_x = Some(0.0); //Some(screen_dims.1 as f32 - height / 2.0);
 		layout.state.offs_absolute_y = Some(0.0);
 
 		layout.layout();
+		assert_eq!(layout.progress(), LayoutProgress::Finished);
 
 		let crafting_state = layout.find_state(CRAFTING_ID).unwrap();
 		let crafting_output_state = layout.find_state(CRAFTING_OUTPUT_ID).unwrap();
