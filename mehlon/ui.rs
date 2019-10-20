@@ -510,20 +510,12 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		let inventory_params :&[(usize, _, Box<dyn Fn(usize) -> f32>)] = &[
-			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute_i32().unwrap(), Box::new(|line| { // text_y_fn
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
-			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute_i32().unwrap(), Box::new(|line| { // text_y_fn
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
-			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32), Box::new(|line| { // text_y_fn
-				((craft_height_units * 1.1 + 0.2) * unit) / 2.0 +
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
+		let inventory_params :&[(usize, _, f32)] = &[
+			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute_i32().unwrap(), 0.0),
+			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute_i32().unwrap(), 0.0),
+			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32),
+				((craft_height_units * 1.1 + 0.2) * unit) / 2.0
+			),
 		];
 
 		for (inv_id, inv_param) in inventory_params.iter().enumerate() {
@@ -557,7 +549,10 @@ impl InventoryMenu {
 				|line| { // mesh_y_fn
 					(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
 				},
-				&inv_param.2,
+				|line| { // text_y_fn
+					(screen_dims.1 as f32 - height / 2.0
+						+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + inv_param.2
+				},
 				glyph_brush,
 				&self.params,
 			));
