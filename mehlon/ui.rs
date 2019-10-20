@@ -512,21 +512,21 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		let inventory_params :&[(usize, _, f32)] = &[
-			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute_i32().unwrap(), 0.0),
-			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute_i32().unwrap(), 0.0),
-			(SLOT_COUNT_X, inv_state.offs_absolute_i32().unwrap(),
-				inv_state.offs_absolute().unwrap().1
-			),
+		let inventory_params :&[(usize, _)] = &[
+			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute().unwrap()),
+			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute().unwrap()),
+			(SLOT_COUNT_X, inv_state.offs_absolute().unwrap()),
 		];
 
 		for (inv_id, inv_param) in inventory_params.iter().enumerate() {
+			let offs = inv_param.1;
+			let offs_i32 = (offs.0 as i32, offs.1 as i32);
 			vertices.extend_from_slice(&inventory_slots_mesh(
 				&self.invs[inv_id],
 				self.invs[inv_id].stacks().len(),
 				inv_param.0,
 				unit,
-				inv_param.1,
+				offs_i32,
 				width,
 				screen_dims,
 				|i, mesh_x, mesh_y| { // color_fn
@@ -553,7 +553,7 @@ impl InventoryMenu {
 				},
 				|line| { // text_y_fn
 					(screen_dims.1 as f32 - height / 2.0
-						+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + inv_param.2
+						+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + offs.1 * 0.5
 				},
 				glyph_brush,
 				&self.params,
