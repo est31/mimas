@@ -196,6 +196,12 @@ impl LayoutNode {
 			},
 		})
 	}
+	fn spacer(id :usize, dimensions :(f32, f32)) -> Self {
+		Self::from_kind(LayoutNodeKind::FixedSizeObject {
+			id,
+			dimensions,
+		})
+	}
 
 	fn find_state(&self, for_id :usize) -> Option<&LayoutState> {
 		use self::LayoutNodeKind::*;
@@ -424,17 +430,11 @@ impl InventoryMenu {
 					horizontal : true,
 					children : vec![
 						LayoutNode::inv(CRAFTING_ID, self.invs[CRAFTING_ID].stacks().len(), CRAFT_SLOT_COUNT_X_F32, unit),
-						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
-							id : SPACER_ID,
-							dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
-						}),
+						LayoutNode::spacer(SPACER_ID, (0.1 * unit * 1.1, 0.1 * unit * 1.1)),
 						LayoutNode::inv(CRAFTING_OUTPUT_ID, self.invs[CRAFTING_OUTPUT_ID].stacks().len(), 1.0, unit),
 					],
 				}),
-				LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
-					id : SPACER_ID,
-					dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
-				}),
+				LayoutNode::spacer(SPACER_ID, (0.1 * unit * 1.1, 0.1 * unit * 1.1)),
 				LayoutNode::inv(NORMAL_INV_ID, self.invs[NORMAL_INV_ID].stacks().len(), SLOT_COUNT_X_F32, unit),
 			],
 		});
