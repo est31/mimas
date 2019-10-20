@@ -447,7 +447,7 @@ impl InventoryMenu {
 		let width = layout.state.dimension_x.expect("width expected") + 0.1 * unit;
 		let height = layout.state.dimension_y.expect("height expected") + 0.1 * unit;
 
-		layout.state.offs_absolute_x = Some(0.0); //Some(screen_dims.1 as f32 - height / 2.0);
+		layout.state.offs_absolute_x = Some(0.0);
 		layout.state.offs_absolute_y = Some(0.0);
 
 		layout.layout();
