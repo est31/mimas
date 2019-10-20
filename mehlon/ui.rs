@@ -125,9 +125,183 @@ impl ChatWindow {
 	}
 }
 
+enum LayoutNodeKind {
+	Container {
+		children :Vec<LayoutNode>,
+		horizontal :bool,
+	},
+	FixedSizeObject {
+		id :usize,
+		dimensions :(f32, f32),
+	},
+}
+
+#[derive(Default)]
+struct LayoutState {
+	dimension_x :Option<f32>,
+	dimension_y :Option<f32>,
+	offs_relative_x :Option<f32>,
+	offs_relative_y :Option<f32>,
+	offs_absolute_x :Option<f32>,
+	offs_absolute_y :Option<f32>,
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+enum LayoutProgress {
+	Started,
+	DimensionsKnown,
+	OffsetsKnown,
+	Finished,
+}
+
+struct LayoutNode {
+	kind :LayoutNodeKind,
+	progress :LayoutProgress,
+	state :LayoutState,
+}
+
+fn fmax(a :f32, b :f32) -> f32 {
+	if a > b {
+		a
+	} else {
+		b
+	}
+}
+
+impl LayoutNode {
+	fn from_kind(kind :LayoutNodeKind) -> Self {
+		Self {
+			kind,
+			progress : LayoutProgress::Started,
+			state : Default::default(),
+		}
+	}
+	fn progress(&self) -> LayoutProgress {
+		self.progress
+	}
+	fn layout(&mut self) {
+		use self::LayoutNodeKind::*;
+
+		// Early return so that we don't recurse when finished
+		if self.progress == LayoutProgress::Finished {
+			return;
+		}
+
+		if self.progress == LayoutProgress::Started {
+			match &mut self.kind {
+				Container { ref mut children, horizontal } => {
+					for child in children.iter_mut() {
+						child.layout();
+					}
+					if *horizontal {
+						// Horizontal container.
+						// Sum over x extent, maximize y extent.
+						if self.state.dimension_x.is_none() {
+							let dim_x = children.iter()
+								.map(|ch| ch.state.dimension_x)
+								.try_fold(0.0, |p, v| v.map(|v| p + v));
+							self.state.dimension_x = dim_x;
+						}
+						if self.state.dimension_y.is_none() {
+							let dim_y = children.iter()
+								.map(|ch| ch.state.dimension_y)
+								.try_fold(0.0, |p, v| v.map(|v| fmax(p, v)));
+							self.state.dimension_y = dim_y;
+						}
+					} else {
+						// Vertical container.
+						// Maximize x extent, sum over y extent.
+						if self.state.dimension_x.is_none() {
+							let dim_x = children.iter()
+								.map(|ch| ch.state.dimension_x)
+								.try_fold(0.0, |p, v| v.map(|v| fmax(p, v)));
+							self.state.dimension_x = dim_x;
+						}
+						if self.state.dimension_y.is_none() {
+							let dim_y = children.iter()
+								.map(|ch| ch.state.dimension_y)
+								.try_fold(0.0, |p, v| v.map(|v| p + v));
+							self.state.dimension_y = dim_y;
+						}
+					}
+				},
+				FixedSizeObject { id :_, dimensions } => {
+					if self.state.dimension_x.is_none() {
+						self.state.dimension_x = Some(dimensions.0);
+					}
+					if self.state.dimension_y.is_none() {
+						self.state.dimension_y = Some(dimensions.1);
+					}
+				},
+			}
+			if (self.state.dimension_x.is_some()
+					&& self.state.dimension_y.is_some()) {
+				self.progress = LayoutProgress::DimensionsKnown;
+			}
+		}
+
+		if self.progress == LayoutProgress::DimensionsKnown {
+			match &mut self.kind {
+				Container { ref mut children, horizontal } => {
+					if *horizontal {
+						// Horizontal container.
+						// Set relative x offsets to sum, y offsets to zero.
+						let mut sum = 0.0;
+						for child in children.iter_mut() {
+							child.state.offs_relative_x = Some(sum);
+							child.state.offs_relative_y = Some(0.0);
+							// unwrap is safe due to algorithm
+							sum += child.state.dimension_x.unwrap();
+						}
+					} else {
+						// Vertical container.
+						// Set relative x offsets to zero, y offsets to sum.
+						let mut sum = 0.0;
+						for child in children.iter_mut() {
+							child.state.offs_relative_x = Some(0.0);
+							child.state.offs_relative_y = Some(sum);
+							// unwrap is safe due to algorithm
+							sum += child.state.dimension_y.unwrap();
+						}
+					}
+				},
+				FixedSizeObject { id :_, dimensions :_ } => {
+					self.state.offs_relative_x = Some(0.0);
+					self.state.offs_relative_y = Some(0.0);
+				},
+			}
+			self.progress = LayoutProgress::OffsetsKnown;
+		}
+
+		if self.progress == LayoutProgress::OffsetsKnown {
+			if let (Some(offs_absolute_x), Some(offs_absolute_y)) =
+					(self.state.offs_absolute_x, self.state.offs_absolute_y) {
+				match &mut self.kind {
+					Container { ref mut children, horizontal :_ } => {
+						for child in children.iter_mut() {
+							// unwrap is safe due to algorithm
+							let offs_relative_x = child.state.offs_relative_x.unwrap();
+							child.state.offs_absolute_x = Some(offs_absolute_x + offs_relative_x);
+							// unwrap is safe due to algorithm
+							let offs_relative_y = child.state.offs_relative_y.unwrap();
+							child.state.offs_absolute_y = Some(offs_absolute_y + offs_relative_y);
+							child.layout();
+						}
+					},
+					// Nothing to do for fixed size object
+					FixedSizeObject { id :_, dimensions :_ } => (),
+				}
+				self.progress = LayoutProgress::Finished;
+			}
+		}
+	}
+}
+
 const CRAFTING_ID :usize = 0;
 const CRAFTING_OUTPUT_ID :usize = 1;
 const NORMAL_INV_ID :usize = 2;
+
+const SPACER_ID :usize = 999;
 
 pub struct InventoryMenu {
 	params :GameParamsHdl,
@@ -206,11 +380,81 @@ impl InventoryMenu {
 		const CRAFT_SLOT_COUNT_X :usize = 3;
 		const CRAFT_SLOT_COUNT_X_F32 :f32 = CRAFT_SLOT_COUNT_X as f32;
 
+		/*
 		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
 		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
 		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
 		let height_units = inv_height_units + craft_height_units + 0.2;
 		let height = height_units * unit * 1.1 + 0.1 * unit;
+
+		let mut vertices = Vec::new();
+
+		// Background
+		let dims = (width as i32, height as i32);
+		let mesh_x = -(width / 2.0) as i32;
+		let mesh_y = -(height / 2.0) as i32;
+		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+			dims, screen_dims, ui_colors.background_color));
+
+		let mut hover_idx = None;
+
+		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
+
+		let inventory_params :&[(usize, _, Box<dyn Fn(usize) -> f32>)] = &[
+			(CRAFT_SLOT_COUNT_X, (0, 0), Box::new(|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			})),
+			(CRAFT_SLOT_COUNT_X, ((width / 2.0) as i32, 0), Box::new(|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			})),
+			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32), Box::new(|line| { // text_y_fn
+				((craft_height_units * 1.1 + 0.2) * unit) / 2.0 +
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
+			})),
+		];*/
+
+		let mut layout = LayoutNode::from_kind(LayoutNodeKind::Container {
+			horizontal : false,
+			children : vec![
+				LayoutNode::from_kind(LayoutNodeKind::Container {
+					horizontal : true,
+					children : vec![
+						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
+							id : CRAFTING_ID,
+							dimensions : {
+								let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
+								(CRAFT_SLOT_COUNT_X_F32 * unit * 1.1, craft_height_units * unit * 1.1)
+							},
+						}),
+						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
+							id : CRAFTING_OUTPUT_ID,
+							dimensions : (1.0 * unit * 1.1, 1.0 * unit * 1.1),
+						}),
+					],
+				}),
+				LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
+					id : SPACER_ID,
+					dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
+				}),
+				LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
+					id : NORMAL_INV_ID,
+					dimensions : {
+						let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
+						(SLOT_COUNT_X_F32 * unit * 1.1, inv_height_units * unit * 1.1)
+					},
+				}),
+			],
+		});
+		layout.layout();
+
+		let width = layout.state.dimension_x.expect("width expected");
+		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
+		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
+		let height_units = inv_height_units + craft_height_units + 0.2;
+		let height = layout.state.dimension_y.expect("width expected");
 
 		let mut vertices = Vec::new();
 
