@@ -179,6 +179,24 @@ fn fmax(a :f32, b :f32) -> f32 {
 }
 
 impl LayoutNode {
+	fn from_kind(kind :LayoutNodeKind) -> Self {
+		Self {
+			kind,
+			progress : LayoutProgress::Started,
+			state : Default::default(),
+		}
+	}
+	fn inv(id :usize,
+			slots_total :usize, slots_x :f32, unit :f32) -> Self {
+		Self::from_kind(LayoutNodeKind::FixedSizeObject {
+			id,
+			dimensions : {
+				let craft_height_units = (slots_total as f32 / slots_x).ceil();
+				(slots_x * unit * 1.1, craft_height_units * unit * 1.1)
+			},
+		})
+	}
+
 	fn find_state(&self, for_id :usize) -> Option<&LayoutState> {
 		use self::LayoutNodeKind::*;
 		match &self.kind {
@@ -196,13 +214,6 @@ impl LayoutNode {
 			},
 		}
 		return None;
-	}
-	fn from_kind(kind :LayoutNodeKind) -> Self {
-		Self {
-			kind,
-			progress : LayoutProgress::Started,
-			state : Default::default(),
-		}
 	}
 	fn progress(&self) -> LayoutProgress {
 		self.progress
@@ -412,34 +423,19 @@ impl InventoryMenu {
 				LayoutNode::from_kind(LayoutNodeKind::Container {
 					horizontal : true,
 					children : vec![
-						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
-							id : CRAFTING_ID,
-							dimensions : {
-								let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
-								(CRAFT_SLOT_COUNT_X_F32 * unit * 1.1, craft_height_units * unit * 1.1)
-							},
-						}),
+						LayoutNode::inv(CRAFTING_ID, self.invs[CRAFTING_ID].stacks().len(), CRAFT_SLOT_COUNT_X_F32, unit),
 						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
 							id : SPACER_ID,
 							dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
 						}),
-						LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
-							id : CRAFTING_OUTPUT_ID,
-							dimensions : (1.0 * unit * 1.1, 1.0 * unit * 1.1),
-						}),
+						LayoutNode::inv(CRAFTING_OUTPUT_ID, self.invs[CRAFTING_OUTPUT_ID].stacks().len(), 1.0, unit),
 					],
 				}),
 				LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
 					id : SPACER_ID,
 					dimensions : (0.1 * unit * 1.1, 0.1 * unit * 1.1),
 				}),
-				LayoutNode::from_kind(LayoutNodeKind::FixedSizeObject {
-					id : NORMAL_INV_ID,
-					dimensions : {
-						let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
-						(SLOT_COUNT_X_F32 * unit * 1.1, inv_height_units * unit * 1.1)
-					},
-				}),
+				LayoutNode::inv(NORMAL_INV_ID, self.invs[NORMAL_INV_ID].stacks().len(), SLOT_COUNT_X_F32, unit),
 			],
 		});
 		layout.layout();
