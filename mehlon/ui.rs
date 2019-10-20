@@ -487,9 +487,7 @@ impl InventoryMenu {
 		layout.layout();
 
 		let width = layout.state.dimension_x.expect("width expected");
-		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
 		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
-		let height_units = inv_height_units + craft_height_units + 0.2;
 		let height = layout.state.dimension_y.expect("width expected");
 
 		layout.state.offs_absolute_x = Some(0.0); //Some(screen_dims.1 as f32 - height / 2.0);
@@ -517,8 +515,8 @@ impl InventoryMenu {
 		let inventory_params :&[(usize, _, f32)] = &[
 			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute_i32().unwrap(), 0.0),
 			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute_i32().unwrap(), 0.0),
-			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32),
-				((craft_height_units * 1.1 + 0.2) * unit) / 2.0
+			(SLOT_COUNT_X, inv_state.offs_absolute_i32().unwrap(),
+				inv_state.offs_absolute().unwrap().1
 			),
 		];
 
@@ -643,7 +641,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		let dims = (unit as i32, unit as i32);
 		let mesh_x = offsets.0 +
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
-		let mesh_y = offsets.1 + mesh_y_fn(line);
+		let mesh_y = -offsets.1 + mesh_y_fn(line);
 		let tx = texture_fn(i, mesh_x, mesh_y);
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, tx));
@@ -723,7 +721,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		HUD_SLOT_COUNT,
 		HUD_SLOT_COUNT,
 		unit,
-		(0, -(screen_dims.1 as i32)),
+		(0, (screen_dims.1 as i32)),
 		hud_width,
 		screen_dims,
 		|i, _mesh_x, _mesh_y| { // color_fn
