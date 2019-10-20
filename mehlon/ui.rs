@@ -396,9 +396,6 @@ impl InventoryMenu {
 			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
 			.. Default::default()
 		};
-		//let mut mesh_dims = glyph_brush.pixel_bounds(&section).unwrap();
-		//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
-		//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
 
 		let unit = unit_from_screen_dims(screen_dims.0);
 
@@ -408,41 +405,6 @@ impl InventoryMenu {
 		const CRAFT_SLOT_COUNT_X :usize = 3;
 		const CRAFT_SLOT_COUNT_X_F32 :f32 = CRAFT_SLOT_COUNT_X as f32;
 
-		/*
-		let width = SLOT_COUNT_X_F32 * unit * 1.10 + 0.1 * unit;
-		let inv_height_units = (self.invs[NORMAL_INV_ID].stacks().len() as f32 / SLOT_COUNT_X_F32).ceil();
-		let craft_height_units = (self.invs[CRAFTING_ID].stacks().len() as f32 / CRAFT_SLOT_COUNT_X_F32).ceil();
-		let height_units = inv_height_units + craft_height_units + 0.2;
-		let height = height_units * unit * 1.1 + 0.1 * unit;
-
-		let mut vertices = Vec::new();
-
-		// Background
-		let dims = (width as i32, height as i32);
-		let mesh_x = -(width / 2.0) as i32;
-		let mesh_y = -(height / 2.0) as i32;
-		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, ui_colors.background_color));
-
-		let mut hover_idx = None;
-
-		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
-
-		let inventory_params :&[(usize, _, Box<dyn Fn(usize) -> f32>)] = &[
-			(CRAFT_SLOT_COUNT_X, (0, 0), Box::new(|line| { // text_y_fn
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
-			(CRAFT_SLOT_COUNT_X, ((width / 2.0) as i32, 0), Box::new(|line| { // text_y_fn
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
-			(SLOT_COUNT_X, (0, -((craft_height_units * 1.1 + 0.2) * unit) as i32), Box::new(|line| { // text_y_fn
-				((craft_height_units * 1.1 + 0.2) * unit) / 2.0 +
-				(screen_dims.1 as f32 - height / 2.0
-					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5
-			})),
-		];*/
 
 		let mut layout = LayoutNode::from_kind(LayoutNodeKind::Container {
 			horizontal : false,
