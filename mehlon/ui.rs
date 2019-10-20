@@ -516,13 +516,12 @@ impl InventoryMenu {
 
 		for (inv_id, inv_param) in inventory_params.iter().enumerate() {
 			let offs = inv_param.1;
-			let offs_i32 = (offs.0 as i32, offs.1 as i32);
 			vertices.extend_from_slice(&inventory_slots_mesh(
 				&self.invs[inv_id],
 				self.invs[inv_id].stacks().len(),
 				inv_param.0,
 				unit,
-				offs_i32,
+				offs,
 				width,
 				screen_dims,
 				|i, mesh_x, mesh_y| { // color_fn
@@ -622,7 +621,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		slot_count :usize,
 		slot_count_x :usize,
 		unit :f32,
-		offsets :(i32, i32),
+		offsets :(f32, f32),
 		ui_width :f32,
 		screen_dims :(u32, u32),
 		mut texture_fn :impl FnMut(usize, i32, i32) -> TextureId,
@@ -635,9 +634,9 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		let col = i % slot_count_x;
 		let line = i / slot_count_x;
 		let dims = (unit as i32, unit as i32);
-		let mesh_x = offsets.0 +
+		let mesh_x = offsets.0 as i32 +
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
-		let mesh_y = -offsets.1 + mesh_y_fn(line);
+		let mesh_y = -offsets.1 as i32 + mesh_y_fn(line);
 		let tx = texture_fn(i, mesh_x, mesh_y);
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, tx));
@@ -651,7 +650,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		};
 		let text_x = (screen_dims.0 as f32 - ui_width / 2.0
 			+ unit * 1.1 * col as f32 + unit * 0.1) * 0.5
-			+ offsets.0 as f32 / 2.0;
+			+ offsets.0 * 0.5;
 		let section = Section {
 			text : &text,
 			bounds : (unit / 2.0, unit / 2.0),
@@ -717,7 +716,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		HUD_SLOT_COUNT,
 		HUD_SLOT_COUNT,
 		unit,
-		(0, (screen_dims.1 as i32)),
+		(0.0, screen_dims.1 as f32),
 		hud_width,
 		screen_dims,
 		|i, _mesh_x, _mesh_y| { // color_fn
