@@ -425,74 +425,11 @@ impl InventoryMenu {
 				inv!(NORMAL_INV_ID),
 			],
 		});
-		layout.layout();
-
-		let width = layout.state.dimension_x.expect("width expected") + 0.1 * unit;
-		let height = layout.state.dimension_y.expect("height expected") + 0.1 * unit;
-
-		layout.state.offs_absolute_x = Some(0.0);
-		layout.state.offs_absolute_y = Some(0.0);
-
-		layout.layout();
-		assert_eq!(layout.progress(), LayoutProgress::Finished);
-
-		let mut vertices = Vec::new();
-
-		// Background
-		let dims = (width as i32, height as i32);
-		let mesh_x = -(width / 2.0) as i32;
-		let mesh_y = -(height / 2.0) as i32;
-		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
-			dims, screen_dims, ui_colors.background_color));
-
-		let mut hover_idx = None;
-
-		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
-
-		layout.for_each_offsets(&mut |inv_id :usize, offs :Option<_>| {
-			if inv_id == SPACER_ID {
-				return;
-			}
-			let offs = offs.unwrap();
-			let slots_x = slot_counts_x[inv_id];
-			vertices.extend_from_slice(&inventory_slots_mesh(
-				&self.invs[inv_id],
-				self.invs[inv_id].stacks().len(),
-				slots_x,
-				unit,
-				offs,
-				width,
-				screen_dims,
-				|i, mesh_x, mesh_y| { // texture_fn
-					let dims = (unit as i32, unit as i32);
-					let hovering = self.last_mouse_pos
-						.map(|pos| {
-							(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.x, screen_dims.0)) &&
-							(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.y, screen_dims.1))
-						})
-						.unwrap_or(false);
-					if hovering {
-						hover_idx = Some((inv_id, i));
-					}
-					if self.from_pos == Some((inv_id, i)) {
-						ui_colors.selected_slot_color
-					} else if hovering {
-						ui_colors.hovered_slot_color
-					} else {
-						ui_colors.slot_color
-					}
-				},
-				|line| { // mesh_y_fn
-					(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
-				},
-				|line| { // text_y_fn
-					(screen_dims.1 as f32 - height / 2.0
-						+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + offs.1 * 0.5
-				},
-				glyph_brush,
-				&self.params,
-			));
-		});
+		let mouse_pos = self.last_mouse_pos.map(|pos|(pos.x as f32, pos.y as f32));
+		let hover_idx = render_inventories(&self.params,
+			ui_colors, display, program, glyph_brush, target,
+			&mut layout, slot_counts_x, &self.invs, mouse_pos,
+			self.from_pos);
 
 		let mut swap_command = None;
 
@@ -544,9 +481,96 @@ impl InventoryMenu {
 		// TODO this is hacky, we change state in RENDERING code!!
 		self.update_craft_output_inv();
 
-		draw_ui_vertices(&vertices, display, program, target);
-		glyph_brush.draw_queued(display, target);
 	}
+}
+
+fn render_inventories<'a, 'b>(
+		params :&GameParamsHdl,
+		ui_colors :&UiColors,
+		display :&glium::Display, program :&glium::Program,
+		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame,
+		layout :&mut LayoutNode,
+		slot_counts_x :&[usize],
+		invs :&[SelectableInventory],
+		mouse_pos :Option<(f32, f32)>,
+		from_pos :Option<(usize, usize)>
+		) -> Option<(usize, usize)> {
+	let screen_dims = display.get_framebuffer_dimensions();
+
+	let unit = unit_from_screen_dims(screen_dims.0);
+
+	layout.layout();
+
+	let width = layout.state.dimension_x.expect("width expected") + 0.1 * unit;
+	let height = layout.state.dimension_y.expect("height expected") + 0.1 * unit;
+
+	layout.state.offs_absolute_x = Some(0.0);
+	layout.state.offs_absolute_y = Some(0.0);
+
+	layout.layout();
+	assert_eq!(layout.progress(), LayoutProgress::Finished);
+
+	let mut vertices = Vec::new();
+
+	// Background
+	let dims = (width as i32, height as i32);
+	let mesh_x = -(width / 2.0) as i32;
+	let mesh_y = -(height / 2.0) as i32;
+	vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+		dims, screen_dims, ui_colors.background_color));
+
+	let mut hover_idx = None;
+
+	let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
+
+	layout.for_each_offsets(&mut |inv_id :usize, offs :Option<_>| {
+		if inv_id == SPACER_ID {
+			return;
+		}
+		let offs = offs.unwrap();
+		let slots_x = slot_counts_x[inv_id];
+		vertices.extend_from_slice(&inventory_slots_mesh(
+			&invs[inv_id],
+			invs[inv_id].stacks().len(),
+			slots_x,
+			unit,
+			offs,
+			width,
+			screen_dims,
+			|i, mesh_x, mesh_y| { // texture_fn
+				let dims = (unit as i32, unit as i32);
+				let hovering = mouse_pos.map(|pos| {
+						(mesh_x ..= (mesh_x + dims.0)).contains(&convert(pos.0, screen_dims.0)) &&
+						(mesh_y ..= (mesh_y + dims.1)).contains(&-convert(pos.1, screen_dims.1))
+					})
+					.unwrap_or(false);
+				if hovering {
+					hover_idx = Some((inv_id, i));
+				}
+				if from_pos == Some((inv_id, i)) {
+					ui_colors.selected_slot_color
+				} else if hovering {
+					ui_colors.hovered_slot_color
+				} else {
+					ui_colors.slot_color
+				}
+			},
+			|line| { // mesh_y_fn
+				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
+			},
+			|line| { // text_y_fn
+				(screen_dims.1 as f32 - height / 2.0
+					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + offs.1 * 0.5
+			},
+			glyph_brush,
+			params,
+		));
+	});
+
+	draw_ui_vertices(&vertices, display, program, target);
+	glyph_brush.draw_queued(display, target);
+
+	hover_idx
 }
 
 fn unit_from_screen_dims(screen_dim_x :u32) -> f32 {
