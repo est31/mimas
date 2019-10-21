@@ -341,6 +341,19 @@ impl LayoutNode {
 			}
 		}
 	}
+	fn for_each_offsets(&self, f :&mut impl FnMut(usize, Option<(f32, f32)>)) {
+		use self::LayoutNodeKind::*;
+		match &self.kind {
+			Container { ref children, horizontal :_ } => {
+				for child in children.iter() {
+					child.for_each_offsets(f);
+				}
+			},
+			FixedSizeObject { id, dimensions :_ } => {
+				f(*id, self.state.offs_absolute());
+			},
+		}
+	}
 }
 
 const CRAFTING_ID :usize = 0;
@@ -458,10 +471,6 @@ impl InventoryMenu {
 		layout.layout();
 		assert_eq!(layout.progress(), LayoutProgress::Finished);
 
-		let crafting_state = layout.find_state(CRAFTING_ID).unwrap();
-		let crafting_output_state = layout.find_state(CRAFTING_OUTPUT_ID).unwrap();
-		let inv_state = layout.find_state(NORMAL_INV_ID).unwrap();
-
 		let mut vertices = Vec::new();
 
 		// Background
@@ -475,20 +484,18 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		let inventory_offsets :&[_] = &[
-			crafting_state.offs_absolute().unwrap(),
-			crafting_output_state.offs_absolute().unwrap(),
-			inv_state.offs_absolute().unwrap(),
-		];
-
-		for (inv_id, offs) in inventory_offsets.iter().enumerate() {
+		layout.for_each_offsets(&mut |inv_id :usize, offs :Option<_>| {
+			if inv_id == SPACER_ID {
+				return;
+			}
+			let offs = offs.unwrap();
 			let slots_x = slot_counts_x[inv_id];
 			vertices.extend_from_slice(&inventory_slots_mesh(
 				&self.invs[inv_id],
 				self.invs[inv_id].stacks().len(),
 				slots_x,
 				unit,
-				*offs,
+				offs,
 				width,
 				screen_dims,
 				|i, mesh_x, mesh_y| { // texture_fn
@@ -520,7 +527,7 @@ impl InventoryMenu {
 				glyph_brush,
 				&self.params,
 			));
-		}
+		});
 
 		let mut swap_command = None;
 
