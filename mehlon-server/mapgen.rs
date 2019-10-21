@@ -430,6 +430,7 @@ impl MapgenMap {
 		}
 	}
 
+	#[allow(unused)]
 	fn get_blk_p1(&self, pos :Vector3<isize>) -> Option<MapBlock> {
 		let chunk_pos = btchn(pos);
 		let pos_in_chunk = btpic(pos);
