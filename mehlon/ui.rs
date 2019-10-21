@@ -185,6 +185,7 @@ impl LayoutNode {
 		})
 	}
 
+	#[allow(unused)]
 	fn find_state(&self, for_id :usize) -> Option<&LayoutState> {
 		use self::LayoutNodeKind::*;
 		match &self.kind {
