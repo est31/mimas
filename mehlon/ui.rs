@@ -27,22 +27,6 @@ fn render_text<'a, 'b>(text :&str, ui_colors :&UiColors,
 		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 	let screen_dims = display.get_framebuffer_dimensions();
 
-	let uniforms = uniform! {
-		vmatrix : IDENTITY,
-		pmatrix : IDENTITY,
-		fog_near_far : [40.0f32, 60.0]
-	};
-	let params = glium::draw_parameters::DrawParameters {
-		/*depth : glium::Depth {
-			test : glium::draw_parameters::DepthTest::IfLess,
-			write : true,
-			.. Default::default()
-		},
-		backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
-		blend :glium::Blend::alpha_blending(),
-		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
-		.. Default::default()
-	};
 	let mut section = Section {
 		text,
 		bounds : (screen_dims.0 as f32 * 0.14, screen_dims.1 as f32),
@@ -60,10 +44,7 @@ fn render_text<'a, 'b>(text :&str, ui_colors :&UiColors,
 	let border = 4;
 	let dims = (mesh_dims.width() + border, mesh_dims.height() + border);
 	let vertices = square_mesh(dims, screen_dims, ui_colors.background_color);
-	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
-	target.draw(&vbuff,
-			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-			&program, &uniforms, &params).unwrap();
+	draw_ui_vertices(&vertices, display, program, target);
 	glyph_brush.queue(section);
 	glyph_brush.draw_queued(display, target);
 }
@@ -411,23 +392,6 @@ impl InventoryMenu {
 
 		let screen_dims = display.get_framebuffer_dimensions();
 
-		let uniforms = uniform! {
-			vmatrix : IDENTITY,
-			pmatrix : IDENTITY,
-			fog_near_far : [40.0f32, 60.0]
-		};
-		let params = glium::draw_parameters::DrawParameters {
-			/*depth : glium::Depth {
-				test : glium::draw_parameters::DepthTest::IfLess,
-				write : true,
-				.. Default::default()
-			},
-			backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
-			blend :glium::Blend::alpha_blending(),
-			//polygon_mode : glium::draw_parameters::PolygonMode::Line,
-			.. Default::default()
-		};
-
 		let unit = unit_from_screen_dims(screen_dims.0);
 
 		const SLOT_COUNT_X :usize = 8;
@@ -579,10 +543,7 @@ impl InventoryMenu {
 		// TODO this is hacky, we change state in RENDERING code!!
 		self.update_craft_output_inv();
 
-		let vbuff = VertexBuffer::new(display, &vertices).unwrap();
-		target.draw(&vbuff,
-				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-				&program, &uniforms, &params).unwrap();
+		draw_ui_vertices(&vertices, display, program, target);
 		glyph_brush.draw_queued(display, target);
 	}
 }
@@ -647,26 +608,6 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 
 	let screen_dims = display.get_framebuffer_dimensions();
 
-	let uniforms = uniform! {
-		vmatrix : IDENTITY,
-		pmatrix : IDENTITY,
-		fog_near_far : [40.0f32, 60.0]
-	};
-	let params = glium::draw_parameters::DrawParameters {
-		/*depth : glium::Depth {
-			test : glium::draw_parameters::DepthTest::IfLess,
-			write : true,
-			.. Default::default()
-		},
-		backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
-		blend :glium::Blend::alpha_blending(),
-		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
-		.. Default::default()
-	};
-	//let mut mesh_dims = glyph_brush.pixel_bounds(&section).unwrap();
-	//mesh_dims.min.x = mesh_dims.min.y.min(section.screen_position.0 as i32);
-	//mesh_dims.min.y = mesh_dims.min.y.min(section.screen_position.1 as i32);
-
 	let unit = unit_from_screen_dims(screen_dims.0);
 
 	const SLOT_COUNT_F32 :f32 = HUD_SLOT_COUNT as f32;
@@ -710,11 +651,34 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 		&gm_params,
 	));
 
+	draw_ui_vertices(&vertices, display, program, target);
+	glyph_brush.draw_queued(display, target);
+}
+
+fn draw_ui_vertices<'a, 'b>(vertices :&[Vertex],
+		display :&glium::Display, program :&glium::Program,
+		target :&mut glium::Frame) {
+	let uniforms = uniform! {
+		vmatrix : IDENTITY,
+		pmatrix : IDENTITY,
+		fog_near_far : [40.0f32, 60.0]
+	};
+	let params = glium::draw_parameters::DrawParameters {
+		/*depth : glium::Depth {
+			test : glium::draw_parameters::DepthTest::IfLess,
+			write : true,
+			.. Default::default()
+		},
+		backface_culling : glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,*/
+		blend :glium::Blend::alpha_blending(),
+		//polygon_mode : glium::draw_parameters::PolygonMode::Line,
+		.. Default::default()
+	};
+
 	let vbuff = VertexBuffer::new(display, &vertices).unwrap();
 	target.draw(&vbuff,
 			&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
 			&program, &uniforms, &params).unwrap();
-	glyph_brush.draw_queued(display, target);
 }
 
 pub fn square_mesh(mesh_dims :(i32, i32), framebuffer_dims :(u32, u32), tx :TextureId) -> Vec<Vertex> {
