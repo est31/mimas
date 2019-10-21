@@ -187,10 +187,11 @@ impl LayoutNode {
 		}
 	}
 	fn inv(id :usize,
-			slots_total :usize, slots_x :f32, unit :f32) -> Self {
+			slots_total :usize, slots_x :usize, unit :f32) -> Self {
 		Self::from_kind(LayoutNodeKind::FixedSizeObject {
 			id,
 			dimensions : {
+				let slots_x = slots_x as f32;
 				let craft_height_units = (slots_total as f32 / slots_x).ceil();
 				(slots_x * unit * 1.1, craft_height_units * unit * 1.1)
 			},
@@ -417,25 +418,33 @@ impl InventoryMenu {
 		let unit = unit_from_screen_dims(screen_dims.0);
 
 		const SLOT_COUNT_X :usize = 8;
-		const SLOT_COUNT_X_F32 :f32 = SLOT_COUNT_X as f32;
-
 		const CRAFT_SLOT_COUNT_X :usize = 3;
-		const CRAFT_SLOT_COUNT_X_F32 :f32 = CRAFT_SLOT_COUNT_X as f32;
 
+		let slot_counts_x :&[usize] = &[
+			CRAFT_SLOT_COUNT_X,
+			1,
+			SLOT_COUNT_X,
+		];
 
+		macro_rules! inv {
+			($id:expr) => {
+				LayoutNode::inv($id, self.invs[$id].stacks().len(),
+					slot_counts_x[$id], unit)
+			};
+		}
 		let mut layout = LayoutNode::from_kind(LayoutNodeKind::Container {
 			horizontal : false,
 			children : vec![
 				LayoutNode::from_kind(LayoutNodeKind::Container {
 					horizontal : true,
 					children : vec![
-						LayoutNode::inv(CRAFTING_ID, self.invs[CRAFTING_ID].stacks().len(), CRAFT_SLOT_COUNT_X_F32, unit),
+						inv!(CRAFTING_ID),
 						LayoutNode::spacer(SPACER_ID, (0.1 * unit * 1.1, 0.1 * unit * 1.1)),
-						LayoutNode::inv(CRAFTING_OUTPUT_ID, self.invs[CRAFTING_OUTPUT_ID].stacks().len(), 1.0, unit),
+						inv!(CRAFTING_OUTPUT_ID),
 					],
 				}),
 				LayoutNode::spacer(SPACER_ID, (0.1 * unit * 1.1, 0.1 * unit * 1.1)),
-				LayoutNode::inv(NORMAL_INV_ID, self.invs[NORMAL_INV_ID].stacks().len(), SLOT_COUNT_X_F32, unit),
+				inv!(NORMAL_INV_ID),
 			],
 		});
 		layout.layout();
@@ -466,20 +475,20 @@ impl InventoryMenu {
 
 		let convert = |scalar, dim| (scalar * 2.0) as i32 - dim as i32;
 
-		let inventory_params :&[(usize, _)] = &[
-			(CRAFT_SLOT_COUNT_X, crafting_state.offs_absolute().unwrap()),
-			(CRAFT_SLOT_COUNT_X, crafting_output_state.offs_absolute().unwrap()),
-			(SLOT_COUNT_X, inv_state.offs_absolute().unwrap()),
+		let inventory_offsets :&[_] = &[
+			crafting_state.offs_absolute().unwrap(),
+			crafting_output_state.offs_absolute().unwrap(),
+			inv_state.offs_absolute().unwrap(),
 		];
 
-		for (inv_id, inv_param) in inventory_params.iter().enumerate() {
-			let offs = inv_param.1;
+		for (inv_id, offs) in inventory_offsets.iter().enumerate() {
+			let slots_x = slot_counts_x[inv_id];
 			vertices.extend_from_slice(&inventory_slots_mesh(
 				&self.invs[inv_id],
 				self.invs[inv_id].stacks().len(),
-				inv_param.0,
+				slots_x,
 				unit,
-				offs,
+				*offs,
 				width,
 				screen_dims,
 				|i, mesh_x, mesh_y| { // texture_fn
