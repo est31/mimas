@@ -480,7 +480,109 @@ impl InventoryMenu {
 
 		// TODO this is hacky, we change state in RENDERING code!!
 		self.update_craft_output_inv();
+	}
+}
 
+pub struct ChestMenu {
+	params :GameParamsHdl,
+	invs :[SelectableInventory; 2],
+	last_mouse_pos :Option<LogicalPosition>,
+	mouse_input_ev :Option<(ElementState, MouseButton)>,
+	from_pos : Option<(usize, usize)>,
+}
+
+impl ChestMenu {
+	pub fn new(params :GameParamsHdl,
+			inv :SelectableInventory,
+			chest_inv :SelectableInventory) -> Self {
+		let invs = [chest_inv, inv];
+		Self {
+			params,
+			invs,
+			last_mouse_pos : None,
+			mouse_input_ev : None,
+			from_pos : None,
+		}
+	}
+	pub fn inventory(&self) -> &SelectableInventory {
+		&self.invs[CRAFTING_OUTPUT_ID]
+	}
+	pub fn chest_inv(&self) -> &SelectableInventory {
+		&self.invs[CRAFTING_ID]
+	}
+	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
+		self.last_mouse_pos = Some(pos);
+	}
+	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {
+		self.mouse_input_ev = Some((state, button));
+	}
+	pub fn render<'a, 'b>(&mut self,
+			ui_colors :&UiColors,
+			display :&glium::Display, program :&glium::Program,
+			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
+
+		let screen_dims = display.get_framebuffer_dimensions();
+
+		let unit = unit_from_screen_dims(screen_dims.0);
+
+		const SLOT_COUNT_X :usize = 8;
+
+		let slot_counts_x :&[usize] = &[
+			SLOT_COUNT_X,
+			SLOT_COUNT_X,
+		];
+
+		macro_rules! inv {
+			($id:expr) => {
+				LayoutNode::inv($id, self.invs[$id].stacks().len(),
+					slot_counts_x[$id], unit)
+			};
+		}
+		let mut layout = LayoutNode::from_kind(LayoutNodeKind::Container {
+			horizontal : false,
+			children : vec![
+				inv!(CRAFTING_ID),
+				LayoutNode::spacer(SPACER_ID, (0.1 * unit * 1.1, 0.1 * unit * 1.1)),
+				inv!(CRAFTING_OUTPUT_ID),
+			],
+		});
+		let mouse_pos = self.last_mouse_pos.map(|pos|(pos.x as f32, pos.y as f32));
+		let hover_idx = render_inventories(&self.params,
+			ui_colors, display, program, glyph_brush, target,
+			&mut layout, slot_counts_x, &self.invs, mouse_pos,
+			self.from_pos);
+
+		let mut swap_command = None;
+
+		// TODO this is hacky, we change state in RENDERING code!!
+		let input_ev = self.mouse_input_ev.take();
+		// TODO this is hacky, we change state in RENDERING code!!
+		if let (Some((state, button)), Some(hv)) = (input_ev, hover_idx) {
+			if state == ElementState::Released {
+				if let Some(from_pos) = self.from_pos {
+					if button == MouseButton::Left {
+						self.from_pos = None;
+					}
+					swap_command = Some((from_pos, hv, button));
+				} else {
+					self.from_pos = Some(hv);
+				}
+			}
+		}
+
+		// TODO this is hacky, we change state in RENDERING code!!
+		if let Some((from_pos, to_pos, button)) = swap_command {
+			if button == MouseButton::Left {
+				SelectableInventory::merge_or_swap(
+					&mut self.invs,
+					from_pos, to_pos);
+			}
+			if button == MouseButton::Right {
+				SelectableInventory::move_n_if_possible(
+					&mut self.invs,
+					from_pos, to_pos, 1);
+			}
+		}
 	}
 }
 

@@ -37,7 +37,7 @@ use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block,
 use assets::{Assets, UiColors};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
-	InventoryMenu, IDENTITY, render_inventory_hud};
+	ChestMenu, InventoryMenu, IDENTITY, render_inventory_hud};
 
 use voxel_walk::VoxelWalker;
 
@@ -96,6 +96,7 @@ pub struct Game<C :NetworkClientConn> {
 	chat_msgs :VecDeque<String>,
 	chat_window :Option<ChatWindow>,
 	inventory_menu :Option<InventoryMenu>,
+	chest_menu :Option<ChestMenu>,
 	menu_enabled :bool,
 
 	map :ClientMap,
@@ -116,6 +117,17 @@ macro_rules! maybe_inventory_change {
 			$this.craft_inv = $m.craft_inv().clone();
 			// TODO send craft inventory to server
 		}
+	};
+}
+
+macro_rules! maybe_chest_inventory_change {
+	($m:ident, $this:ident) => {
+		if $m.inventory() != &$this.sel_inventory {
+			$this.sel_inventory = $m.inventory().clone();
+			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
+			let _ = $this.srv_conn.send(msg);
+		}
+		// TODO change of chest inventory
 	};
 }
 
@@ -213,6 +225,7 @@ impl<C :NetworkClientConn> Game<C> {
 			chat_msgs : VecDeque::new(),
 			chat_window : None,
 			inventory_menu : None,
+			chest_menu : None,
 			menu_enabled : false,
 			map,
 			camera,
@@ -242,6 +255,7 @@ impl<C :NetworkClientConn> Game<C> {
 	fn in_background(&self) -> bool {
 		self.chat_window.is_some() ||
 			self.inventory_menu.is_some() ||
+			self.chest_menu.is_some() ||
 			self.menu_enabled
 	}
 	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
@@ -631,6 +645,12 @@ impl<C :NetworkClientConn> Game<C> {
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 				maybe_inventory_change!(m, self);
+			} else if let (Some(m), Some(ui_colors)) = (&mut self.chest_menu, &self.ui_colors) {
+				m.render(
+					ui_colors,
+					&mut self.display,
+					&self.program, glyph_brush, &mut target);
+				maybe_chest_inventory_change!(m, self);
 			}
 		} else if let Some(ui_colors) = &self.ui_colors {
 			let params = glium::draw_parameters::DrawParameters {
@@ -710,6 +730,11 @@ impl<C :NetworkClientConn> Game<C> {
 
 				self.check_grab_change();
 				return false;
+			} else if let Some(m) = self.chest_menu.take() {
+				maybe_chest_inventory_change!(m, self);
+
+				self.check_grab_change();
+				return false;
 			}
 		}
 
@@ -766,6 +791,21 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 			if self.camera.mouse_right_down
 					&& self.camera.mouse_right_cooldown <= 0.0 {
+				let blk_sel = self.map.get_blk(selected_pos).unwrap();
+				let has_inv = params.block_params.get(blk_sel.id() as usize).unwrap().inventory.is_some();
+				if has_inv {
+					// open inventory
+					self.chest_menu = Some(ChestMenu::new(
+						self.params.as_ref().unwrap().clone(),
+						self.sel_inventory.clone(),
+						SelectableInventory::new()));
+					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+					self.camera.mouse_right_down = false;
+					self.check_grab_change();
+					// TODO open actually stored inventory
+					return;
+				}
+
 				let sel = self.sel_inventory.get_selected();
 				if let Some(sel) = sel {
 					let placeable = params.block_params.get(sel.id() as usize).unwrap().placeable;
@@ -843,6 +883,8 @@ impl<C :NetworkClientConn> Game<C> {
 						if self.has_focus {
 							if let Some(m) = &mut self.inventory_menu {
 								m.handle_mouse_moved(position);
+							} else if let Some(m) = &mut self.chest_menu {
+								m.handle_mouse_moved(position);
 							}
 						}
 					},
@@ -864,6 +906,8 @@ impl<C :NetworkClientConn> Game<C> {
 						}
 						if self.has_focus {
 							if let Some(m) = &mut self.inventory_menu {
+								m.handle_mouse_input(state, button);
+							} else if let Some(m) = &mut self.chest_menu {
 								m.handle_mouse_input(state, button);
 							}
 						}
