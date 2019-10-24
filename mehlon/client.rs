@@ -792,13 +792,13 @@ impl<C :NetworkClientConn> Game<C> {
 			if self.camera.mouse_right_down
 					&& self.camera.mouse_right_cooldown <= 0.0 {
 				let blk_sel = self.map.get_blk(selected_pos).unwrap();
-				let has_inv = params.block_params.get(blk_sel.id() as usize).unwrap().inventory.is_some();
-				if has_inv {
+				let has_inv = params.block_params.get(blk_sel.id() as usize).unwrap().inventory;
+				if let Some(stack_num) = has_inv {
 					// open inventory
 					self.chest_menu = Some(ChestMenu::new(
 						self.params.as_ref().unwrap().clone(),
 						self.sel_inventory.clone(),
-						SelectableInventory::new()));
+						SelectableInventory::empty_with_size(stack_num as usize)));
 					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
 					self.camera.mouse_right_down = false;
 					self.check_grab_change();

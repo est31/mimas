@@ -94,7 +94,10 @@ pub const HUD_SLOT_COUNT :usize = 8;
 
 impl SelectableInventory {
 	pub fn new() -> Self {
-		Self::from_stacks(vec![Stack::Empty; 16].into_boxed_slice())
+		Self::empty_with_size(16)
+	}
+	pub fn empty_with_size(size :usize) -> Self {
+		Self::from_stacks(vec![Stack::Empty; size].into_boxed_slice())
 	}
 	pub fn from_stacks(stacks :Box<[Stack]>) -> Self {
 		Self {
