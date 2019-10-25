@@ -134,7 +134,10 @@ macro_rules! maybe_chest_inventory_change {
 		let MetadataEntry::Inventory(inv) = chest_meta;
 		if $m.chest_inv() != &*inv {
 			*inv = $m.chest_inv().clone();
-			// TODO send chest inventory to server
+
+			let meta = MetadataEntry::Inventory($m.chest_inv().clone());
+			let msg = ClientToServerMsg::SetMetadata($m.chest_pos(), meta);
+			let _ = $this.srv_conn.send(msg);
 		}
 	};
 }

@@ -43,12 +43,14 @@ pub mod crafting;
 pub mod game_params;
 pub mod toml_util;
 
-use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock};
+use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock,
+	MetadataEntry};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
 use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
+use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
@@ -71,6 +73,7 @@ pub enum ClientToServerMsg {
 	GetHashedBlobs(Vec<Vec<u8>>),
 
 	SetBlock(Vector3<isize>, MapBlock),
+	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
 	SetPos(PlayerPosition),
 	SetInventory(SelectableInventory),
@@ -803,6 +806,20 @@ impl<S :NetworkServerSocket> Server<S> {
 					SetBlock(p, b) => {
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {
 							hdl.set(b);
+						} else {
+							// TODO log something about an attempted action in an unloaded chunk
+						}
+					},
+					SetMetadata(p, ne) => {
+						if let Some(entry) = self.map.get_blk_meta_entry(p) {
+							match entry {
+								Entry::Occupied(mut e) => {
+									e.insert(ne);
+								},
+								Entry::Vacant(mut e) => {
+									e.insert(ne);
+								},
+							}
 						} else {
 							// TODO log something about an attempted action in an unloaded chunk
 						}
