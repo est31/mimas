@@ -3,6 +3,7 @@ use std::collections::{HashMap};
 use {btchn, btpic};
 use map_storage::PlayerIdPair;
 use game_params::ServerGameParamsHdl;
+use inventory::SelectableInventory;
 
 use super::mapgen::{Schematic, MapgenThread};
 
@@ -31,12 +32,33 @@ impl MapBlock {
 	}
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub enum MetadataEntry {
+	Inventory(SelectableInventory),
+	//Text(String), // TODO
+	//Orientation, // TODO
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MapChunkMetadata {
+	pub metadata :HashMap<Vector3<u8>, Vec<MetadataEntry>>,
+}
+
+impl MapChunkMetadata {
+	pub fn empty() -> Self {
+		Self {
+			metadata : HashMap::new(),
+		}
+	}
+}
+
 big_array! { BigArray; }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MapChunkData(
 	#[serde(with = "BigArray")]
-	pub(in super) [MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize]
+	pub(in super) [MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
+	pub MapChunkMetadata,
 );
 
 pub struct Map<B :MapBackend> {
@@ -53,7 +75,8 @@ impl MapChunkData {
 		Self::filled_with(MapBlock::default())
 	}
 	pub fn filled_with(m :MapBlock) -> Self {
-		Self([m; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize])
+		Self([m; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
+			MapChunkMetadata::empty())
 	}
 	pub fn get_blk_mut(&mut self, pos :Vector3<isize>) -> &mut MapBlock {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
@@ -62,6 +85,9 @@ impl MapChunkData {
 	pub fn get_blk(&self, pos :Vector3<isize>) -> &MapBlock {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
 		&self.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
+	}
+	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<&[MetadataEntry]> {
+		self.1.metadata.get(&pos.map(|v| v as u8)).map(Vec::as_slice)
 	}
 }
 
