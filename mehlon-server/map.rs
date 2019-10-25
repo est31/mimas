@@ -41,7 +41,7 @@ pub enum MetadataEntry {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MapChunkMetadata {
-	pub metadata :HashMap<Vector3<u8>, Vec<MetadataEntry>>,
+	pub metadata :HashMap<Vector3<u8>, MetadataEntry>,
 }
 
 impl MapChunkMetadata {
@@ -86,8 +86,11 @@ impl MapChunkData {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
 		&self.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
 	}
-	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<&[MetadataEntry]> {
-		self.1.metadata.get(&pos.map(|v| v as u8)).map(Vec::as_slice)
+	pub fn get_blk_meta_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MetadataEntry> {
+		self.1.metadata.get_mut(&pos.map(|v| v as u8))
+	}
+	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<&MetadataEntry> {
+		self.1.metadata.get(&pos.map(|v| v as u8))
 	}
 }
 

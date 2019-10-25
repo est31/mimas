@@ -130,21 +130,20 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	}
 	// TODO maybe create an error if the number doesn't fit
 	blocks.write_u16::<BigEndian>(data.1.metadata.len() as u16).unwrap();
-	for (pos, entries) in data.1.metadata.iter() {
+	for (pos, entry) in data.1.metadata.iter() {
 		blocks.write_u8(pos[0]).unwrap();
 		blocks.write_u8(pos[1]).unwrap();
 		blocks.write_u8(pos[2]).unwrap();
 
 		// TODO maybe create an error if the entries number doesn't fit
-		blocks.write_u8(entries.len() as u8).unwrap();
-		for entry in entries.iter() {
-			match entry {
-				MetadataEntry::Inventory(inv) => {
-					// Kind 0 stands for inventories
-					blocks.write_u8(0).unwrap();
-					inv.serialize_to(&mut blocks);
-				},
-			}
+		//blocks.write_u8(entries.len() as u8).unwrap();
+		blocks.write_u8(1).unwrap();
+		match entry {
+			MetadataEntry::Inventory(inv) => {
+				// Kind 0 stands for inventories
+				blocks.write_u8(0).unwrap();
+				inv.serialize_to(&mut blocks);
+			},
 		}
 	}
 	let rdr :&[u8] = &blocks;
@@ -180,8 +179,10 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 			let pos = Vector3::new(rdr.read_u8()?, rdr.read_u8()?, rdr.read_u8()?);
 			// TODO bounds checking of the position vector
 			let entries_count = rdr.read_u8()?;
-			let mut entries = Vec::new();
-			for _ in 0 .. entries_count {
+			if entries_count > 1 {
+				// For now, we only support 1 entry at most
+				Err(format!("Too many metadata entries: {}", entries_count))?;
+			} else if entries_count == 1 {
 				let kind = rdr.read_u8()?;
 				let entry = match kind {
 					// 0 is for inventories
@@ -191,9 +192,8 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 					},
 					_ => Err(format!("Unsupported entry kind"))?,
 				};
-				entries.push(entry);
+				r.1.metadata.insert(pos, entry);
 			}
-			r.1.metadata.insert(pos, entries);
 		}
 	}
 	Ok(r)
