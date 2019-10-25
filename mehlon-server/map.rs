@@ -140,6 +140,33 @@ impl<'a, B :MapBackend> MapBlockHandle<'a, B> {
 	}
 }
 
+pub struct MetadataHandle<'a, B :MapBackend> {
+	pos :Vector3<isize>,
+	chk :&'a mut MapChunkData,
+	backend :&'a mut B,
+	on_change :&'a Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
+}
+
+impl<'a, B :MapBackend> MetadataHandle<'a, B> {
+	pub fn set(&mut self, b :MetadataEntry) {
+		let chunk_pos = btchn(self.pos);
+		let pos_in_chunk = btpic(self.pos);
+		match self.chk.get_blk_meta_entry(pos_in_chunk) {
+			Entry::Occupied(mut e) => {
+				e.insert(b);
+			},
+			Entry::Vacant(e) => {
+				e.insert(b);
+			},
+		}
+		self.backend.chunk_changed(chunk_pos, self.chk.clone());
+		(*self.on_change)(chunk_pos, &self.chk);
+	}
+	pub fn get(&mut self) -> Option<&MetadataEntry> {
+		let pos_in_chunk = btpic(self.pos);
+		self.chk.get_blk_meta(pos_in_chunk)
+	}
+}
 
 pub struct ClientBackend;
 
@@ -243,12 +270,17 @@ impl<B :MapBackend> Map<B> {
 				on_change,
 			})
 	}
-	pub fn get_blk_meta_entry(&mut self, pos :Vector3<isize>) -> Option<Entry<'_, Vector3<u8>, MetadataEntry>> {
-		// TODO make this return an opaque handle that executes the on_change function when sth changes
+	pub fn get_blk_meta_mut(&mut self, pos :Vector3<isize>) -> Option<MetadataHandle<'_, B>> {
 		let chunk_pos = btchn(pos);
-		let pos_in_chunk = btpic(pos);
-		self.get_chunk_mut(chunk_pos)
-			.map(|blk| blk.get_blk_meta_entry(pos_in_chunk))
+		let on_change = &self.on_change;
+		let backend = &mut self.backend;
+		self.chunks.get_mut(&chunk_pos)
+			.map(move |chk| MetadataHandle {
+				pos,
+				chk,
+				backend,
+				on_change,
+			})
 	}
 	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<Option<&MetadataEntry>> {
 		let chunk_pos = btchn(pos);

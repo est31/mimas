@@ -50,7 +50,6 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
-use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use std::fmt::Display;
 use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
@@ -811,15 +810,8 @@ impl<S :NetworkServerSocket> Server<S> {
 						}
 					},
 					SetMetadata(p, ne) => {
-						if let Some(entry) = self.map.get_blk_meta_entry(p) {
-							match entry {
-								Entry::Occupied(mut e) => {
-									e.insert(ne);
-								},
-								Entry::Vacant(mut e) => {
-									e.insert(ne);
-								},
-							}
+						if let Some(mut hdl) = self.map.get_blk_meta_mut(p) {
+							hdl.set(ne);
 						} else {
 							// TODO log something about an attempted action in an unloaded chunk
 						}

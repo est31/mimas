@@ -127,13 +127,12 @@ macro_rules! maybe_chest_inventory_change {
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
 		}
-		let chest_meta = $this.map.get_blk_meta_entry($m.chest_pos()).unwrap()
-			.or_insert_with(|| {
-				MetadataEntry::Inventory($m.chest_inv().clone())
-			});
-		let MetadataEntry::Inventory(inv) = chest_meta;
-		if $m.chest_inv() != &*inv {
-			*inv = $m.chest_inv().clone();
+		let mut chest_meta = $this.map.get_blk_meta_mut($m.chest_pos()).unwrap();
+		if Some($m.chest_inv()) != chest_meta.get().map(|v| {
+			let MetadataEntry::Inventory(inv) = v;
+			inv
+		}) {
+			chest_meta.set(MetadataEntry::Inventory($m.chest_inv().clone()));
 
 			let meta = MetadataEntry::Inventory($m.chest_inv().clone());
 			let msg = ClientToServerMsg::SetMetadata($m.chest_pos(), meta);
