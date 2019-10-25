@@ -1,5 +1,5 @@
 use mehlon_server::map::{Map, MapBackend, ClientMap,
-	CHUNKSIZE, MapBlock};
+	CHUNKSIZE, MapBlock, MetadataEntry};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
@@ -127,7 +127,15 @@ macro_rules! maybe_chest_inventory_change {
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
 		}
-		// TODO change of chest inventory
+		let chest_meta = $this.map.get_blk_meta_entry($m.chest_pos()).unwrap()
+			.or_insert_with(|| {
+				MetadataEntry::Inventory($m.chest_inv().clone())
+			});
+		let MetadataEntry::Inventory(inv) = chest_meta;
+		if $m.chest_inv() != &*inv {
+			*inv = $m.chest_inv().clone();
+			// TODO send chest inventory to server
+		}
 	};
 }
 
@@ -794,15 +802,21 @@ impl<C :NetworkClientConn> Game<C> {
 				let blk_sel = self.map.get_blk(selected_pos).unwrap();
 				let has_inv = params.block_params.get(blk_sel.id() as usize).unwrap().inventory;
 				if let Some(stack_num) = has_inv {
-					// open inventory
+					// open chest inventory
+					let chest_inv = self.map.get_blk_meta(selected_pos).unwrap()
+						.map(|v| {
+							let MetadataEntry::Inventory(inv) = v.clone();
+							inv
+						})
+						.unwrap_or_else(|| SelectableInventory::empty_with_size(stack_num as usize));
 					self.chest_menu = Some(ChestMenu::new(
 						self.params.as_ref().unwrap().clone(),
 						self.sel_inventory.clone(),
-						SelectableInventory::empty_with_size(stack_num as usize)));
+						chest_inv,
+						selected_pos));
 					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
 					self.camera.mouse_right_down = false;
 					self.check_grab_change();
-					// TODO open actually stored inventory
 					return;
 				}
 

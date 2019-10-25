@@ -3,6 +3,7 @@ use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
 	Section, Layout, HorizontalAlign,
 };
+use nalgebra::Vector3;
 use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
 	MouseButton, dpi::LogicalPosition};
 use glium_glyph::glyph_brush::GlyphCruncher;
@@ -486,6 +487,7 @@ impl InventoryMenu {
 pub struct ChestMenu {
 	params :GameParamsHdl,
 	invs :[SelectableInventory; 2],
+	chest_pos :Vector3<isize>,
 	last_mouse_pos :Option<LogicalPosition>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
@@ -494,11 +496,13 @@ pub struct ChestMenu {
 impl ChestMenu {
 	pub fn new(params :GameParamsHdl,
 			inv :SelectableInventory,
-			chest_inv :SelectableInventory) -> Self {
+			chest_inv :SelectableInventory,
+			chest_pos :Vector3<isize>) -> Self {
 		let invs = [chest_inv, inv];
 		Self {
 			params,
 			invs,
+			chest_pos,
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
@@ -509,6 +513,9 @@ impl ChestMenu {
 	}
 	pub fn chest_inv(&self) -> &SelectableInventory {
 		&self.invs[CRAFTING_ID]
+	}
+	pub fn chest_pos(&self) -> Vector3<isize> {
+		self.chest_pos
 	}
 	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
 		self.last_mouse_pos = Some(pos);

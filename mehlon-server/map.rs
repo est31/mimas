@@ -1,5 +1,5 @@
 use nalgebra::Vector3;
-use std::collections::{HashMap};
+use std::collections::hash_map::{HashMap, Entry};
 use {btchn, btpic};
 use map_storage::PlayerIdPair;
 use game_params::ServerGameParamsHdl;
@@ -86,8 +86,8 @@ impl MapChunkData {
 		let (x, y, z) = (pos.x, pos.y, pos.z);
 		&self.0[(x * CHUNKSIZE * CHUNKSIZE + y * CHUNKSIZE + z) as usize]
 	}
-	pub fn get_blk_meta_mut(&mut self, pos :Vector3<isize>) -> Option<&mut MetadataEntry> {
-		self.1.metadata.get_mut(&pos.map(|v| v as u8))
+	pub fn get_blk_meta_entry(&mut self, pos :Vector3<isize>) -> Entry<'_, Vector3<u8>, MetadataEntry> {
+		self.1.metadata.entry(pos.map(|v| v as u8))
 	}
 	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<&MetadataEntry> {
 		self.1.metadata.get(&pos.map(|v| v as u8))
@@ -242,6 +242,19 @@ impl<B :MapBackend> Map<B> {
 				backend,
 				on_change,
 			})
+	}
+	pub fn get_blk_meta_entry(&mut self, pos :Vector3<isize>) -> Option<Entry<'_, Vector3<u8>, MetadataEntry>> {
+		// TODO make this return an opaque handle that executes the on_change function when sth changes
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.get_chunk_mut(chunk_pos)
+			.map(|blk| blk.get_blk_meta_entry(pos_in_chunk))
+	}
+	pub fn get_blk_meta(&self, pos :Vector3<isize>) -> Option<Option<&MetadataEntry>> {
+		let chunk_pos = btchn(pos);
+		let pos_in_chunk = btpic(pos);
+		self.get_chunk(chunk_pos)
+			.map(|blk| blk.get_blk_meta(pos_in_chunk))
 	}
 	pub fn set_player_kv(&mut self, id :PlayerIdPair, key :&str, value :Vec<u8>) {
 		self.backend.set_player_kv(id, key, value);
