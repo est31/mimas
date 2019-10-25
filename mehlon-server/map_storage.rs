@@ -1,6 +1,6 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
-use map::{MapChunkData, CHUNKSIZE};
+use map::{MapChunkData, MetadataEntry, CHUNKSIZE};
 use StrErr;
 use nalgebra::Vector3;
 use std::{str, io, path::Path};
@@ -13,6 +13,7 @@ use sqlite_generic::{get_user_version, set_user_version,
 use local_auth::SqliteLocalAuth;
 use std::num::NonZeroU64;
 use game_params::{NameIdMap, parse_block_name};
+use inventory::SelectableInventory;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,
@@ -127,12 +128,31 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	for b in data.0.iter() {
 		blocks.write_u8(b.id()).unwrap();
 	}
+	// TODO maybe create an error if the number doesn't fit
+	blocks.write_u16::<BigEndian>(data.1.metadata.len() as u16).unwrap();
+	for (pos, entries) in data.1.metadata.iter() {
+		blocks.write_u8(pos[0]).unwrap();
+		blocks.write_u8(pos[1]).unwrap();
+		blocks.write_u8(pos[2]).unwrap();
+
+		// TODO maybe create an error if the entries number doesn't fit
+		blocks.write_u8(entries.len() as u8).unwrap();
+		for entry in entries.iter() {
+			match entry {
+				MetadataEntry::Inventory(inv) => {
+					// Kind 0 stands for inventories
+					blocks.write_u8(0).unwrap();
+					inv.serialize_to(&mut blocks);
+				},
+			}
+		}
+	}
 	let rdr :&[u8] = &blocks;
 	let mut gz_enc = GzBuilder::new().read(rdr, Compression::fast());
 	let mut r = Vec::<u8>::new();
 
 	// Version
-	r.write_u8(0).unwrap();
+	r.write_u8(1).unwrap();
 	io::copy(&mut gz_enc, &mut r).unwrap();
 	r
 }
@@ -140,7 +160,7 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData, StrErr> {
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
-	if version != 0 {
+	if version > 1 {
 		// The version is too recent
 		Err(format!("Unsupported map chunk version {}", version))?;
 	}
@@ -152,6 +172,29 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 	for v in r.0.iter_mut() {
 		let n = rdr.read_u8()?;
 		*v = m.mb_from_id(n).ok_or("invalid block number")?;
+	}
+	if version > 0 {
+		let count = rdr.read_u16::<BigEndian>()?;
+
+		for _ in 0 .. count {
+			let pos = Vector3::new(rdr.read_u8()?, rdr.read_u8()?, rdr.read_u8()?);
+			// TODO bounds checking of the position vector
+			let entries_count = rdr.read_u8()?;
+			let mut entries = Vec::new();
+			for _ in 0 .. entries_count {
+				let kind = rdr.read_u8()?;
+				let entry = match kind {
+					// 0 is for inventories
+					0 => {
+						let inv = SelectableInventory::deserialize_rdr(&mut rdr, m)?;
+						MetadataEntry::Inventory(inv)
+					},
+					_ => Err(format!("Unsupported entry kind"))?,
+				};
+				entries.push(entry);
+			}
+			r.1.metadata.insert(pos, entries);
+		}
 	}
 	Ok(r)
 }

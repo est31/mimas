@@ -1,5 +1,6 @@
 use map::MapBlock;
 use std::num::NonZeroU16;
+use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use game_params::NameIdMap;
 use StrErr;
@@ -217,7 +218,10 @@ impl SelectableInventory {
 		}
 	}
 	pub fn deserialize(buf :&[u8], m :&NameIdMap) -> Result<Self, StrErr> {
-		let mut rdr = buf;
+		Self::deserialize_rdr(buf, m)
+	}
+
+	pub fn deserialize_rdr(mut rdr :impl Read, m :&NameIdMap) -> Result<Self, StrErr> {
 		let version = rdr.read_u8()?;
 		if version != 0 {
 			// The version is too recent
