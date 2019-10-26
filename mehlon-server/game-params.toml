@@ -77,6 +77,22 @@ texture = "assets/textures/default_stone.png^assets/textures/default_mineral_gol
 name = "default:diamond_ore"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_diamond.png"
 
+[[block]]
+name = "default:chest"
+texture = [
+	"assets/textures/default_chest_side.png",
+	"assets/textures/default_chest_top.png"
+]
+inventory = 40
+
 [[recipe]]
 inputs = ["default:tree"]
 output = "default:wood 4"
+
+[[recipe]]
+inputs = [
+	"default:wood", "default:wood", "default:wood",
+	"default:wood", "", "default:wood",
+	"default:wood", "default:wood", "default:wood",
+]
+output = "default:chest 1"
