@@ -74,6 +74,8 @@ pub enum ClientToServerMsg {
 	SetBlock(Vector3<isize>, MapBlock),
 	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
+	Dig(Vector3<isize>),
+
 	SetPos(PlayerPosition),
 	SetInventory(SelectableInventory),
 	Chat(String),
@@ -818,6 +820,14 @@ impl<S :NetworkServerSocket> Server<S> {
 					},
 					PlaceTree(p) => {
 						map::spawn_tree(&mut self.map, p, &self.params);
+					},
+					Dig(p) => {
+						if let Some(mut hdl) = self.map.get_blk_mut(p) {
+							let air_bl = self.params.p.block_roles.air;
+							hdl.set(air_bl);
+						} else {
+							// TODO log something about an attempted action in an unloaded chunk
+						}
 					},
 					SetPos(_p) => unreachable!(),
 					SetInventory(_inv) => unreachable!(),
