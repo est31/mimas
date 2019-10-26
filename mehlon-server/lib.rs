@@ -822,11 +822,34 @@ impl<S :NetworkServerSocket> Server<S> {
 						map::spawn_tree(&mut self.map, p, &self.params);
 					},
 					Dig(p) => {
-						if let Some(mut hdl) = self.map.get_blk_mut(p) {
-							let air_bl = self.params.p.block_roles.air;
-							hdl.set(air_bl);
+
+						let mut remove = true;
+						if let Some(chest_meta) = self.map.get_blk_meta(p) {
+							if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
+								if !inv.is_empty() {
+									remove = false;
+								}
+							}
 						} else {
-							// TODO log something about an attempted action in an unloaded chunk
+								// TODO log something about an attempted action in an unloaded chunk
+							remove = false;
+						}
+						if remove {
+							{
+								// We can unwrap here as above we set remove to false if
+								// the result is None
+								let mut hdl = self.map.get_blk_mut(p).unwrap();
+								let air_bl = self.params.p.block_roles.air;
+								hdl.set(air_bl);
+							}
+							let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
+							hdl.clear();
+
+						} else {
+							// Send the unchanged block to the client
+							if let Some(mut hdl) = self.map.get_blk_mut(p) {
+								hdl.fake_change();
+							}
 						}
 					},
 					SetPos(_p) => unreachable!(),

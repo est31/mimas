@@ -109,6 +109,9 @@ impl SelectableInventory {
 	pub fn crafting_inv() -> Self {
 		Self::from_stacks(vec![Stack::Empty; 9].into_boxed_slice())
 	}
+	pub fn is_empty(&self) -> bool {
+		self.stacks.iter().all(Stack::is_empty)
+	}
 	pub fn get_selected(&self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
 			self.stacks[idx].content().map(|(it, _count)| it)

@@ -134,6 +134,11 @@ impl<'a, B :MapBackend> MapBlockHandle<'a, B> {
 		self.backend.chunk_changed(chunk_pos, self.chk.clone());
 		(*self.on_change)(chunk_pos, &self.chk);
 	}
+	pub fn fake_change(&mut self) {
+		let chunk_pos = btchn(self.pos);
+		self.backend.chunk_changed(chunk_pos, self.chk.clone());
+		(*self.on_change)(chunk_pos, &self.chk);
+	}
 	pub fn get(&mut self) -> MapBlock {
 		let pos_in_chunk = btpic(self.pos);
 		*self.chk.get_blk(pos_in_chunk)
@@ -165,6 +170,18 @@ impl<'a, B :MapBackend> MetadataHandle<'a, B> {
 	pub fn get(&mut self) -> Option<&MetadataEntry> {
 		let pos_in_chunk = btpic(self.pos);
 		self.chk.get_blk_meta(pos_in_chunk)
+	}
+	pub fn clear(&mut self) {
+		let chunk_pos = btchn(self.pos);
+		let pos_in_chunk = btpic(self.pos);
+		match self.chk.get_blk_meta_entry(pos_in_chunk) {
+			Entry::Occupied(e) => {
+				e.remove_entry();
+			},
+			Entry::Vacant(_e) => (),
+		}
+		self.backend.chunk_changed(chunk_pos, self.chk.clone());
+		(*self.on_change)(chunk_pos, &self.chk);
 	}
 }
 
