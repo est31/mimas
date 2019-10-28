@@ -822,7 +822,6 @@ impl<S :NetworkServerSocket> Server<S> {
 						map::spawn_tree(&mut self.map, p, &self.params);
 					},
 					Dig(p) => {
-
 						let mut remove = true;
 						if let Some(chest_meta) = self.map.get_blk_meta(p) {
 							if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
@@ -831,7 +830,7 @@ impl<S :NetworkServerSocket> Server<S> {
 								}
 							}
 						} else {
-								// TODO log something about an attempted action in an unloaded chunk
+							// TODO log something about an attempted action in an unloaded chunk
 							remove = false;
 						}
 						if remove {
