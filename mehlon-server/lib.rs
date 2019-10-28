@@ -9,7 +9,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_big_array;
 extern crate bincode;
-extern crate fasthash;
+extern crate twox_hash;
 extern crate toml;
 extern crate rustls;
 extern crate argon2;

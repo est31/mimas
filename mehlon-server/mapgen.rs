@@ -8,7 +8,7 @@ use std::hash::Hasher;
 use {btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
-use fasthash::{MetroHasher, FastHasher};
+use twox_hash::XxHash64;
 use map_storage::PlayerIdPair;
 use game_params::{ServerGameParamsHdl, BlockRoles};
 
@@ -51,10 +51,10 @@ impl MapChunk {
 }
 
 fn pos_hash(pos :Vector3<isize>) -> u64 {
-	let mut mh :MetroHasher = MetroHasher::new();
-	mh.write_isize(pos.x);
-	mh.write_isize(pos.y);
-	mh.write_isize(pos.z);
+	let mut mh :XxHash64 = XxHash64::with_seed(0);
+	mh.write_i64(pos.x as i64);
+	mh.write_i64(pos.y as i64);
+	mh.write_i64(pos.z as i64);
 	mh.finish()
 }
 
