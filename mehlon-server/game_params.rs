@@ -392,17 +392,19 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 				textures.push(texture.to_owned());
 				Some(DrawStyle::Texture(texture.to_owned()))
 			},
-			(None, Some(Value::Array(arr))) if arr.len() == 2 => {
-				let arr :[String; 2] = Value::Array(arr.clone()).try_into()?;
-				textures.extend_from_slice(&arr);
-				Some(DrawStyle::TextureSidesTop(arr[0].clone(), arr[1].clone()))
+			(None, Some(Value::Array(arr))) => {
+				if arr.len() == 2 {
+					let arr :[String; 2] = Value::Array(arr.clone()).try_into()?;
+					textures.extend_from_slice(&arr);
+					Some(DrawStyle::TextureSidesTop(arr[0].clone(), arr[1].clone()))
+				} else if arr.len() == 3 {
+					let arr :[String; 3] = Value::Array(arr.clone()).try_into()?;
+					textures.extend_from_slice(&arr);
+					Some(DrawStyle::TextureSidesTopBottom(arr[0].clone(), arr[1].clone(), arr[2].clone()))
+				} else {
+					Err(format!("false number of textures: {}", arr.len()))?
+				}
 			},
-			(None, Some(Value::Array(arr))) if arr.len() == 3 => {
-				let arr :[String; 3] = Value::Array(arr.clone()).try_into()?;
-				textures.extend_from_slice(&arr);
-				Some(DrawStyle::TextureSidesTopBottom(arr[0].clone(), arr[1].clone(), arr[2].clone()))
-			},
-			(None, Some(Value::Array(arr))) => Err(format!("false number of textures: {}", arr.len()))?,
 			(None, Some(_)) => Err("false type")?,
 			(None, None) => None,
 		};
