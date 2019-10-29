@@ -987,7 +987,7 @@ fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 fn hand_mesh(pos :Vector3<f32>, blk :MapBlock,
 		texture_id_cache :&TextureIdCache) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
-	let texture_ids = if let Some(ids) = texture_id_cache.get_texture_ids(&blk) {
+	let texture_ids = if let Some(ids) = texture_id_cache.get_bl_tex_ids(&blk) {
 		ids
 	} else {
 		return vec![];

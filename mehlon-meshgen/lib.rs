@@ -26,6 +26,22 @@ pub struct Vertex {
 implement_vertex!(Vertex, tex_ind, tex_pos, position, normal);
 
 #[derive(Copy, Clone)]
+pub enum MeshDrawStyle {
+	Blocky(BlockTextureIds),
+	Crossed(TextureId),
+}
+
+impl MeshDrawStyle {
+	fn blocky(&self) -> Option<BlockTextureIds> {
+		if let MeshDrawStyle::Blocky(bti) = self {
+			Some(*bti)
+		} else {
+			None
+		}
+	}
+}
+
+#[derive(Copy, Clone)]
 pub struct BlockTextureIds {
 	pub id_sides :TextureId,
 	pub id_top :TextureId,
@@ -57,25 +73,34 @@ impl BlockTextureIds {
 #[derive(Clone)]
 pub struct TextureIdCache {
 	fallback_id :BlockTextureIds,
-	texture_ids :Vec<Option<BlockTextureIds>>,
+	block_texture_ids :Vec<Option<BlockTextureIds>>,
+	mesh_draw_styles :Vec<Option<MeshDrawStyle>>,
 }
 
 impl TextureIdCache {
 	pub fn from_hdl(hdl :&GameParamsHdl,
-			mut style_to_id :impl FnMut(&DrawStyle) -> BlockTextureIds) -> Self {
-		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0]));
-		let texture_ids = hdl.block_params.iter()
+			mut style_to_id :impl FnMut(&DrawStyle) -> MeshDrawStyle) -> Self {
+		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0])).blocky().unwrap();
+		let mesh_draw_styles = hdl.block_params.iter()
 			.map(|p| p.draw_style.as_ref().map(&mut style_to_id))
+			.collect::<Vec<_>>();
+		let block_texture_ids = mesh_draw_styles.iter()
+			.map(|v| v.and_then(|v| v.blocky()))
 			.collect::<Vec<_>>();
 		Self {
 			fallback_id,
-			texture_ids,
+			block_texture_ids,
+			mesh_draw_styles,
 		}
 	}
-	pub fn get_texture_ids(&self, bl :&MapBlock) -> Option<BlockTextureIds> {
-		self.texture_ids.get(bl.id() as usize)
+	pub fn get_bl_tex_ids(&self, bl :&MapBlock) -> Option<BlockTextureIds> {
+		self.block_texture_ids.get(bl.id() as usize)
 			.map(|v| *v)
 			.unwrap_or(Some(self.fallback_id))
+	}
+	pub fn get_mesh_draw_style(&self, bl :&MapBlock) -> Option<MeshDrawStyle> {
+		self.mesh_draw_styles.get(bl.id() as usize)
+			.and_then(|v| *v)
 	}
 }
 
@@ -215,12 +240,12 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 			return false;
 		}
 		let blk = chunk.get_blk(pos);
-		cache.get_texture_ids(blk).is_some()
+		cache.get_bl_tex_ids(blk).is_some()
 	};
 	fn get_tex_ind(chunk: &MapChunkData, pos :Vector3<isize>,
 			offsets :[isize; 3], cache :&TextureIdCache) -> Option<BlockTextureIds> {
 		let blk = chunk.get_blk(pos);
-		let texture_ids = cache.get_texture_ids(blk);
+		let texture_ids = cache.get_bl_tex_ids(blk);
 		if texture_ids.is_some() && blocked(chunk, offsets, pos, cache) {
 			None
 		} else {
@@ -344,6 +369,37 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		},
 		cache
 	);
+
+	// Crossed nodes
+	for x in 0 .. CHUNKSIZE {
+		for y in 0 .. CHUNKSIZE {
+			for z in 0 .. CHUNKSIZE {
+				let rel_pos = Vector3::new(x, y, z);
+				let blk = chunk.get_blk(rel_pos);
+				let mds = cache.get_mesh_draw_style(blk);
+				let tx = if let Some(MeshDrawStyle::Crossed(id)) = mds {
+					id
+				} else {
+					continue;
+				};
+				let pos = offs + rel_pos;
+
+				let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
+
+				// rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), tx.0);
+				// rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
+				// rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), tx.0);
+				// rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
+
+				let xlen = siz;
+				let ylen = siz;
+				rpush_face_rev!(r, (x, y, z), (xlen, 0.0, 0.0, siz), tx.0);
+				rpush_face!(r, (x, y, z), (0.0, ylen, 0.0, siz), tx.0);
+				rpush_face!(r, (x, y + siz, z), (xlen, 0.0, 0.0, siz), tx.0);
+				rpush_face_rev!(r, (x + siz, y, z), (0.0, ylen, 0.0, siz), tx.0);
+			}
+		}
+	}
 
 	r
 }

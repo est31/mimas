@@ -13,7 +13,7 @@ use image::{RgbaImage, Pixel};
 
 use sha2::{Sha256, Digest};
 
-use mehlon_meshgen::{TextureId, BlockTextureIds};
+use mehlon_meshgen::{TextureId, BlockTextureIds, MeshDrawStyle};
 
 pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
@@ -142,8 +142,8 @@ impl Assets {
 		TextureId(id as u16)
 	}
 	pub fn add_draw_style(&mut self, game_params :&GameParamsHdl,
-			ds :&DrawStyle) -> BlockTextureIds {
-		match ds {
+			ds :&DrawStyle) -> MeshDrawStyle {
+		MeshDrawStyle::Blocky(match ds {
 			DrawStyle::Colored(color) => {
 				let id = self.add_color(*color);
 				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
@@ -153,7 +153,7 @@ impl Assets {
 				let asset = load_image(game_params, path, false)
 					.expect("couldn't load image");
 				let id = self.add_asset(asset);
-				BlockTextureIds::uniform(id)
+				return MeshDrawStyle::Crossed(id);
 			},
 			DrawStyle::Texture(path) => {
 				let asset = load_image(game_params, path, true)
@@ -182,7 +182,7 @@ impl Assets {
 				let id_b = self.add_asset(image_b);
 				BlockTextureIds::new(id_s, id_t, id_b)
 			},
-		}
+		})
 	}
 	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {
 		let pixels = std::iter::repeat(color.iter())
