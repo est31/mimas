@@ -393,10 +393,14 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 
 				let xlen = siz;
 				let ylen = siz;
-				rpush_face_rev!(r, (x, y, z), (xlen, 0.0, 0.0, siz), tx.0);
-				rpush_face!(r, (x, y, z), (0.0, ylen, 0.0, siz), tx.0);
-				rpush_face!(r, (x, y + siz, z), (xlen, 0.0, 0.0, siz), tx.0);
-				rpush_face_rev!(r, (x + siz, y, z), (0.0, ylen, 0.0, siz), tx.0);
+				// X-Z
+				rpush_face_rev!(r, (x, y + siz * 0.5, z), (xlen, 0.0, 0.0, siz), tx.0);
+				// Y-Z
+				rpush_face!(r, (x + siz * 0.5, y, z), (0.0, ylen, 0.0, siz), tx.0);
+				// X-Z
+				rpush_face!(r, (x, y + siz * 0.5, z), (xlen, 0.0, 0.0, siz), tx.0);
+				// Y-Z
+				rpush_face_rev!(r, (x + siz * 0.5, y, z), (0.0, ylen, 0.0, siz), tx.0);
 			}
 		}
 	}
