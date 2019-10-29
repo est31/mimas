@@ -101,7 +101,7 @@ pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), Str
 	Ok(())
 }
 
-fn load_image(game_params :&GameParamsHdl, path :&str) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+fn load_image(game_params :&GameParamsHdl, path :&str, opaque :bool) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
 	let mut imgs_iter = path.split("^")
 		.map(|p| load_image_inner(game_params, p));
 	let mut image = imgs_iter.next().ok_or("No image path specified")??;
@@ -113,11 +113,13 @@ fn load_image(game_params :&GameParamsHdl, path :&str) -> Result<(Vec<f32>, (u32
 				img_pixel.blend(overlay_pixel);
 			});
 	}
-	// Make all textures non-opaque
-	// as currently, mesh generation can't deal
-	// with opaque textures.
-	image.pixels_mut()
-		.for_each(|px| px.0[3] = 255);
+	if opaque {
+		// Make texture opaque if requested.
+		// Currently, mesh generation can't deal
+		// with transparency of some textures.
+		image.pixels_mut()
+			.for_each(|px| px.0[3] = 255);
+	}
 	let dimensions = image.dimensions();
 	let buf = image.into_raw()
 		.into_iter()
@@ -147,27 +149,33 @@ impl Assets {
 				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
 				BlockTextureIds::new_tb(id, id_h)
 			},
+			DrawStyle::Crossed(path) => {
+				let asset = load_image(game_params, path, false)
+					.expect("couldn't load image");
+				let id = self.add_asset(asset);
+				BlockTextureIds::uniform(id)
+			},
 			DrawStyle::Texture(path) => {
-				let asset = load_image(game_params, path)
+				let asset = load_image(game_params, path, true)
 					.expect("couldn't load image");
 				let id = self.add_asset(asset);
 				BlockTextureIds::uniform(id)
 			},
 			DrawStyle::TextureSidesTop(path_s, path_tb) => {
-				let image_s = load_image(game_params, path_s)
+				let image_s = load_image(game_params, path_s, true)
 					.expect("couldn't load image");
-				let image_tb = load_image(game_params, path_tb)
+				let image_tb = load_image(game_params, path_tb, true)
 					.expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_tb = self.add_asset(image_tb);
 				BlockTextureIds::new_tb(id_tb, id_s)
 			},
 			DrawStyle::TextureSidesTopBottom(path_s, path_t, path_b) => {
-				let image_s = load_image(game_params, path_s)
+				let image_s = load_image(game_params, path_s, true)
 					.expect("couldn't load image");
-				let image_t = load_image(game_params, path_t)
+				let image_t = load_image(game_params, path_t, true)
 					.expect("couldn't load image");
-				let image_b = load_image(game_params, path_b)
+				let image_b = load_image(game_params, path_b, true)
 					.expect("couldn't load image");
 				let id_s = self.add_asset(image_s);
 				let id_t = self.add_asset(image_t);

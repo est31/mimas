@@ -22,6 +22,7 @@ pub type ServerGameParamsHdl = Arc<ServerGameParams>;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DrawStyle {
 	Colored([f32; 4]),
+	Crossed(String),
 	Texture(String),
 	TextureSidesTop(String, String),
 	TextureSidesTopBottom(String, String, String),
@@ -376,6 +377,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		// unwrap is okay because we have added it in the first pass
 		let id = name_id_map.get_id(name).unwrap();
 		let texture = block.get("texture");
+		let crossed = if let Some(v) = block.get("crossed") {
+			Some(v.convert::<bool>()?.to_owned())
+		} else {
+			None
+		};
 		let color = if let Some(color) = block.get("color") {
 			if color == &Value::Boolean(false) {
 				None
@@ -390,7 +396,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			(Some(col), None) => Some(DrawStyle::Colored(col)),
 			(None, Some(Value::String(texture))) => {
 				textures.push(texture.to_owned());
-				Some(DrawStyle::Texture(texture.to_owned()))
+				if crossed == Some(true) {
+					Some(DrawStyle::Crossed(texture.to_owned()))
+				} else {
+					Some(DrawStyle::Texture(texture.to_owned()))
+				}
 			},
 			(None, Some(Value::Array(arr))) => {
 				if arr.len() == 2 {
