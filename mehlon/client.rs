@@ -788,7 +788,7 @@ impl<C :NetworkClientConn> Game<C> {
 			if self.camera.mouse_left_down {
 				if self.camera.mouse_left_cooldown <= 0.0 {
 					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
-					let drops = params.block_params.get(blk.get().id() as usize).unwrap().drops;
+					let drops = params.get_block_params(blk.get()).unwrap().drops;
 					self.sel_inventory.put(drops);
 					let air_bl = params.block_roles.air;
 					blk.set(air_bl);
@@ -802,7 +802,7 @@ impl<C :NetworkClientConn> Game<C> {
 			if self.camera.mouse_right_down
 					&& self.camera.mouse_right_cooldown <= 0.0 {
 				let blk_sel = self.map.get_blk(selected_pos).unwrap();
-				let has_inv = params.block_params.get(blk_sel.id() as usize).unwrap().inventory;
+				let has_inv = params.get_block_params(blk_sel).unwrap().inventory;
 				if let Some(stack_num) = has_inv {
 					// open chest inventory
 					let chest_inv = self.map.get_blk_meta(selected_pos).unwrap()
@@ -824,7 +824,7 @@ impl<C :NetworkClientConn> Game<C> {
 
 				let sel = self.sel_inventory.get_selected();
 				if let Some(sel) = sel {
-					let placeable = params.block_params.get(sel.id() as usize).unwrap().placeable;
+					let placeable = params.get_block_params(sel).unwrap().placeable;
 					if placeable {
 						let taken = self.sel_inventory.take_selected();
 						assert_eq!(taken, Some(sel));
