@@ -33,6 +33,7 @@ pub struct BlockParams {
 	pub draw_style :Option<DrawStyle>,
 	pub pointable :bool,
 	pub placeable :bool,
+	pub solid :bool,
 	pub inventory :Option<u8>,
 	pub display_name :String,
 	pub drops :Stack,
@@ -97,6 +98,7 @@ impl Default for BlockParams {
 			draw_style : Some(DrawStyle::default()),
 			pointable : true,
 			placeable : true,
+			solid : true,
 			display_name : String::new(),
 			inventory : None,
 			drops : Stack::Empty,
@@ -429,6 +431,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		let placeable = block.get("placeable")
 			.unwrap_or(&Value::Boolean(true));
 		let placeable = *placeable.convert::<bool>()?;
+		let solid = block.get("solid")
+			.unwrap_or(&Value::Boolean(true));
+		let solid = *solid.convert::<bool>()?;
 		let inventory = if let Some(v) = block.get("inventory") {
 			Some(v.convert::<i64>()?.to_owned() as u8)
 		} else {
@@ -444,6 +449,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			draw_style,
 			pointable,
 			placeable,
+			solid,
 			display_name,
 			inventory,
 			drops,
