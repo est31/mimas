@@ -4,6 +4,7 @@ override-default = true
 name = "default:air"
 color = false
 pointable = false
+solid = false
 
 [[block]]
 name = "default:ground"
