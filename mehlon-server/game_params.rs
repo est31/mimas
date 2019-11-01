@@ -234,6 +234,9 @@ impl NameIdMap {
 }
 
 impl GameParams {
+	pub fn get_block_params(&self, blk :MapBlock) -> Option<&BlockParams> {
+		self.block_params.get(blk.id() as usize)
+	}
 	pub fn get_pointability_for_blk(&self, blk :&MapBlock) -> bool {
 		self.block_params.get(blk.id() as usize)
 			.map(|p| p.pointable)
