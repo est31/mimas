@@ -384,23 +384,19 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				};
 				let pos = offs + rel_pos;
 
-				let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
+				let sq = siz * std::f32::consts::SQRT_2 * 0.5;
+				let sqh = sq * 0.5;
 
-				// rpush_face_rev!(r, (last_x, y, z), (xlen, 0.0, 0.0, siz), tx.0);
-				// rpush_face!(r, (x, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
-				// rpush_face!(r, (last_x, y + siz, z), (xlen, 0.0, 0.0, siz), tx.0);
-				// rpush_face_rev!(r, (x + siz, last_y, z), (0.0, ylen, 0.0, siz), tx.0);
+				let (x, y, z) = (pos.x as f32 + 0.5 * siz, pos.y as f32 + 0.5 * siz, pos.z as f32);
 
-				let xlen = siz;
-				let ylen = siz;
 				// X-Z
-				rpush_face_rev!(r, (x, y + siz * 0.5, z), (xlen, 0.0, 0.0, siz), tx.0);
+				rpush_face_rev!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz), tx.0);
 				// Y-Z
-				rpush_face!(r, (x + siz * 0.5, y, z), (0.0, ylen, 0.0, siz), tx.0);
+				rpush_face!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz), tx.0);
 				// X-Z
-				rpush_face!(r, (x, y + siz * 0.5, z), (xlen, 0.0, 0.0, siz), tx.0);
+				rpush_face!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz), tx.0);
 				// Y-Z
-				rpush_face_rev!(r, (x + siz * 0.5, y, z), (0.0, ylen, 0.0, siz), tx.0);
+				rpush_face_rev!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz), tx.0);
 			}
 		}
 	}
