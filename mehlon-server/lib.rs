@@ -837,22 +837,39 @@ impl<S :NetworkServerSocket> Server<S> {
 							// TODO log something about an attempted action in an unloaded chunk
 							remove = false;
 						}
+						let mut drops = None;
 						if remove {
 							{
 								// We can unwrap here as above we set remove to false if
 								// the result is None
 								let mut hdl = self.map.get_blk_mut(p).unwrap();
+								drops = Some(self.params.p.get_block_params(hdl.get()).unwrap().drops);
 								let air_bl = self.params.p.block_roles.air;
 								hdl.set(air_bl);
 							}
 							let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
 							hdl.clear();
-
 						} else {
 							// Send the unchanged block to the client
 							if let Some(mut hdl) = self.map.get_blk_mut(p) {
 								hdl.fake_change();
 							}
+						}
+						let remove_player = {
+							let mut players = self.players.borrow_mut();
+							let player = &mut players.get_mut(&id).unwrap();
+							if remove {
+								// If we remove the block, put the dropped item
+								// into the inventory. Send the new inventory to
+								// the client in any case to override any
+								// possibly mistaken local prediction.
+								player.inventory.put(drops.unwrap());
+							}
+							let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
+							player.conn.send(msg).is_err()
+						};
+						if remove_player {
+							close_connections(&[id], &mut *self.players.borrow_mut());
 						}
 					},
 					SetPos(_p) => unreachable!(),
