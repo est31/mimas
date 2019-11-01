@@ -13,6 +13,9 @@ const vec4 fog = vec4(0.5, 0.5, 0.5, 1.0);
 
 void main() {
 	vec4 tcolor = texture(texture_arr, vec3(vtex_pos, vtex_ind));
+	if (tcolor.a < 0.5) {
+		discard;
+	}
 
 	vec4 color_lamb = vlamb * tcolor;
 	color_lamb.a = tcolor.a;
