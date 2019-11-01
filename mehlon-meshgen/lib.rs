@@ -146,6 +146,27 @@ macro_rules! rpush_face_rev {
 	}
 }
 
+macro_rules! rpush_face_bidi {
+	($r:expr, ($x:expr, $y:expr, $z:expr), ($xsd:expr, $ysd:expr, $yd:expr, $zd:expr), ($xstd:expr, $ystd:expr, $ytd:expr, $ztd:expr), $tex_ind:expr) => {
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 0.0], position: [$x, $y, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $ytd + $ztd], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, $ytd + $ztd], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $ytd + $ztd], position: [$x, $y + $yd, $z + $zd], normal : sign![$xsd, $ysd + $yd, $zd] });
+
+		// Reverse face
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $ytd + $ztd], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, 0.0], position: [$x, $y, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [0.0, $ytd + $ztd], position: [$x, $y + $yd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, $ytd + $ztd], position: [$x + $xsd, $y + $yd + $ysd, $z + $zd], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+		$r.push(Vertex { tex_ind : $tex_ind, tex_pos : [$xstd + $ystd, 0.0], position: [$x + $xsd, $y + $ysd, $z], normal : sign![-$xsd, -$ysd - $yd, -$zd] });
+	}
+}
+
 #[inline]
 pub fn push_block<F :FnMut([isize; 3]) -> bool>(r :&mut Vec<Vertex>, [x, y, z] :[f32; 3], block_ids :BlockTextureIds, siz :f32, mut blocked :F) {
 	macro_rules! push_face {
@@ -390,13 +411,9 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 				let (x, y, z) = (pos.x as f32 + 0.5 * siz, pos.y as f32 + 0.5 * siz, pos.z as f32);
 
 				// X-Z
-				rpush_face_rev!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz), tx.0);
+				rpush_face_bidi!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz * 0.95), (siz, siz, 0.0, siz * 0.95), tx.0);
 				// Y-Z
-				rpush_face!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz), tx.0);
-				// X-Z
-				rpush_face!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz), tx.0);
-				// Y-Z
-				rpush_face_rev!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz), tx.0);
+				rpush_face_bidi!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz * 0.95), (siz, siz, 0.0, siz * 0.95), tx.0);
 			}
 		}
 	}
