@@ -656,12 +656,16 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.chat_msg_for(issuer_id, "No content to give specified");
 					return;
 				};
+				// TODO print an error if parsing fails. Or maybe not? IDK.
+				let count = params.get(1)
+					.and_then(|v| v.parse().ok())
+					.unwrap_or(1);
 				let content_disp = self.params.p.block_display_name(content);
 				self.chat_msg_for(issuer_id, format!("Giving {}", content_disp));
 				let mut players = self.players.borrow_mut();
 				let remove_player = {
 					let player = players.get_mut(&issuer_id).unwrap();
-					player.inventory.put(Stack::with(content, 1));
+					player.inventory.put(Stack::with(content, count));
 					let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
 					player.conn.send(msg).is_err()
 				};
