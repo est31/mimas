@@ -100,11 +100,20 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 	let mbinoise = NoiseMag::new(s!(b"biom-mac"), mbf, 0.6);
 	// Tree pcg
 	let mut tpcg = Pcg32::new(s!(b"pcg-tree", u64), pos_hash(pos));
-	// Coal noise
+
+	let mut ore_rngs = params.mapgen_params.ores.iter()
+		.map(|ore| {
+			let noise = Noise::new(s!(&ore.noise_seed), ore.freq);
+			let pcg = Pcg32::new(s!(&ore.pcg_seed, u64), pos_hash(pos));
+			(ore, noise, pcg)
+		})
+		.collect::<Vec<_>>();
+	/* // Coal noise
 	let cf = 0.083951;
 	let cnoise = Noise::new(s!(b"noi-coal"), cf);
 	// Coal pcg
-	let mut cpcg = Pcg32::new(s!(b"pcg-coal", u64), pos_hash(pos));
+	let mut cpcg = Pcg32::new(s!(b"pcg-coal", u64), pos_hash(pos));*/
+
 	// Iron noise
 	let iff = 0.063951;
 	let inoise = Noise::new(s!(b"noi-iron"), iff);
@@ -158,7 +167,21 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 					*res.get_blk_mut(Vector3::new(x, y, z)) = role.stone;
 					let p3 = [(pos.x + x) as f64, (pos.y + y) as f64, (pos.z + z) as f64];
 					let z_abs = pos.z + z;
-					let coal_limit = if z_abs < -30 {
+
+					for (ore, noise, pcg) in ore_rngs.iter_mut() {
+						let limit = if z_abs < ore.limit_boundary {
+							ore.limit_b
+						} else {
+							ore.limit_a
+						};
+						if noise.get_3d(p3) > limit {
+							if pcg.gen::<f64>() > ore.pcg_chance {
+								*res.get_blk_mut(Vector3::new(x, y, z)) = ore.block;
+							}
+						}
+					}
+
+					/*let coal_limit = if z_abs < -30 {
 						0.5
 					} else {
 						0.75
@@ -167,7 +190,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						if cpcg.gen::<f64>() > 0.6 {
 							*res.get_blk_mut(Vector3::new(x, y, z)) = role.coal;
 						}
-					}
+					}*/
 
 					let iron_limit = if z_abs < -60 {
 						0.7

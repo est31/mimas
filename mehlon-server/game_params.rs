@@ -82,18 +82,18 @@ pub struct GameParams {
 }
 
 pub struct Ore {
-	block :MapBlock,
-	noise_seed :u32,
-	pcg_seed :u64,
-	freq :f64,
-	pcg_chance :f64,
-	limit_a :f64,
-	limit_b :f64,
-	limit_boundary :isize,
+	pub(crate) block :MapBlock,
+	pub(crate) noise_seed :[u8; 8],
+	pub(crate) pcg_seed :[u8; 8],
+	pub(crate) freq :f64,
+	pub(crate) pcg_chance :f64,
+	pub(crate)limit_a :f64,
+	pub(crate) limit_b :f64,
+	pub(crate) limit_boundary :isize,
 }
 
 pub struct MapgenParams {
-	ores :Vec<Ore>,
+	pub ores :Vec<Ore>,
 }
 
 pub struct ServerGameParams {
@@ -503,6 +503,19 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			output,
 		});
 	}
+
+	params.mapgen_params.ores = vec![
+		Ore {
+			block :name_id_map.get_id("default:coal").ok_or("invalid name")?,
+			noise_seed : *b"noi-coal",
+			pcg_seed : *b"pcg-coal",
+			freq : 0.083951,
+			pcg_chance : 0.6,
+			limit_a : 0.75,
+			limit_b : 0.5,
+			limit_boundary : -30,
+		},
+	];
 
 	Ok(params)
 }
