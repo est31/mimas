@@ -97,3 +97,13 @@ inputs = [
 	"default:wood", "default:wood", "default:wood",
 ]
 output = "default:chest 1"
+
+[[mapgen.ore]]
+name = "default:coal"
+noise_seed = "noi-coal"
+pcg_seed = "pcg-coal"
+freq = 0.083951
+pcg_limit = 0.6
+limit_a = 0.75
+limit_b = 0.5
+limit_boundary = -30

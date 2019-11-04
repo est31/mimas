@@ -1,7 +1,7 @@
 use crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
-use toml::value::{Value, Array};
+use toml::value::{Value, Array, Table};
 use std::fs::{read_to_string, File};
 use std::path::Path;
 use map::MapBlock;
@@ -504,6 +504,51 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		});
 	}
 
+	if let Some(mapgen) = val.get("mapgen") {
+		let mapgen = mapgen.convert::<Table>()?;
+		if let Some(ores) = mapgen.get("ore") {
+			let ores = ores.convert::<Array>()?;
+			for ore in ores.iter() {
+				let name = ore.read::<str>("name")?;
+				let _name_components = parse_block_name(name)?;
+				let id = name_id_map.get_id(name).ok_or("invalid name")?;
+
+				let noise_seed = ore.read::<str>("noise_seed")?;
+				if noise_seed.len() != 8 {
+					Err(format!("noise_seed needs to be 8 bytes long but has length {}", noise_seed.len()))?
+				}
+				let noise_seed = noise_seed.as_bytes();
+				let noise_seed = [noise_seed[0], noise_seed[1], noise_seed[2], noise_seed[3],
+					noise_seed[4], noise_seed[5], noise_seed[6], noise_seed[7]];
+
+				let pcg_seed = ore.read::<str>("pcg_seed")?;
+				if pcg_seed.len() != 8 {
+					Err(format!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len()))?
+				}
+				let pcg_seed = pcg_seed.as_bytes();
+				let pcg_seed = [pcg_seed[0], pcg_seed[1], pcg_seed[2], pcg_seed[3],
+					pcg_seed[4], pcg_seed[5], pcg_seed[6], pcg_seed[7]];
+
+				let freq = *ore.read::<f64>("freq")?;
+				let pcg_chance = *ore.read::<f64>("pcg_limit")?;
+				let limit_a = *ore.read::<f64>("limit_a")?;
+				let limit_b = *ore.read::<f64>("limit_b")?;
+				let limit_boundary = *ore.read::<i64>("limit_boundary")? as isize;
+				params.mapgen_params.ores.push(Ore {
+					block : id,
+					noise_seed,
+					pcg_seed,
+					freq,
+					pcg_chance,
+					limit_a,
+					limit_b,
+					limit_boundary,
+				});
+			}
+		}
+	}
+
+	/*
 	params.mapgen_params.ores = vec![
 		Ore {
 			block :name_id_map.get_id("default:coal").ok_or("invalid name")?,
@@ -515,7 +560,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			limit_b : 0.5,
 			limit_boundary : -30,
 		},
-	];
+	];*/
 
 	Ok(params)
 }
