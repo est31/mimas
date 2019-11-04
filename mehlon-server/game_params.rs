@@ -51,11 +51,6 @@ pub struct BlockRoles {
 	pub leaves :MapBlock,
 	pub tree :MapBlock,
 	pub cactus :MapBlock,
-	pub coal :MapBlock,
-	pub iron_ore :MapBlock,
-	pub copper_ore :MapBlock,
-	pub gold_ore :MapBlock,
-	pub diamond_ore :MapBlock,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -135,11 +130,6 @@ impl BlockRoles {
 			leaves : get_id("default:leaves")?,
 			tree : get_id("default:tree")?,
 			cactus : get_id("default:cactus")?,
-			coal : get_id("default:coal")?,
-			iron_ore : get_id("default:iron_ore")?,
-			copper_ore : get_id("default:copper_ore")?,
-			gold_ore : get_id("default:gold_ore")?,
-			diamond_ore : get_id("default:diamond_ore")?,
 		})
 	}
 	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
