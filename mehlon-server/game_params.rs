@@ -107,11 +107,7 @@ impl Default for BlockParams {
 }
 
 impl BlockRoles {
-	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
-		let get_id = |n| {
-			m.get_id(n)
-				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
-		};
+	fn with_get_id(get_id :impl Fn(&'static str) -> Result<MapBlock, String>) -> Result<Self, StrErr> {
 		Ok(Self {
 			air : get_id("default:air")?,
 			water : get_id("default:water")?,
@@ -130,29 +126,20 @@ impl BlockRoles {
 			diamond_ore : get_id("default:diamond_ore")?,
 		})
 	}
+	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
+		let get_id = |n| {
+			m.get_id(n)
+				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
+		};
+		Self::with_get_id(get_id)
+	}
 	pub fn dummy(m :&NameIdMap) -> Result<Self, StrErr> {
 		let get_id = |n| {
 			m.get_id(n)
 				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
 		};
 		let air_id = get_id("default:air")?;
-		Ok(Self {
-			air : air_id,
-			water : air_id,
-			sand : air_id,
-			ground : air_id,
-			ground_top : air_id,
-			wood : air_id,
-			stone : air_id,
-			leaves : air_id,
-			tree : air_id,
-			cactus : air_id,
-			coal : air_id,
-			iron_ore : air_id,
-			copper_ore : air_id,
-			gold_ore : air_id,
-			diamond_ore : air_id,
-		})
+		Self::with_get_id(|_| Ok(air_id))
 	}
 }
 
