@@ -81,8 +81,24 @@ pub struct GameParams {
 	pub texture_hashes :HashMap<String, Vec<u8>>,
 }
 
+pub struct Ore {
+	block :MapBlock,
+	noise_seed :u32,
+	pcg_seed :u64,
+	freq :f64,
+	pcg_chance :f64,
+	limit_a :f64,
+	limit_b :f64,
+	limit_boundary :isize,
+}
+
+pub struct MapgenParams {
+	ores :Vec<Ore>,
+}
+
 pub struct ServerGameParams {
 	pub p :GameParams,
+	pub mapgen_params :MapgenParams,
 	pub textures :HashMap<Vec<u8>, Vec<u8>>,
 }
 
@@ -336,8 +352,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			name_id_map : nm_from_db,
 			texture_hashes : HashMap::new(),
 		};
+		let mapgen_params = MapgenParams {
+			ores : Vec::new(),
+		};
 		ServerGameParams {
 			p,
+			mapgen_params,
 			textures :HashMap::new(),
 		}
 	};
