@@ -12,7 +12,7 @@ name = "mehlon_server"
 path = "lib.rs"
 
 [dependencies]
-noise = "0.6"
+noise = { version = "0.6", default-features = false }
 nalgebra = { version = "0.18", features = ["serde-serialize"] }
 rand_pcg = "0.2"
 rand = "0.7"
