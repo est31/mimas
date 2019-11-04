@@ -107,3 +107,43 @@ pcg_limit = 0.6
 limit_a = 0.75
 limit_b = 0.5
 limit_boundary = -30
+
+[[mapgen.ore]]
+name = "default:iron_ore"
+noise_seed = "noi-iron"
+pcg_seed = "pcg-iron"
+freq = 0.063951
+pcg_limit = 0.6
+limit_a = 0.83
+limit_b = 0.7
+limit_boundary = -60
+
+[[mapgen.ore]]
+name = "default:copper_ore"
+noise_seed = "noi-copp"
+pcg_seed = "pcg-copp"
+freq = 0.083961
+pcg_limit = 0.6
+limit_a = 2.0
+limit_b = 0.8
+limit_boundary = -90
+
+[[mapgen.ore]]
+name = "default:gold_ore"
+noise_seed = "noi-gold"
+pcg_seed = "pcg-gold"
+freq = 0.083961
+pcg_limit = 0.8
+limit_a = 2.0
+limit_b = 0.86
+limit_boundary = -120
+
+[[mapgen.ore]]
+name = "default:diamond_ore"
+noise_seed = "noi-diam"
+pcg_seed = "pcg-diam"
+freq =  0.083961
+pcg_limit = 0.88
+limit_a = 2.0
+limit_b = 0.88
+limit_boundary = -240

@@ -108,35 +108,6 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 			(ore, noise, pcg)
 		})
 		.collect::<Vec<_>>();
-	/* // Coal noise
-	let cf = 0.083951;
-	let cnoise = Noise::new(s!(b"noi-coal"), cf);
-	// Coal pcg
-	let mut cpcg = Pcg32::new(s!(b"pcg-coal", u64), pos_hash(pos));*/
-
-	// Iron noise
-	let iff = 0.063951;
-	let inoise = Noise::new(s!(b"noi-iron"), iff);
-	// Iron pcg
-	let mut ipcg = Pcg32::new(s!(b"pcg-iron", u64), pos_hash(pos));
-
-	// Copper noise
-	let copper_f = 0.083961;
-	let copper_noise = Noise::new(s!(b"noi-copp"), copper_f);
-	// Copper pcg
-	let mut copper_pcg = Pcg32::new(s!(b"pcg-copp", u64), pos_hash(pos));
-
-	// Gold noise
-	let gold_f = 0.083961;
-	let gold_noise = Noise::new(s!(b"noi-gold"), gold_f);
-	// Gold pcg
-	let mut gold_pcg = Pcg32::new(s!(b"pcg-gold", u64), pos_hash(pos));
-
-	// Diamond noise
-	let diamond_f = 0.083961;
-	let diamond_noise = Noise::new(s!(b"noi-diam"), diamond_f);
-	// Diamond pcg
-	let mut diamond_pcg = Pcg32::new(s!(b"pcg-diam", u64), pos_hash(pos));
 
 	// Cave noise
 	let ca_f = 0.052951;
@@ -181,60 +152,6 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						}
 					}
 
-					/*let coal_limit = if z_abs < -30 {
-						0.5
-					} else {
-						0.75
-					};
-					if cnoise.get_3d(p3) > coal_limit {
-						if cpcg.gen::<f64>() > 0.6 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = role.coal;
-						}
-					}*/
-
-					let iron_limit = if z_abs < -60 {
-						0.7
-					} else {
-						0.83
-					};
-					if inoise.get_3d(p3) > iron_limit {
-						if ipcg.gen::<f64>() > 0.6 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = role.iron_ore;
-						}
-					}
-
-					let copper_limit = if z_abs < -90 {
-						0.8
-					} else {
-						2.0
-					};
-					if copper_noise.get_3d(p3) > copper_limit {
-						if copper_pcg.gen::<f64>() > 0.6 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = role.copper_ore;
-						}
-					}
-
-					let gold_limit = if z_abs < -120 {
-						0.86
-					} else {
-						2.0
-					};
-					if gold_noise.get_3d(p3) > gold_limit {
-						if gold_pcg.gen::<f64>() > 0.8 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = role.gold_ore;
-						}
-					}
-
-					let diamond_limit = if z_abs < -240 {
-						0.88
-					} else {
-						2.0
-					};
-					if diamond_noise.get_3d(p3) > diamond_limit {
-						if diamond_pcg.gen::<f64>() > 0.88 {
-							*res.get_blk_mut(Vector3::new(x, y, z)) = role.diamond_ore;
-						}
-					}
 					// Generate caves,
 					// but make sure that there is a distance
 					// between the cave and where the water starts.
