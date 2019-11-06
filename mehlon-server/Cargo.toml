@@ -28,7 +28,7 @@ rust-argon2 = "0.5"
 # For the networking
 webpki = "0.21"
 rustls = { version = "0.16", features = ["dangerous_configuration"] }
-tokio = "0.1.6"
+tokio = { version = "0.1.6", default-features = false, features = ["io", "rt-full"] }
 futures = "0.1.21"
 quinn = "0.4"
 slog-term = "2"
