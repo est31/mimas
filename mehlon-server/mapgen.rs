@@ -109,6 +109,13 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 		})
 		.collect::<Vec<_>>();
 
+	let mut plant_rngs = params.mapgen_params.plants.iter()
+		.map(|plant| {
+			let pcg = Pcg32::new(s!(&plant.pcg_seed, u64), pos_hash(pos));
+			(plant, pcg)
+		})
+		.collect::<Vec<_>>();
+
 	// Cave noise
 	let ca_f = 0.052951;
 	let ca_noise = Noise::new(s!(b"nois-cav"), ca_f);
@@ -205,6 +212,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 						};
 						let local_density = tnoise.get(p) + macro_density;
 
+						let mut spawning_tree = false;
 						if local_density > 1.0 - tree_density {
 							// Generate a forest here
 							let limit = if in_desert {
@@ -213,7 +221,16 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 								0.91
 							};
 							if tpcg.gen::<f64>() > limit {
+								spawning_tree = true;
 								res.tree_spawn_points.push((pos + Vector3::new(x, y, elg), in_desert));
+							}
+						}
+
+						if !spawning_tree {
+							for (plant, pcg) in plant_rngs.iter_mut() {
+								if pcg.gen::<f64>() > plant.pcg_limit {
+									*res.get_blk_mut(Vector3::new(x, y, elg)) = plant.block;
+								}
 							}
 						}
 					}

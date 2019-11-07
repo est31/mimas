@@ -87,8 +87,15 @@ pub struct Ore {
 	pub(crate) limit_boundary :isize,
 }
 
+pub struct Plant {
+	pub(crate) block :MapBlock,
+	pub(crate) pcg_seed :[u8; 8],
+	pub(crate) pcg_limit :f64,
+}
+
 pub struct MapgenParams {
 	pub ores :Vec<Ore>,
+	pub plants :Vec<Plant>,
 }
 
 pub struct ServerGameParams {
@@ -344,6 +351,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		};
 		let mapgen_params = MapgenParams {
 			ores : Vec::new(),
+			plants : Vec::new(),
 		};
 		ServerGameParams {
 			p,
@@ -535,6 +543,30 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 					limit_boundary,
 				});
 			}
+		}
+		if let Some(plants) = mapgen.get("plant") {
+			let plants = plants.convert::<Array>()?;
+			for plant in plants.iter() {
+				let name = plant.read::<str>("name")?;
+				let _name_components = parse_block_name(name)?;
+				let id = name_id_map.get_id(name).ok_or("invalid name")?;
+
+				let pcg_seed = plant.read::<str>("pcg_seed")?;
+				if pcg_seed.len() != 8 {
+					Err(format!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len()))?
+				}
+				let pcg_seed = pcg_seed.as_bytes();
+				let pcg_seed = [pcg_seed[0], pcg_seed[1], pcg_seed[2], pcg_seed[3],
+					pcg_seed[4], pcg_seed[5], pcg_seed[6], pcg_seed[7]];
+
+				let pcg_limit = *plant.read::<f64>("pcg_limit")?;
+				params.mapgen_params.plants.push(Plant {
+					block : id,
+					pcg_seed,
+					pcg_limit,
+				});
+			}
+
 		}
 	}
 
