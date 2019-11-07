@@ -226,7 +226,7 @@ fn gen_chunk_phase_one(seed :u64, pos :Vector3<isize>,
 							}
 						}
 
-						if !spawning_tree {
+						if !spawning_tree && !in_desert {
 							for (plant, pcg) in plant_rngs.iter_mut() {
 								if pcg.gen::<f64>() > plant.pcg_limit {
 									*res.get_blk_mut(Vector3::new(x, y, elg)) = plant.block;
