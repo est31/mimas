@@ -410,10 +410,11 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 
 				let (x, y, z) = (pos.x as f32 + 0.5 * siz, pos.y as f32 + 0.5 * siz, pos.z as f32);
 
+				let tsiz = siz * 0.5;
 				// X-Z
-				rpush_face_bidi!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz * 0.95), (siz, siz, 0.0, siz * 0.95), tx.0);
+				rpush_face_bidi!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
 				// Y-Z
-				rpush_face_bidi!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz * 0.95), (siz, siz, 0.0, siz * 0.95), tx.0);
+				rpush_face_bidi!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
 			}
 		}
 	}
