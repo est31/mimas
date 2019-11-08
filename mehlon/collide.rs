@@ -54,7 +54,7 @@ pub fn collide(player_pos :Vector3<f32>, pos :Vector3<isize>) -> Option<Vector3<
 			}
 		}
 		const LIMIT :f32 = 0.04;
-		let num_smaller = [ox, oy, oz].into_iter().filter(|v| v <= &&LIMIT).count();
+		let num_smaller = [ox, oy, oz].iter().filter(|v| *v <= &&LIMIT).count();
 		let xnormal = Vector3::new(f(player_pos.x, pos.x), 0.0, 0.0);
 		let ynormal = Vector3::new(0.0, f(player_pos.y, pos.y), 0.0);
 		let znormal = Vector3::new(0.0, 0.0, f(player_pos.z, pos.z));
