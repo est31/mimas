@@ -77,7 +77,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, (VertexBuffer<Vertex>, VertexBuffer<Vertex>)>,
+	vbuffs :HashMap<Vector3<isize>, (VertexBuffer<Vertex>, Option<VertexBuffer<Vertex>>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	sel_inventory :SelectableInventory,
@@ -584,7 +584,7 @@ impl<C :NetworkClientConn> Game<C> {
 			.collect::<Vec<_>>();
 		let vbuffs_to_draw_iter = vbuffs_to_draw.iter()
 			.map(|m| &m.0)
-			.chain(vbuffs_to_draw.iter().map(|m| &m.1));
+			.chain(vbuffs_to_draw.iter().filter_map(|m| m.1.as_ref()));
 		for buff in vbuffs_to_draw_iter
 				.chain(selbuff.iter())
 				.chain(pl_buf.iter()) {
@@ -695,7 +695,11 @@ impl<C :NetworkClientConn> Game<C> {
 	fn recv_vbuffs(&mut self) {
 		while let Ok((p, m)) = self.meshres_r.try_recv() {
 			let vbuff = VertexBuffer::new(&self.display, &m.intransparent).unwrap();
-			let vbuff_t = VertexBuffer::new(&self.display, &m.transparent).unwrap();
+			let vbuff_t = if m.transparent.len() > 0 {
+				Some(VertexBuffer::new(&self.display, &m.transparent).unwrap())
+			} else {
+				None
+			};
 			self.vbuffs.insert(p, (vbuff, vbuff_t));
 		}
 	}
