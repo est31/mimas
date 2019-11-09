@@ -300,7 +300,8 @@ impl<S :NetworkServerSocket> Server<S> {
 									// the verifier from the password key on the client side, only
 									// giving the server the verifier, which is also only
 									// useful for that very purpose. Our design gives the
-									// server direct access to the password key.
+									// server direct access to the (stretched) password hash.
+									//
 									// This brings the disadvantage that if e.g. the server
 									// database gets compromised, clients could use those keys
 									// to log into the server. However, there are two disadvantages
@@ -313,14 +314,24 @@ impl<S :NetworkServerSocket> Server<S> {
 									//   If one day we decided to migrate off SRP e.g. to spake2
 									//   or use a different SRP group (e.g. a more secure one),
 									//   we'd have to do complex protocol redesigns.
-									// The algorithm SPAKE2 has the same disadvantage as our chosen
-									// approach. Here, too, a server compromise would allow the
-									// bad guys to authenticate as that user, but like with our
-									// approach that's only fixed to the specific seed stored on
-									// the server.
+									// Furthermore, as the salt during enrolling is chosen at
+									// random by the client, knowledge of the salted password hash
+									// does not give access to anything but that very same server.
+									//
+									// Also note thet the algorithm SPAKE2 has the same disadvantage
+									// as our chosen approach.
+									// Here, too, a server compromise would allow the bad guys to
+									// authenticate as that user, but like with our approach
+									// that's only fixed to the specific seed stored on the server.
 									// This disadvantage in fact has motivated SPAKE2+, which is
 									// probably our long term replacement for SRP. But our
 									// current situation is easiest to migrate away from.
+									//
+									// Currently, usage of SPAKE2+ is blocked due to no
+									// implementation being available. An issue requesting support
+									// for it has been filed upstream:
+									// https://github.com/RustCrypto/PAKEs/issues/30
+
 
 									// TODO hopefully upstream gives us a more convenient function
 									// than having to go through the client.
