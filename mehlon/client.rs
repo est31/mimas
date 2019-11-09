@@ -32,7 +32,7 @@ use mehlon_server::inventory::SelectableInventory;
 use mehlon_server::game_params::GameParamsHdl;
 
 use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block,
-	BlockTextureIds, TextureIdCache};
+	BlockTextureIds, TextureIdCache, ChunkMesh};
 
 use assets::{Assets, UiColors};
 
@@ -41,7 +41,7 @@ use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
 
 use voxel_walk::VoxelWalker;
 
-type MeshResReceiver = Receiver<(Vector3<isize>, Vec<Vertex>)>;
+type MeshResReceiver = Receiver<(Vector3<isize>, ChunkMesh)>;
 
 fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyradius :isize, zradius :isize) {
 	let chunk_pos = btchn(pos);
@@ -77,7 +77,7 @@ pub struct Game<C :NetworkClientConn> {
 
 	display :glium::Display,
 	program :glium::Program,
-	vbuffs :HashMap<Vector3<isize>, VertexBuffer<Vertex>>,
+	vbuffs :HashMap<Vector3<isize>, (VertexBuffer<Vertex>, VertexBuffer<Vertex>)>,
 
 	selected_pos :Option<(Vector3<isize>, Vector3<isize>)>,
 	sel_inventory :SelectableInventory,
@@ -564,23 +564,28 @@ impl<C :NetworkClientConn> Game<C> {
 
 		let player_pos = self.camera.pos;
 		let mut drawn_chunks_count = 0;
-		for buff in self.vbuffs.iter()
-				.filter_map(|(p, m)| {
-					// Viewing range based culling
-					let viewing_range = self.config.viewing_range;
-					if (p.map(|v| v as f32) - player_pos).norm() > viewing_range {
-						return None;
-					}
-					// Frustum culling.
-					// We approximate chunks as spheres here, as the library
-					// has no cube checker.
-					let p = p.map(|v| (v + CHUNKSIZE / 2) as f32);
-					let r = CHUNKSIZE as f32 * 3.0_f32.sqrt();
-					if !frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
-						return None;
-					}
-					return Some(m);
-				})
+		let vbuffs_to_draw = self.vbuffs.iter()
+			.filter_map(|(p, m)| {
+				// Viewing range based culling
+				let viewing_range = self.config.viewing_range;
+				if (p.map(|v| v as f32) - player_pos).norm() > viewing_range {
+					return None;
+				}
+				// Frustum culling.
+				// We approximate chunks as spheres here, as the library
+				// has no cube checker.
+				let p = p.map(|v| (v + CHUNKSIZE / 2) as f32);
+				let r = CHUNKSIZE as f32 * 3.0_f32.sqrt();
+				if !frustum.sphere_intersecting(&p.x, &p.y, &p.z, &r) {
+					return None;
+				}
+				return Some(m);
+			})
+			.collect::<Vec<_>>();
+		let vbuffs_to_draw_iter = vbuffs_to_draw.iter()
+			.map(|m| &m.0)
+			.chain(vbuffs_to_draw.iter().map(|m| &m.1));
+		for buff in vbuffs_to_draw_iter
 				.chain(selbuff.iter())
 				.chain(pl_buf.iter()) {
 			drawn_chunks_count += 1;
@@ -689,8 +694,9 @@ impl<C :NetworkClientConn> Game<C> {
 
 	fn recv_vbuffs(&mut self) {
 		while let Ok((p, m)) = self.meshres_r.try_recv() {
-			let vbuff = VertexBuffer::new(&self.display, &m).unwrap();
-			self.vbuffs.insert(p, vbuff);
+			let vbuff = VertexBuffer::new(&self.display, &m.intransparent).unwrap();
+			let vbuff_t = VertexBuffer::new(&self.display, &m.transparent).unwrap();
+			self.vbuffs.insert(p, (vbuff, vbuff_t));
 		}
 	}
 

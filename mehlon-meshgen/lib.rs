@@ -210,8 +210,13 @@ pub fn colorh(col :[f32; 4]) -> [f32; 4] {
 	[col[0]/2.0, col[1]/2.0, col[2]/2.0, col[3]]
 }
 
+pub struct ChunkMesh {
+	pub intransparent :Vec<Vertex>,
+	pub transparent :Vec<Vertex>,
+}
+
 pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
-		cache :&TextureIdCache) -> Vec<Vertex> {
+		cache :&TextureIdCache) -> ChunkMesh {
 	let mut r = Vec::new();
 
 	struct Walker<D> {
@@ -391,6 +396,8 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		cache
 	);
 
+	let mut rt = Vec::new();
+
 	// Crossed nodes
 	for x in 0 .. CHUNKSIZE {
 		for y in 0 .. CHUNKSIZE {
@@ -412,12 +419,15 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 
 				let tsiz = siz * 0.5;
 				// X-Z
-				rpush_face_bidi!(r, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
+				rpush_face_bidi!(rt, (x - sqh, y - sqh, z), (sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
 				// Y-Z
-				rpush_face_bidi!(r, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
+				rpush_face_bidi!(rt, (x + sqh, y - sqh, z), (-sq, sq, 0.0, siz * 0.95), (tsiz, tsiz, 0.0, siz * 0.95), tx.0);
 			}
 		}
 	}
 
-	r
+	ChunkMesh {
+		intransparent : r,
+		transparent : rt,
+	}
 }
