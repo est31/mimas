@@ -472,6 +472,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		.unwrap_or_else(|| Path::new("."))
 		.join("..")
 		.join("..");
+	#[cfg(test)]
+	let asset_dir = asset_dir.join("..");
 	texture_hashes(asset_dir, textures)?
 		.into_iter()
 		.for_each(|(name, hash, blob)| {
