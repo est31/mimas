@@ -271,7 +271,7 @@ impl ServerGameParams {
 	}
 }
 
-/// Ensures that the modname::name format is used and
+/// Ensures that the modname:name format is used and
 /// returns (modname, name) tuple if it is
 pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	fn check_chars(v :&str) -> bool {
