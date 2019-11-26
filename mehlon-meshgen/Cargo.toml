@@ -8,6 +8,6 @@ name = "mehlon_meshgen"
 path = "lib.rs"
 
 [dependencies]
-nalgebra = "0.18"
+nalgebra = "0.19"
 glium = "0.25"
 mehlon-server = { path = "../mehlon-server" }
