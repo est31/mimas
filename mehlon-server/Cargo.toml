@@ -23,7 +23,7 @@ serde-big-array = "0.2"
 structopt = "0.3"
 twox-hash = "1.5"
 toml = "0.5"
-rust-argon2 = "0.5"
+rust-argon2 = "0.6"
 
 # For the networking
 webpki = "0.21"
