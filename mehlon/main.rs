@@ -57,8 +57,9 @@ fn main() -> Result<(), StrErr> {
 	let config = load_config();
 	let mut nick_pw = None;
 
-	let client_conn :Box<dyn NetworkClientConn>= if let Some(addr) = options.connect.clone() {
-		let client_conn = QuicClientConn::from_socket_addr(addr)?;
+	let client_conn :Box<dyn NetworkClientConn> = if let Some(addr) = options.connect.clone() {
+		let addr = addr.parse().expect("couldn't parse address");
+		let client_conn = QuicClientConn::from_socket_addr(&addr)?;
 		let nick = options.nick.unwrap_or_else(|| {
 			panic!("No nick specified but needed to connect to server.");
 		});

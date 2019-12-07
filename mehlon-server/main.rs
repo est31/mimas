@@ -23,7 +23,8 @@ fn main() -> Result<(), StrErr> {
 	let options = Options::from_args();
 
 	let server_socket = if let Some(addr) = options.listen_addr {
-		QuicServerSocket::with_socket_addr(addr)?
+		let addr = addr.parse().expect("couldn't parse address");
+		QuicServerSocket::with_socket_addr(&addr)?
 	} else {
 		QuicServerSocket::new()?
 	};

@@ -1,7 +1,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use crate::StrErr;
-use quinn::{NewStream, RecvStream, EndpointBuilder};
+use quinn::{RecvStream, EndpointBuilder};
 use slog::{o, Drain, Logger};
 use crate::generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
@@ -9,9 +9,10 @@ use std::sync::Arc;
 
 use std::thread;
 
-use futures::{Future, Stream};
-use futures::sync::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
-use tokio::runtime::current_thread::{self, Runtime};
+use futures::{StreamExt, TryFutureExt};
+use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
+use tokio::runtime::{self, Runtime};
+use tokio::io::AsyncWriteExt;
 
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
@@ -39,7 +40,7 @@ impl rustls::ServerCertVerifier for NullVerifier {
 // https://github.com/djc/quinn/issues/210
 const TRANSPORT_IDLE_TIMEOUT :u64 = 0;
 
-fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
+fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 	let log = get_logger();
 
 	let mut server_config = quinn::ServerConfigBuilder::default();
@@ -58,88 +59,88 @@ fn run_quinn_server(addr :impl ToSocketAddrs, conn_send :Sender<QuicServerConn>)
 		.unwrap()
 		.idle_timeout = TRANSPORT_IDLE_TIMEOUT;
 
+	let mut runtime = runtime::Builder::new()
+		.basic_scheduler()
+		.build()?;
+
 	let mut endpoint = EndpointBuilder::default();
-	endpoint.logger(log.clone());
 	endpoint.listen(server_config);
 
-	let mut runtime = Runtime::new()?;
-
-
 	let (driver, _, incoming) = endpoint.bind(addr)?;
-	runtime.spawn(incoming.fold(conn_send, move |conn_send, connecting| {
-		connecting.and_then(|new_conn| {
-			current_thread::spawn(new_conn.driver
+	runtime.spawn(async {
+		incoming.fold(conn_send, move |conn_send, connecting| { async {
+		// Breakable loop
+		// see https://github.com/rust-lang/rust/issues/48594
+		loop {
+			let new_conn = if let Ok(new_conn) = connecting.await {
+				new_conn
+			} else {
+				break conn_send;
+			};
+			tokio::spawn(new_conn.driver
 				.map_err(|e| eprintln!("Connection driver error: {}", e)));
 			let addr = new_conn.connection.remote_address();
 			let sender_clone = conn_send.clone();
-			current_thread::spawn(
-				new_conn.streams
-					.map_err(move |e| eprintln!("Connection terminated: {}", e))
-					.into_future()
-					// Only regard the first stream as new connection
-					.and_then(move |(stream, _incoming)| {
-						let (wtr, rdr) = match stream {
-							Some(NewStream::Bi(send_s, recv_s)) => (send_s, recv_s),
-							None | Some(NewStream::Uni(_)) => return Ok(()),
-						};
-						let (msg_stream, rcv, snd) = QuicMsgStream::new();
+			// Only regard the first stream as new connection
+			let (stream, _incoming) = new_conn.bi_streams.into_future().await;
+			let (wtr, rdr) = if let Some(Ok(stream)) = stream {
+				stream
+			} else {
+				break conn_send;
+			};
+			let (msg_stream, rcv, snd) = QuicMsgStream::new();
 
-						let conn = QuicServerConn {
-							stream : msg_stream,
-							addr,
-						};
-						sender_clone.send(conn);
+			let conn = QuicServerConn {
+				stream : msg_stream,
+				addr,
+			};
+			sender_clone.send(conn);
 
-						spawn_msg_rcv_task(rdr, snd);
+			spawn_msg_rcv_task(rdr, snd);
 
-						current_thread::spawn(
-							rcv.fold(wtr, |wtr, msg| {
-								let len_buf = (msg.len() as u64).to_be_bytes();
-								tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-									.map(|(wtr, _msg)| wtr)
-									.and_then(|wtr| {
-										tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-											.map(|(wtr, _msg)| wtr)
-									})
-							})
-							// Gracefully terminate the stream
-							.and_then(|wtr| {
-								tokio::io::shutdown(wtr)
-									.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
-							})
-							.map(|_| ())
-						);
-
-						Ok(())
-					})
-					.map_err(move |_e| eprintln!("error"))
-					.map(|_| {}),
-			);
-			Ok(conn_send)
-		}).map_err(|_| {})
-	}).map(|_| {}));
+			let mut wtr = rcv.fold(wtr, |mut wtr, msg| { async move {
+				let len_buf = (msg.len() as u64).to_be_bytes();
+				wtr.write_all(&len_buf).await
+					.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+				wtr.write_all(&msg).await
+					.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+				wtr
+			}}).await;
+			// Gracefully terminate the stream
+			wtr.shutdown().await
+				.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
+			break conn_send;
+		}
+	}}).await;
+	Ok::<(), ()>(())
+	});
     runtime.block_on(driver)?;
 	Ok(())
 }
 
-fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
-	current_thread::spawn(tokio::io::read_exact(rdr, [0; 8])
+async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
+	let mut len_buf = [0; 8];
+	rdr.read_exact(&mut len_buf).await
 		.map_err(|e| {
-			if e.kind() != tokio::io::ErrorKind::UnexpectedEof {
+			if let quinn::ReadExactError::FinishedEarly = e {
+				// Do nothing.
+				// Waiting for merge of https://github.com/djc/quinn/pull/550
+				// and new crates.io release.
+				// Then we can use != again.
+			} else {
 				eprintln!("Net error: {:?}", e);
 			}
-		})
-		.and_then(move |(rdr, v)| {
-			let len = u64::from_be_bytes(v) as usize;
-			tokio::io::read_exact(rdr, vec![0; len])
-				.and_then(move |(rdr, v)| {
-					to_receive.send(v);
-					spawn_msg_rcv_task(rdr, to_receive);
-					Ok(())
-				}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-					.map(|_| ())
-		})
-	);
+		});
+	let len = u64::from_be_bytes(len_buf) as usize;
+	let mut buf = vec![0; len];
+	rdr.read_exact(&mut buf).await
+		.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+	to_receive.send(buf);
+	spawn_msg_rcv_task(rdr, to_receive);
+}
+
+fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
+	tokio::spawn(msg_rcv_task(rdr, to_receive));
 }
 
 fn run_quinn_client(url :impl ToSocketAddrs,
@@ -163,7 +164,8 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 
 	endpoint.default_client_config(client_config);
 
-	let (driver, endpoint, _) = endpoint.bind("[::]:0")?;
+	let listen_addr = "[::]:0".parse().unwrap();
+	let (driver, endpoint, _) = endpoint.bind(&listen_addr)?;
 
 	let mut runtime = Runtime::new()?;
 	let endpoint_future = endpoint.connect(
@@ -171,34 +173,36 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		"mehlon-host"
 	)?;
 	runtime.spawn(driver.map_err(|e| eprintln!("IO error: {}", e)));
-	runtime.block_on(
-		endpoint_future
-		.map_err(|e| {eprintln!("Net Error: {:?}", e); })
-		.and_then(move |new_conn| {
-			println!("connected to server.");
-			current_thread::spawn(new_conn.driver.map_err(|e| eprintln!("connection driver error: {}", e)));
-			let stream = new_conn.connection.open_bi();
-			stream.map_err(|e| {eprintln!("Net Error: {:?}", e); })
-			.and_then(move |stream| {
-				let (wtr, rdr) = stream;
-				spawn_msg_rcv_task(rdr, to_receive);
-				to_send.fold(wtr, |wtr, msg| {
-					let len_buf = (msg.len() as u64).to_be_bytes();
-					tokio::io::write_all(wtr, len_buf).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-						.map(|(wtr, _msg)| wtr)
-						.and_then(|wtr| {
-							tokio::io::write_all(wtr, msg).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-								.map(|(wtr, _msg)| wtr)
-						})
-				})
-				// Gracefully terminate the stream
-				.and_then(|stream| {
-					tokio::io::shutdown(stream)
-						.map_err(|e| eprintln!("failed to shutdown stream: {}", e))
-				})
-			})//.map_err(|e| {eprintln!("Net Error: {:?}", e);})
-		}).map_err(|e| {eprintln!("Net Error: {:?}", e); })
-	).map_err(|_| "network error")?;
+	runtime.block_on(async { loop {
+		let new_conn = match endpoint_future.await {
+			Ok(new_conn) => new_conn,
+			Err(e) => {
+				eprintln!("Net Error: {:?}", e);
+				break Ok(());
+			},
+		};
+		println!("connected to server.");
+		tokio::spawn(new_conn.driver.map_err(|e| eprintln!("connection driver error: {}", e)));
+		let stream = new_conn.connection.open_bi();
+		let (wtr, rdr) = match stream.await {
+			Ok(stream) => stream,
+			Err(e) => {
+				eprintln!("Net Error: {:?}", e);
+				break Ok(());
+			},
+		};
+		spawn_msg_rcv_task(rdr, to_receive);
+		let mut wtr = to_send.fold(wtr, |mut wtr, msg| { async move {
+			let len_buf = (msg.len() as u64).to_be_bytes();
+			wtr.write_all(&len_buf).await.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+			wtr.write_all(&msg).await.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+			wtr
+		}}).await;
+		// Gracefully terminate the stream
+		wtr.shutdown().await
+			.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
+		break Ok(());
+	}}).map_err(|()| "network error")?;
 	Ok(())
 }
 
@@ -237,13 +241,11 @@ pub type QuicClientConn = MsgStreamClientConn<QuicMsgStream>;
 pub type QuicServerConn = MsgStreamServerConn<QuicMsgStream>;
 
 impl QuicClientConn {
-	pub fn from_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
+	pub fn from_socket_addr(addr :&SocketAddr) -> Result<Self, StrErr> {
 		let (stream, rcv, snd) = QuicMsgStream::new();
-		let addrs = addr.to_socket_addrs()?.collect::<Vec<_>>();
+		let addr = addr.clone();
 		thread::spawn(move || {
-			let addrs = addrs;
-			let addrs = &addrs as &[_];
-			run_quinn_client(addrs, rcv, snd).expect("errors in quic client");
+			run_quinn_client(&addr, rcv, snd).expect("errors in quic client");
 		});
 		Ok(Self {
 			stream,
@@ -266,16 +268,15 @@ fn get_logger() -> Logger {
 
 impl QuicServerSocket {
 	pub fn new() -> Result<Self, StrErr> {
-		Self::with_socket_addr("127.0.0.1:7700")
+		let addr = "127.0.0.1:7700".parse().unwrap();
+		Self::with_socket_addr(&addr)
 	}
-	pub fn with_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
-		let addrs = addr.to_socket_addrs()?.collect::<Vec<_>>();
+	pub fn with_socket_addr(addr :&SocketAddr) -> Result<Self, StrErr> {
+		let addr = addr.clone();
 		let (conn_send, conn_recv) = channel();
 
 		thread::spawn(move || {
-			let addrs = addrs;
-			let addrs = &addrs as &[_];
-			run_quinn_server(addrs, conn_send).expect("errors in quic server");
+			run_quinn_server(&addr, conn_send).expect("errors in quic server");
 		});
 		Ok(Self {
 			conn_recv
