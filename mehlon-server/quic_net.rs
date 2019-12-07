@@ -11,8 +11,15 @@ use std::thread;
 
 use futures::{StreamExt, TryFutureExt};
 use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
-use tokio::runtime::{self, Runtime};
+use tokio::runtime;
 use tokio::io::AsyncWriteExt;
+
+/*macro_rules! eprintln {
+	($f:expr, $e:expr) => {{
+		print!("{}:{}: ", line!(), column!());
+		println!($f, $e);
+	}};
+}*/
 
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
@@ -30,18 +37,9 @@ impl rustls::ServerCertVerifier for NullVerifier {
 
 // This value prevents the connection from timing
 // out when there is no activiy on the connection
-//
-// We are not setting to 0 as we are supposed to,
-// because there is a bug in quinn right now.
-// Hopefully the next version will resolve it.
-// 1 << 27 - 1 is the biggest value we can set
-// idle_timeout to without encountering bugs.
-// See also:
-// https://github.com/djc/quinn/issues/210
 const TRANSPORT_IDLE_TIMEOUT :u64 = 0;
 
 fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
-	let log = get_logger();
 
 	let mut server_config = quinn::ServerConfigBuilder::default();
 	let cert = rcgen::generate_simple_self_signed(vec!["mehlon-host".into()])?;
@@ -61,58 +59,59 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 
 	let mut runtime = runtime::Builder::new()
 		.basic_scheduler()
+		.enable_all()
 		.build()?;
 
 	let mut endpoint = EndpointBuilder::default();
 	endpoint.listen(server_config);
 
-	let (driver, _, incoming) = endpoint.bind(addr)?;
+	let (driver, _, incoming) = runtime.enter(|| endpoint.bind(addr))?;
 	runtime.spawn(async {
 		incoming.fold(conn_send, move |conn_send, connecting| { async {
-		// Breakable loop
-		// see https://github.com/rust-lang/rust/issues/48594
-		loop {
-			let new_conn = if let Ok(new_conn) = connecting.await {
-				new_conn
-			} else {
+			// Breakable loop
+			// see https://github.com/rust-lang/rust/issues/48594
+			loop {
+				let new_conn = if let Ok(new_conn) = connecting.await {
+					new_conn
+				} else {
+					break conn_send;
+				};
+				tokio::spawn(new_conn.driver
+					.map_err(|e| eprintln!("Connection driver error: {}", e)));
+				let addr = new_conn.connection.remote_address();
+				let sender_clone = conn_send.clone();
+				// Only regard the first stream as new connection
+				let (stream, _incoming) = new_conn.bi_streams.into_future().await;
+				let (wtr, rdr) = if let Some(Ok(stream)) = stream {
+					stream
+				} else {
+					break conn_send;
+				};
+				let (msg_stream, rcv, snd) = QuicMsgStream::new();
+
+				let conn = QuicServerConn {
+					stream : msg_stream,
+					addr,
+				};
+				sender_clone.send(conn);
+
+				spawn_msg_rcv_task(rdr, snd);
+
+				let mut wtr = rcv.fold(wtr, |mut wtr, msg| { async move {
+					let len_buf = (msg.len() as u64).to_be_bytes();
+					wtr.write_all(&len_buf).await
+						.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+					wtr.write_all(&msg).await
+						.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+					wtr
+				}}).await;
+				// Gracefully terminate the stream
+				wtr.shutdown().await
+					.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
 				break conn_send;
-			};
-			tokio::spawn(new_conn.driver
-				.map_err(|e| eprintln!("Connection driver error: {}", e)));
-			let addr = new_conn.connection.remote_address();
-			let sender_clone = conn_send.clone();
-			// Only regard the first stream as new connection
-			let (stream, _incoming) = new_conn.bi_streams.into_future().await;
-			let (wtr, rdr) = if let Some(Ok(stream)) = stream {
-				stream
-			} else {
-				break conn_send;
-			};
-			let (msg_stream, rcv, snd) = QuicMsgStream::new();
-
-			let conn = QuicServerConn {
-				stream : msg_stream,
-				addr,
-			};
-			sender_clone.send(conn);
-
-			spawn_msg_rcv_task(rdr, snd);
-
-			let mut wtr = rcv.fold(wtr, |mut wtr, msg| { async move {
-				let len_buf = (msg.len() as u64).to_be_bytes();
-				wtr.write_all(&len_buf).await
-					.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-				wtr.write_all(&msg).await
-					.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-				wtr
-			}}).await;
-			// Gracefully terminate the stream
-			wtr.shutdown().await
-				.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
-			break conn_send;
-		}
-	}}).await;
-	Ok::<(), ()>(())
+			}
+		}}).await;
+		Ok::<(), ()>(())
 	});
     runtime.block_on(driver)?;
 	Ok(())
@@ -164,10 +163,14 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 
 	endpoint.default_client_config(client_config);
 
-	let listen_addr = "[::]:0".parse().unwrap();
-	let (driver, endpoint, _) = endpoint.bind(&listen_addr)?;
+	let mut runtime = runtime::Builder::new()
+		.basic_scheduler()
+		.enable_all()
+		.build()?;
 
-	let mut runtime = Runtime::new()?;
+	let listen_addr = "[::]:0".parse().unwrap();
+	let (driver, endpoint, _) = runtime.enter(|| endpoint.bind(&listen_addr))?;
+
 	let endpoint_future = endpoint.connect(
 		&url,
 		"mehlon-host"
