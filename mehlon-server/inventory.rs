@@ -1,9 +1,9 @@
-use map::MapBlock;
+use crate::map::MapBlock;
 use std::num::NonZeroU16;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
-use game_params::NameIdMap;
-use StrErr;
+use crate::game_params::NameIdMap;
+use crate::StrErr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SelectableInventory {

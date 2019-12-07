@@ -1,9 +1,9 @@
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::ToSocketAddrs;
-use StrErr;
+use crate::StrErr;
 use quinn::{NewStream, RecvStream, EndpointBuilder};
 use slog::{o, Drain, Logger};
-use generic_net::{MsgStream, NetErr, MsgStreamClientConn,
+use crate::generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
 use std::sync::Arc;
 

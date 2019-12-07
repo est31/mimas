@@ -1,9 +1,9 @@
 use nalgebra::Vector3;
 use std::collections::hash_map::{HashMap, Entry};
-use {btchn, btpic};
-use map_storage::PlayerIdPair;
-use game_params::ServerGameParamsHdl;
-use inventory::SelectableInventory;
+use crate::{btchn, btpic};
+use crate::map_storage::PlayerIdPair;
+use crate::game_params::ServerGameParamsHdl;
+use crate::inventory::SelectableInventory;
 
 use super::mapgen::{Schematic, MapgenThread};
 

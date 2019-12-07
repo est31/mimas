@@ -1,5 +1,5 @@
 use toml::value::{Value, Datetime, Array, Table};
-use StrErr;
+use crate::StrErr;
 
 pub trait TomlReadExt {
 	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T, StrErr>;

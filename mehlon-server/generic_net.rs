@@ -3,9 +3,9 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::net::{TcpStream, TcpListener, SocketAddr, ToSocketAddrs};
 use std::io::{Read, Write, Error as IoError, ErrorKind};
 use std::mem::replace;
-use {ClientToServerMsg, ServerToClientMsg};
+use crate::{ClientToServerMsg, ServerToClientMsg};
 use bincode::{serialize, deserialize};
-use StrErr;
+use crate::StrErr;
 
 pub trait NetworkServerSocket {
 	type Conn :NetworkServerConn + 'static;

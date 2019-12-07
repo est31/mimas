@@ -43,7 +43,7 @@ pub mod crafting;
 pub mod game_params;
 pub mod toml_util;
 
-use map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock,
+use crate::map::{Map, ServerMap, MapBackend, MapChunkData, CHUNKSIZE, MapBlock,
 	MetadataEntry};
 use nalgebra::{Vector3};
 use std::time::{Instant, Duration};
@@ -52,12 +52,12 @@ use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
 use std::fmt::Display;
-use generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
-use config::Config;
-use map_storage::{PlayerIdPair, PlayerPosition};
-use inventory::{SelectableInventory, Stack};
-use local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
-use game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
+use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
+use crate::config::Config;
+use crate::map_storage::{PlayerIdPair, PlayerPosition};
+use crate::inventory::{SelectableInventory, Stack};
+use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
+use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
 use srp::groups::G_4096;
@@ -797,7 +797,7 @@ impl<S :NetworkServerSocket> Server<S> {
 			let msgs = self.get_msgs();
 
 			for (id, msg) in msgs {
-				use ClientToServerMsg::*;
+				use crate::ClientToServerMsg::*;
 				match msg {
 					LogIn(..) |
 					SendHash(_) |

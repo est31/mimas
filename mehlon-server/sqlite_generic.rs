@@ -1,5 +1,5 @@
 use rusqlite::{Connection, NO_PARAMS, OpenFlags};
-use StrErr;
+use crate::StrErr;
 use std::path::Path;
 
 /// Open or create a new database connection,

@@ -5,15 +5,15 @@ use noise::{Perlin, NoiseFn, Seedable};
 use std::collections::{HashMap, hash_map::Entry};
 use std::mem::replace;
 use std::hash::Hasher;
-use {btchn, btpic};
+use crate::{btchn, btpic};
 use rand_pcg::Pcg32;
 use rand::Rng;
 use twox_hash::XxHash64;
-use map_storage::PlayerIdPair;
-use game_params::{ServerGameParamsHdl, BlockRoles};
+use crate::map_storage::PlayerIdPair;
+use crate::game_params::{ServerGameParamsHdl, BlockRoles};
 
 use super::map::{Map, MapChunkData, MapBlock, MapBackend, CHUNKSIZE};
-use map_storage::DynStorageBackend;
+use crate::map_storage::DynStorageBackend;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum GenerationPhase {

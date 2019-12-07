@@ -1,19 +1,19 @@
-use crafting::Recipe;
+use crate::crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
 use toml::value::{Value, Array, Table};
 use std::fs::{read_to_string, File};
 use std::path::Path;
-use map::MapBlock;
+use crate::map::MapBlock;
 use super::StrErr;
-use toml_util::TomlReadExt;
+use crate::toml_util::TomlReadExt;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::io::Read;
-use inventory::Stack;
-use mapgen::{Schematic, self};
+use crate::inventory::Stack;
+use crate::mapgen::{Schematic, self};
 use sha2::{Sha256, Digest};
 
 pub type GameParamsHdl = Arc<GameParams>;

@@ -1,19 +1,19 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
-use map::{MapChunkData, MetadataEntry, CHUNKSIZE};
-use StrErr;
+use crate::map::{MapChunkData, MetadataEntry, CHUNKSIZE};
+use crate::StrErr;
 use nalgebra::Vector3;
 use std::{str, io, path::Path};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use flate2::{Compression, GzBuilder, read::GzDecoder};
-use config::Config;
+use crate::config::Config;
 use toml::{from_str, to_string};
-use sqlite_generic::{get_user_version, set_user_version,
+use crate::sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
-use local_auth::SqliteLocalAuth;
+use crate::local_auth::SqliteLocalAuth;
 use std::num::NonZeroU64;
-use game_params::{NameIdMap, parse_block_name};
-use inventory::SelectableInventory;
+use crate::game_params::{NameIdMap, parse_block_name};
+use crate::inventory::SelectableInventory;
 
 pub struct SqliteStorageBackend {
 	conn :Connection,

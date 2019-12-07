@@ -2,6 +2,7 @@
 name = "mehlon-server"
 version = "0.4.0-dev"
 authors = ["est31 <MTest31@outlook.com>"]
+edition = "2018"
 
 [[bin]]
 name = "mehlon-server"

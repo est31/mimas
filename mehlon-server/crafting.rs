@@ -1,6 +1,6 @@
-use inventory::{SelectableInventory, Stack};
-use game_params::GameParams;
-use map::MapBlock;
+use crate::inventory::{SelectableInventory, Stack};
+use crate::game_params::GameParams;
+use crate::map::MapBlock;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Recipe {

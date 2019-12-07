@@ -1,12 +1,12 @@
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::ToSql;
-use sqlite_generic::{get_user_version, set_user_version,
+use crate::sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use argon2::Config;
 use std::path::Path;
 use rand::Rng;
-use StrErr;
-use map_storage::PlayerIdPair;
+use crate::StrErr;
+use crate::map_storage::PlayerIdPair;
 
 /// Magic used to identify the mehlon application.
 ///
