@@ -118,24 +118,28 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 }
 
 async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
-	let mut len_buf = [0; 8];
-	rdr.read_exact(&mut len_buf).await
-		.map_err(|e| {
+	loop {
+		let mut len_buf = [0; 8];
+		if let Err(e) = rdr.read_exact(&mut len_buf).await {
 			if let quinn::ReadExactError::FinishedEarly = e {
-				// Do nothing.
+				// Graceful termination of the stream,
+				// don't print an error.
+				//
 				// Waiting for merge of https://github.com/djc/quinn/pull/550
 				// and new crates.io release.
 				// Then we can use != again.
 			} else {
 				eprintln!("Net error: {:?}", e);
 			}
-		});
-	let len = u64::from_be_bytes(len_buf) as usize;
-	let mut buf = vec![0; len];
-	rdr.read_exact(&mut buf).await
-		.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-	to_receive.send(buf);
-	spawn_msg_rcv_task(rdr, to_receive);
+			// The stream terminated.
+			break;
+		}
+		let len = u64::from_be_bytes(len_buf) as usize;
+		let mut buf = vec![0; len];
+		rdr.read_exact(&mut buf).await
+			.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+		to_receive.send(buf);
+	}
 }
 
 fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
