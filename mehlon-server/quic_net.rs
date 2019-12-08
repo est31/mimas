@@ -65,16 +65,13 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 	let mut endpoint = EndpointBuilder::default();
 	endpoint.listen(server_config);
 
-	let (driver, _, incoming) = runtime.enter(|| endpoint.bind(addr))?;
-	runtime.spawn(async {
-		incoming.fold(conn_send, move |conn_send, connecting| { async {
-			// Breakable loop
-			// see https://github.com/rust-lang/rust/issues/48594
-			loop {
+	let (driver, _, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
+	runtime.spawn(async move {
+		while let Some(connecting) = incoming.next().await {
 				let new_conn = if let Ok(new_conn) = connecting.await {
 					new_conn
 				} else {
-					break conn_send;
+					continue;
 				};
 				tokio::spawn(new_conn.driver
 					.map_err(|e| eprintln!("Connection driver error: {}", e)));
@@ -85,7 +82,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				let (wtr, rdr) = if let Some(Ok(stream)) = stream {
 					stream
 				} else {
-					break conn_send;
+					continue;
 				};
 				let (msg_stream, rcv, snd) = QuicMsgStream::new();
 
@@ -108,10 +105,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				// Gracefully terminate the stream
 				wtr.shutdown().await
 					.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
-				break conn_send;
-			}
-		}}).await;
-		Ok::<(), ()>(())
+		}
 	});
     runtime.block_on(driver)?;
 	Ok(())
