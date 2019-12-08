@@ -12,7 +12,7 @@ use glium_glyph::glyph_brush::{
 	rusttype::Font, Section,
 };
 use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
@@ -251,15 +251,31 @@ impl<C :NetworkClientConn> Game<C> {
 		self.last_frame_time = cur_time;
 
 		const EPS :f32 = 0.1;
+		const FPS_TGT :f32 = 60.0;
 		let fps_cur_term = if float_delta > 0.0 {
 			1.0 / float_delta
 		} else {
 			// At the beginning float_delta can be zero
 			// and 1/0 would fuck up the last_fps value
-			900.0
+			FPS_TGT * 30.0
 		};
 		let fps = self.last_fps * (1.0 - EPS) + fps_cur_term * EPS;
 		self.last_fps = fps;
+
+		// If we exceed our target FPS by a too high
+		// amount, slow a little bit down
+		// to avoid 100% CPU
+		if fps > 1.5 * FPS_TGT {
+			let smooth_delta = 1.0 / fps;
+			let delta_tgt = 1.0 / FPS_TGT;
+			let time_too_fast = delta_tgt - smooth_delta;
+			// Don't slow down by the full time that we were too fast,
+			// because then we are guaranteed to undershoot
+			// the FPS target in this frame. That's not our goal!
+			let micros_to_wait = (time_too_fast * 0.7 * 1_000_000.0) as u64;
+			thread::sleep(Duration::from_micros(micros_to_wait));
+		}
+
 		float_delta
 	}
 	fn in_background(&self) -> bool {
