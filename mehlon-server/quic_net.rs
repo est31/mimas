@@ -21,6 +21,18 @@ use tokio::io::AsyncWriteExt;
 	}};
 }*/
 
+macro_rules! ltry {
+	($f:expr; $e:expr) => {{
+		match $f {
+			Ok(v) => v,
+			Err(e) => {
+				eprintln!("Net Error: {:?}", e);
+				$e
+			}
+		}
+	}};
+}
+
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
 impl rustls::ServerCertVerifier for NullVerifier {
@@ -79,12 +91,12 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				let sender_clone = conn_send.clone();
 				// Only regard the first stream as new connection
 				let (stream, _incoming) = new_conn.bi_streams.into_future().await;
-				let (wtr, rdr) = if let Some(Ok(stream)) = stream {
+				let (mut wtr, rdr) = if let Some(Ok(stream)) = stream {
 					stream
 				} else {
 					continue;
 				};
-				let (msg_stream, rcv, snd) = QuicMsgStream::new();
+				let (msg_stream, mut rcv, snd) = QuicMsgStream::new();
 
 				let conn = QuicServerConn {
 					stream : msg_stream,
@@ -94,14 +106,11 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 
 				spawn_msg_rcv_task(rdr, snd);
 
-				let mut wtr = rcv.fold(wtr, |mut wtr, msg| { async move {
+				while let Some(msg) = rcv.next().await {
 					let len_buf = (msg.len() as u64).to_be_bytes();
-					wtr.write_all(&len_buf).await
-						.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-					wtr.write_all(&msg).await
-						.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-					wtr
-				}}).await;
+					ltry!(wtr.write_all(&len_buf).await; break);
+					ltry!(wtr.write_all(&msg).await; break);
+				}
 				// Gracefully terminate the stream
 				wtr.shutdown().await
 					.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
@@ -130,8 +139,7 @@ async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 		}
 		let len = u64::from_be_bytes(len_buf) as usize;
 		let mut buf = vec![0; len];
-		rdr.read_exact(&mut buf).await
-			.map_err(|e| {eprintln!("Net Error: {:?}", e); });
+		ltry!(rdr.read_exact(&mut buf).await; break);
 		to_receive.send(buf);
 	}
 }
@@ -141,7 +149,7 @@ fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 }
 
 fn run_quinn_client(url :impl ToSocketAddrs,
-		to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<(), StrErr> {
+		mut to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<(), StrErr> {
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
 	let mut endpoint = EndpointBuilder::default();
@@ -185,7 +193,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		println!("connected to server.");
 		tokio::spawn(new_conn.driver.map_err(|e| eprintln!("connection driver error: {}", e)));
 		let stream = new_conn.connection.open_bi();
-		let (wtr, rdr) = match stream.await {
+		let (mut wtr, rdr) = match stream.await {
 			Ok(stream) => stream,
 			Err(e) => {
 				eprintln!("Net Error: {:?}", e);
@@ -193,12 +201,11 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 			},
 		};
 		spawn_msg_rcv_task(rdr, to_receive);
-		let mut wtr = to_send.fold(wtr, |mut wtr, msg| { async move {
+		while let Some(msg) = to_send.next().await {
 			let len_buf = (msg.len() as u64).to_be_bytes();
-			wtr.write_all(&len_buf).await.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-			wtr.write_all(&msg).await.map_err(|e| {eprintln!("Net Error: {:?}", e); });
-			wtr
-		}}).await;
+			ltry!(wtr.write_all(&len_buf).await; break);
+			ltry!(wtr.write_all(&msg).await; break);
+		}
 		// Gracefully terminate the stream
 		wtr.shutdown().await
 			.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
