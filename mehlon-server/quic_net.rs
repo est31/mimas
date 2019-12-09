@@ -112,8 +112,9 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 					ltry!(wtr.write_all(&msg).await; break);
 				}
 				// Gracefully terminate the stream
-				wtr.shutdown().await
-					.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
+				if let Err(e) = wtr.shutdown().await {
+					eprintln!("failed to shutdown stream: {}", e);
+				}
 		}
 	});
     runtime.block_on(driver)?;
@@ -207,8 +208,9 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 			ltry!(wtr.write_all(&msg).await; break);
 		}
 		// Gracefully terminate the stream
-		wtr.shutdown().await
-			.map_err(|e| eprintln!("failed to shutdown stream: {}", e));
+		if let Err(e) = wtr.shutdown().await {
+			println!("failed to shutdown stream: {}", e)
+		}
 		break Ok(());
 	}}).map_err(|()| "network error")?;
 	Ok(())
