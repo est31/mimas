@@ -1,7 +1,3 @@
-# This allows us to optimize dependencies
-# https://github.com/rust-lang/rust/issues/48683
-cargo-features = ["profile-overrides"]
-
 [workspace]
 members = ["mehlon", "mehlon-server", "mehlon-meshgen"]
 default-members = ["mehlon"]
@@ -14,11 +10,9 @@ default-members = ["mehlon"]
 debug = false
 
 # This allows us to optimize dependencies
-# If you aren't on nightly, you can just comment this out.
 [profile.dev.package."*"]
 opt-level = 3
 
 # Also optimize mehlon-meshgen
-# Per default, workspace members are not included by "*".
 [profile.dev.package.mehlon-meshgen]
 opt-level = 3

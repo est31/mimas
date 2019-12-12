@@ -25,15 +25,12 @@ Either, you can obtain it from your distro, or you can use [rustup](https://rust
 
 #### Compiling with stable Rust
 
-Released versions of Mehlon will be able to compile on stable Rust.
-Here, the currently latest stable version of Rust will be targeted.
+Mehlon only requires stabilized Rust features, but currently
+requires 1.41 which hasn't been released yet. For the time
+being, I suggest using nightly, then beta once 1.41 moves there,
+and finally stable (on Jan 30, 2020).
 
-The git version of Mehlon however uses one feature from Rust nightly: [cargo profile dependencies](https://github.com/rust-lang/rust/issues/48683).
-This feature is used to enable a better edit-compile-run cycle,
-as the git version is targeted at development.
-Thus, on git, per default, the nightly channel of Rust is required.
-
-However, if you want to compile mehlon on stable Rust,
+If you still want to compile mehlon on stable Rust,
 you can easily edit `Cargo.toml` to compile it yourself.
 
 ### License
