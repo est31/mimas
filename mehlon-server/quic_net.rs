@@ -102,7 +102,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				stream : msg_stream,
 				addr,
 			};
-			sender_clone.send(conn);
+			ltry!(sender_clone.send(conn); break);
 
 			spawn_msg_rcv_task(rdr, snd);
 
@@ -141,7 +141,7 @@ async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 		let len = u64::from_be_bytes(len_buf) as usize;
 		let mut buf = vec![0; len];
 		ltry!(rdr.read_exact(&mut buf).await; break);
-		to_receive.send(buf);
+		ltry!(to_receive.send(buf); break);
 	}
 }
 
