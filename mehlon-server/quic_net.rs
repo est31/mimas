@@ -80,41 +80,44 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 	let (driver, _, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
 	runtime.spawn(async move {
 		while let Some(connecting) = incoming.next().await {
-			let new_conn = if let Ok(new_conn) = connecting.await {
-				new_conn
-			} else {
-				continue;
-			};
-			tokio::spawn(new_conn.driver
-				.map_err(|e| eprintln!("Connection driver error: {}", e)));
-			let addr = new_conn.connection.remote_address();
 			let sender_clone = conn_send.clone();
-			// Only regard the first stream as new connection
-			let (stream, _incoming) = new_conn.bi_streams.into_future().await;
-			let (mut wtr, rdr) = if let Some(Ok(stream)) = stream {
-				stream
-			} else {
-				continue;
-			};
-			let (msg_stream, mut rcv, snd) = QuicMsgStream::new();
+			tokio::spawn(async move { loop {
+				let new_conn = if let Ok(new_conn) = connecting.await {
+					new_conn
+				} else {
+					break;
+				};
+				tokio::spawn(new_conn.driver
+					.map_err(|e| eprintln!("Connection driver error: {}", e)));
+				let addr = new_conn.connection.remote_address();
+				// Only regard the first stream as new connection
+				let (stream, _incoming) = new_conn.bi_streams.into_future().await;
+				let (mut wtr, rdr) = if let Some(Ok(stream)) = stream {
+					stream
+				} else {
+					break;
+				};
+				let (msg_stream, mut rcv, snd) = QuicMsgStream::new();
 
-			let conn = QuicServerConn {
-				stream : msg_stream,
-				addr,
-			};
-			ltry!(sender_clone.send(conn); break);
+				let conn = QuicServerConn {
+					stream : msg_stream,
+					addr,
+				};
+				ltry!(sender_clone.send(conn); break);
 
-			spawn_msg_rcv_task(rdr, snd);
+				spawn_msg_rcv_task(rdr, snd);
 
-			while let Some(msg) = rcv.next().await {
-				let len_buf = (msg.len() as u64).to_be_bytes();
-				ltry!(wtr.write_all(&len_buf).await; break);
-				ltry!(wtr.write_all(&msg).await; break);
-			}
-			// Gracefully terminate the stream
-			if let Err(e) = wtr.shutdown().await {
-				eprintln!("failed to shutdown stream: {}", e);
-			}
+				while let Some(msg) = rcv.next().await {
+					let len_buf = (msg.len() as u64).to_be_bytes();
+					ltry!(wtr.write_all(&len_buf).await; break);
+					ltry!(wtr.write_all(&msg).await; break);
+				}
+				// Gracefully terminate the stream
+				if let Err(e) = wtr.shutdown().await {
+					eprintln!("failed to shutdown stream: {}", e);
+				}
+				break;
+			} });
 		}
 	});
     runtime.block_on(driver)?;
