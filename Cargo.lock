@@ -1431,9 +1431,9 @@ dependencies = [
 
 [[package]]
 name = "quinn"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80373c193abcadd02f1dbd453a660430a61884956a0e47365f0a2b713d23ba67"
+checksum = "b544f6ceafbc37a47b78a32b7a5cd187eb189a27405d7accb8056df153880714"
 dependencies = [
  "bytes",
  "err-derive",
@@ -1449,9 +1449,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-proto"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdc04086222193131a32eb4705dfe2b68d53ea2974c60435aed7be5e5c86e38d"
+checksum = "36f238b2b3252726f41171302f3976bc22ef4d4845bad6bc2f4fce000a833ee7"
 dependencies = [
  "bytes",
  "err-derive",
