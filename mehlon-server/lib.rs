@@ -16,8 +16,6 @@ extern crate argon2;
 
 extern crate webpki;
 extern crate quinn;
-extern crate slog_term;
-extern crate slog;
 extern crate tokio;
 extern crate futures;
 extern crate rcgen;

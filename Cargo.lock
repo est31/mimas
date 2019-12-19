@@ -1071,8 +1071,6 @@ dependencies = [
  "serde-big-array",
  "serde_derive",
  "sha2",
- "slog",
- "slog-term",
  "srp",
  "structopt",
  "tokio",
@@ -1847,25 +1845,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
-name = "slog"
-version = "2.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc9c640a4adbfbcc11ffb95efe5aa7af7309e002adab54b185507dbf2377b99"
-
-[[package]]
-name = "slog-term"
-version = "2.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b50e85b73c2bd42ceb97b6ded235576d405bd1e974242ccfe634fa269f6da7"
-dependencies = [
- "atty",
- "chrono",
- "slog",
- "term",
- "thread_local",
-]
-
-[[package]]
 name = "smallvec"
 version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1994,31 +1973,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d77adff586b9bd922afef7791341ed94b09845e11225929217efe949e6366d43"
 
 [[package]]
-name = "term"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0863a3345e70f61d613eab32ee046ccd1bcc5f9105fe402c61fcd0c13eeb8b5"
-dependencies = [
- "dirs",
- "winapi 0.3.8",
-]
-
-[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
-]
-
-[[package]]
-name = "thread_local"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
-dependencies = [
- "lazy_static",
 ]
 
 [[package]]

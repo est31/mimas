@@ -2,7 +2,6 @@ use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::{SocketAddr, ToSocketAddrs};
 use crate::StrErr;
 use quinn::{RecvStream, EndpointBuilder};
-use slog::{o, Drain, Logger};
 use crate::generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
 use std::sync::Arc;
@@ -268,15 +267,6 @@ impl QuicClientConn {
 
 pub struct QuicServerSocket {
 	conn_recv :Receiver<QuicServerConn>,
-}
-
-fn get_logger() -> Logger {
-	let decorator = slog_term::PlainSyncDecorator::new(std::io::stderr());
-	let drain = slog_term::FullFormat::new(decorator)
-		.use_original_order()
-		.build()
-		.fuse();
-	Logger::root(drain, o!())
 }
 
 impl QuicServerSocket {
