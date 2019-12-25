@@ -127,15 +127,11 @@ async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 	loop {
 		let mut len_buf = [0; 8];
 		if let Err(e) = rdr.read_exact(&mut len_buf).await {
-			if let quinn::ReadExactError::FinishedEarly = e {
+			if quinn::ReadExactError::FinishedEarly != e {
+				eprintln!("Net error: {:?}", e);
+			} else {
 				// Graceful termination of the stream,
 				// don't print an error.
-				//
-				// Waiting for merge of https://github.com/djc/quinn/pull/550
-				// and new crates.io release.
-				// Then we can use != again.
-			} else {
-				eprintln!("Net error: {:?}", e);
 			}
 			// The stream terminated.
 			break;
