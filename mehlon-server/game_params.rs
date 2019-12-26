@@ -481,27 +481,29 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			texture_bl.insert(hash, blob);
 		});
 
-	let recipes_list = val.read::<Array>("recipe")?;
-	for recipe in recipes_list.iter() {
-		let inputs = recipe.read::<Array>("inputs")?;
-		let inputs = inputs.iter()
-			.map(|input| {
-				let name = input.convert::<str>()?;
-				if name == "" {
-					Ok(None)
-				} else {
-					let mb = name_id_map.get_id(name).ok_or("invalid name")?;
-					Ok(Some(mb))
-				}
-			})
-			.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
-		let output_sp = recipe.read::<str>("output")?;
-		let output = resolve_stack_specifier(&name_id_map, output_sp)?;
+	if let Some(recipes_list) = val.get("recipe") {
+		let recipes_list = recipes_list.convert::<Array>()?;
+		for recipe in recipes_list.iter() {
+			let inputs = recipe.read::<Array>("inputs")?;
+			let inputs = inputs.iter()
+				.map(|input| {
+					let name = input.convert::<str>()?;
+					if name == "" {
+						Ok(None)
+					} else {
+						let mb = name_id_map.get_id(name).ok_or("invalid name")?;
+						Ok(Some(mb))
+					}
+				})
+				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
+			let output_sp = recipe.read::<str>("output")?;
+			let output = resolve_stack_specifier(&name_id_map, output_sp)?;
 
-		params.p.recipes.push(Recipe {
-			inputs,
-			output,
-		});
+			params.p.recipes.push(Recipe {
+				inputs,
+				output,
+			});
+		}
 	}
 
 	if let Some(mapgen) = val.get("mapgen") {
