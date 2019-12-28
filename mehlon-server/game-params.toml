@@ -181,24 +181,24 @@ texture = "assets/textures/default_grass_5.png"
 [[mapgen.plant]]
 name = "default:grass_1"
 pcg_seed = "grass  1"
-pcg_limit = 0.993
+pcg_limit = 0.996
 
 [[mapgen.plant]]
 name = "default:grass_2"
 pcg_seed = "grass  2"
-pcg_limit = 0.993
+pcg_limit = 0.996
 
 [[mapgen.plant]]
 name = "default:grass_3"
 pcg_seed = "grass  3"
-pcg_limit = 0.993
+pcg_limit = 0.996
 
 [[mapgen.plant]]
 name = "default:grass_4"
 pcg_seed = "grass  4"
-pcg_limit = 0.993
+pcg_limit = 0.996
 
 [[mapgen.plant]]
 name = "default:grass_5"
 pcg_seed = "grass  5"
-pcg_limit = 0.993
+pcg_limit = 0.996
