@@ -202,3 +202,85 @@ pcg_limit = 0.996
 name = "default:grass_5"
 pcg_seed = "grass  5"
 pcg_limit = 0.996
+
+## Flowers
+
+[[block]]
+name = "flowers:dandelion_white"
+crossed = true
+texture = "assets/textures/flowers_dandelion_white.png"
+
+[[block]]
+name = "flowers:dandelion_yellow"
+crossed = true
+texture = "assets/textures/flowers_dandelion_yellow.png"
+
+[[block]]
+name = "flowers:geranium"
+crossed = true
+texture = "assets/textures/flowers_geranium.png"
+
+[[block]]
+name = "flowers:rose"
+crossed = true
+texture = "assets/textures/flowers_rose.png"
+
+[[block]]
+name = "flowers:tulip_black"
+crossed = true
+texture = "assets/textures/flowers_tulip_black.png"
+
+[[block]]
+name = "flowers:tulip"
+crossed = true
+texture = "assets/textures/flowers_tulip.png"
+
+[[block]]
+name = "flowers:chrysanthemum_green"
+crossed = true
+texture = "assets/textures/flowers_chrysanthemum_green.png"
+
+[[block]]
+name = "flowers:viola"
+crossed = true
+texture = "assets/textures/flowers_viola.png"
+
+[[mapgen.plant]]
+name = "flowers:dandelion_white"
+pcg_seed = "dandelio"
+pcg_limit = 0.9988
+
+[[mapgen.plant]]
+name = "flowers:dandelion_yellow"
+pcg_seed = "dandeliy"
+pcg_limit = 0.99995
+
+[[mapgen.plant]]
+name = "flowers:geranium"
+pcg_seed = "geranium"
+pcg_limit = 0.99998
+
+[[mapgen.plant]]
+name = "flowers:rose"
+pcg_seed = "rose    "
+pcg_limit = 0.99978
+
+[[mapgen.plant]]
+name = "flowers:tulip_black"
+pcg_seed = "tulip_bl"
+pcg_limit = 0.9999998
+
+[[mapgen.plant]]
+name = "flowers:tulip"
+pcg_seed = "tulip   "
+pcg_limit = 0.99978
+
+[[mapgen.plant]]
+name = "flowers:chrysanthemum_green"
+pcg_seed = "crysanth"
+pcg_limit = 0.9999988
+
+[[mapgen.plant]]
+name = "flowers:viola"
+pcg_seed = "viola   "
+pcg_limit = 0.99962
