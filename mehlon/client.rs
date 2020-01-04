@@ -807,21 +807,31 @@ impl<C :NetworkClientConn> Game<C> {
 		} else {
 			return
 		};
-		const LEFT_BUTTON_COOLDOWN :f32 = 0.2;
+		if !self.camera.mouse_left_down {
+			self.camera.dig_cooldown = None;
+		}
+		const LEFT_BUTTON_COOLDOWN :f32 = 0.1;
 		const RIGHT_BUTTON_COOLDOWN :f32 = 0.2;
-		self.camera.mouse_left_cooldown -= float_delta;
+		self.camera.dig_cooldown.as_mut().map(|(_p, c)| *c -= float_delta);
 		self.camera.mouse_right_cooldown -= float_delta;
 		if let Some((selected_pos, before_selected)) = self.selected_pos {
 			if self.camera.mouse_left_down {
-				if self.camera.mouse_left_cooldown <= 0.0 {
-					let mut blk = self.map.get_blk_mut(selected_pos).unwrap();
-					let drops = params.get_block_params(blk.get()).unwrap().drops;
-					self.sel_inventory.put(drops);
-					let air_bl = params.block_roles.air;
-					blk.set(air_bl);
-					let msg = ClientToServerMsg::Dig(selected_pos);
-					let _ = self.srv_conn.send(msg);
-					self.camera.mouse_left_cooldown = LEFT_BUTTON_COOLDOWN;
+				match &mut self.camera.dig_cooldown {
+					Some((pos, dc)) => if *pos != selected_pos {
+						self.camera.dig_cooldown = None;
+					} else if *dc <= 0.0 {
+						let mut blk = self.map.get_blk_mut(*pos).unwrap();
+						let drops = params.get_block_params(blk.get()).unwrap().drops;
+						self.sel_inventory.put(drops);
+						let air_bl = params.block_roles.air;
+						blk.set(air_bl);
+						let msg = ClientToServerMsg::Dig(selected_pos);
+						let _ = self.srv_conn.send(msg);
+					},
+					v @ None => {
+						// TODO: set block specific cooldown here
+						*v = Some((selected_pos, LEFT_BUTTON_COOLDOWN));
+					},
 				}
 			}
 			if self.camera.mouse_right_down
@@ -1064,7 +1074,7 @@ struct Camera {
 	mouse_left_down :bool,
 	mouse_right_down :bool,
 	mouse_right_cooldown :f32,
-	mouse_left_cooldown :f32,
+	dig_cooldown :Option<(Vector3<isize>, f32)>,
 }
 
 impl Camera {
@@ -1091,8 +1101,8 @@ impl Camera {
 
 			mouse_left_down : false,
 			mouse_right_down : false,
-			mouse_left_cooldown : 0.0,
 			mouse_right_cooldown : 0.0,
+			dig_cooldown : None,
 		}
 	}
 	fn handle_mouse_left(&mut self, down :bool) {
