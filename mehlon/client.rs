@@ -807,7 +807,8 @@ impl<C :NetworkClientConn> Game<C> {
 		} else {
 			return
 		};
-		const BUTTON_COOLDOWN :f32 = 0.2;
+		const LEFT_BUTTON_COOLDOWN :f32 = 0.2;
+		const RIGHT_BUTTON_COOLDOWN :f32 = 0.2;
 		self.camera.mouse_left_cooldown -= float_delta;
 		self.camera.mouse_right_cooldown -= float_delta;
 		if let Some((selected_pos, before_selected)) = self.selected_pos {
@@ -820,7 +821,7 @@ impl<C :NetworkClientConn> Game<C> {
 					blk.set(air_bl);
 					let msg = ClientToServerMsg::Dig(selected_pos);
 					let _ = self.srv_conn.send(msg);
-					self.camera.mouse_left_cooldown = BUTTON_COOLDOWN;
+					self.camera.mouse_left_cooldown = LEFT_BUTTON_COOLDOWN;
 				}
 			}
 			if self.camera.mouse_right_down
@@ -840,7 +841,7 @@ impl<C :NetworkClientConn> Game<C> {
 						self.sel_inventory.clone(),
 						chest_inv,
 						selected_pos));
-					self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+					self.camera.mouse_right_cooldown = RIGHT_BUTTON_COOLDOWN;
 					self.camera.mouse_right_down = false;
 					self.check_grab_change();
 					return;
@@ -858,7 +859,7 @@ impl<C :NetworkClientConn> Game<C> {
 						let _ = self.srv_conn.send(msg);
 						let msg = ClientToServerMsg::SetBlock(before_selected, sel);
 						let _ = self.srv_conn.send(msg);
-						self.camera.mouse_right_cooldown = BUTTON_COOLDOWN;
+						self.camera.mouse_right_cooldown = RIGHT_BUTTON_COOLDOWN;
 					}
 				}
 			}
