@@ -810,7 +810,6 @@ impl<C :NetworkClientConn> Game<C> {
 		if !self.camera.mouse_left_down {
 			self.camera.dig_cooldown = None;
 		}
-		const LEFT_BUTTON_COOLDOWN :f32 = 0.1;
 		const RIGHT_BUTTON_COOLDOWN :f32 = 0.2;
 		self.camera.dig_cooldown.as_mut().map(|(_p, c)| *c -= float_delta);
 		self.camera.mouse_right_cooldown -= float_delta;
@@ -829,8 +828,31 @@ impl<C :NetworkClientConn> Game<C> {
 						let _ = self.srv_conn.send(msg);
 					},
 					v @ None => {
-						// TODO: set block specific cooldown here
-						*v = Some((selected_pos, LEFT_BUTTON_COOLDOWN));
+						let blk = self.map.get_blk(selected_pos).unwrap();
+						let dig_group_id = params.get_block_params(blk).unwrap().dig_group;
+						let sel = self.sel_inventory.get_selected();
+						// Set block specific cooldown
+						let tool_cooldown = if let Some(sel) = sel {
+							let tool_groups = &params.get_block_params(sel).unwrap().tool_groups;
+							if let Some(tg) = tool_groups.iter().find(|g| g.group == dig_group_id) {
+								Some((0.01 + 1.0/tg.speed) as f32)
+							} else {
+								None
+							}
+						} else {
+							None
+						};
+						let hand_tool_groups = &params.hand_tool_groups;
+						let cooldown = tool_cooldown.or_else(|| {
+							if let Some(tg) = hand_tool_groups.iter().find(|g| g.group == dig_group_id) {
+								Some((0.01 + 1.0/tg.speed) as f32)
+							} else {
+								None
+							}
+						});
+						if let Some(cooldown) = cooldown {
+							*v = Some((selected_pos, cooldown));
+						}
 					},
 				}
 			}

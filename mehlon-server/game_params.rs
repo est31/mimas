@@ -29,6 +29,12 @@ pub enum DrawStyle {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ToolGroup {
+	pub group :DigGroup,
+	pub speed :f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlockParams {
 	pub draw_style :Option<DrawStyle>,
 	pub pointable :bool,
@@ -37,6 +43,26 @@ pub struct BlockParams {
 	pub inventory :Option<u8>,
 	pub display_name :String,
 	pub drops :Stack,
+	pub dig_group :DigGroup,
+	pub tool_groups :Vec<ToolGroup>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub struct DigGroup(u8);
+
+impl Default for DigGroup {
+	fn default() -> Self {
+		DigGroup::from_id_unchecked(0)
+	}
+}
+
+impl DigGroup {
+	pub fn id(self) -> u8 {
+		self.0
+	}
+	pub(super) fn from_id_unchecked(id :u8) -> Self {
+		DigGroup(id)
+	}
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -73,7 +99,9 @@ pub struct GameParams {
 	pub block_roles :BlockRoles,
 	pub schematics :Schematics,
 	pub name_id_map :NameIdMap,
+	pub dig_group_ids :NameIdMap,
 	pub texture_hashes :HashMap<String, Vec<u8>>,
+	pub hand_tool_groups :Vec<ToolGroup>,
 }
 
 pub struct Ore {
@@ -104,6 +132,18 @@ pub struct ServerGameParams {
 	pub textures :HashMap<Vec<u8>, Vec<u8>>,
 }
 
+fn hand_tool_groups(dig_group_ids :&mut NameIdMap) -> Vec<ToolGroup> {
+	vec![
+		ToolGroup {
+			group : {
+				let gr_id = dig_group_ids.get_or_extend("default:default").id();
+				DigGroup::from_id_unchecked(gr_id)
+			},
+			speed : 10.0,
+		},
+	]
+}
+
 impl Default for DrawStyle {
 	fn default() -> Self {
 		DrawStyle::Colored([0.0, 0.0, 0.0, 1.0])
@@ -120,6 +160,8 @@ impl Default for BlockParams {
 			display_name : String::new(),
 			inventory : None,
 			drops : Stack::Empty,
+			dig_group : DigGroup::default(),
+			tool_groups : Vec::new(),
 		}
 	}
 }
@@ -179,6 +221,11 @@ impl NameIdMap {
 			"default:cactus",
 			"default:coal",
 			"default:iron_ore",
+		])
+	}
+	pub fn default_group_list() -> Self {
+		Self::from_name_list(vec![
+			"group:default",
 		])
 	}
 	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
@@ -341,6 +388,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	} else {
 		let block_roles = BlockRoles::dummy(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
+		let mut dig_group_ids = NameIdMap::default_group_list();
+		let hand_tool_groups = hand_tool_groups(&mut dig_group_ids);
 		let p = GameParams {
 			recipes : Vec::new(),
 			block_params : Vec::new(),
@@ -348,6 +397,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			block_roles,
 			name_id_map : nm_from_db,
 			texture_hashes : HashMap::new(),
+			dig_group_ids,
+			hand_tool_groups,
 		};
 		let mapgen_params = MapgenParams {
 			ores : Vec::new(),
@@ -453,6 +504,31 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		} else {
 			Stack::with(id, 1)
 		};
+		let dig_group = if let Some(dg) = block.get("dig_group") {
+			let dg = dg.convert::<str>()?;
+			let dg_id = params.p.dig_group_ids.get_or_extend(dg);
+			DigGroup::from_id_unchecked(dg_id.id())
+		} else {
+			DigGroup::default()
+		};
+		let tool_groups = if let Some(tgs) = block.get("tool_groups") {
+			let tgs = tgs.convert::<Vec<Value>>()?;
+			let dig_group_ids = &mut params.p.dig_group_ids;
+			tgs.iter()
+				.map(|tg| {
+					let group = tg.read::<str>("group")?;
+					let gr_id = dig_group_ids.get_or_extend(group);
+					let speed = *tg.read::<f64>("speed")?;
+					Ok(ToolGroup {
+						group : DigGroup::from_id_unchecked(gr_id.id()),
+						speed,
+					})
+				})
+				.collect::<Result<Vec<ToolGroup>, StrErr>>()?
+		} else {
+			Vec::new()
+		};
+
 		let block_params = BlockParams {
 			draw_style,
 			pointable,
@@ -461,6 +537,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			display_name,
 			inventory,
 			drops,
+			dig_group,
+			tool_groups,
 		};
 		params.p.block_params[id.id() as usize] = block_params;
 	}
