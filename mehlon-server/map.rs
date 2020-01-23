@@ -2,7 +2,7 @@ use nalgebra::Vector3;
 use std::collections::hash_map::{HashMap, Entry};
 use crate::{btchn, btpic};
 use crate::map_storage::PlayerIdPair;
-use crate::game_params::ServerGameParamsHdl;
+use crate::game_params::{ServerGameParamsHdl, Id, UncheckedId};
 use crate::inventory::SelectableInventory;
 
 use super::mapgen::{Schematic, MapgenThread};
@@ -23,12 +23,12 @@ impl Default for MapBlock {
 		map_block::AIR
 	}
 }
-impl MapBlock {
-	pub fn id(self) -> u8 {
+impl Id for MapBlock {
+	fn id(self) -> u8 {
 		self.0
 	}
-	pub(super) fn from_id_unchecked(id :u8) -> Self {
-		MapBlock(id)
+	fn from_id_unchecked(id :UncheckedId) -> Self {
+		MapBlock(id.id())
 	}
 }
 

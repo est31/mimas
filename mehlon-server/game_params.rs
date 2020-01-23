@@ -85,10 +85,27 @@ pub struct Schematics {
 	pub cactus_schematic :Schematic,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub struct UncheckedId(u8);
+
+impl UncheckedId {
+	pub(super) fn new(id :u8) -> Self {
+		Self(id)
+	}
+	pub fn id(self) -> u8 {
+		self.0
+	}
+}
+
+pub trait Id :Sized + Clone + Copy + Eq {
+	fn id(self) -> u8;
+	fn from_id_unchecked(id :UncheckedId) -> Self;
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NameIdMap {
+pub struct NameIdMap<T :Id = MapBlock> {
 	first_invalid_id :u8,
-	name_to_id :HashMap<String, MapBlock>,
+	name_to_id :HashMap<String, T>,
 	id_to_name :Vec<String>,
 }
 
@@ -228,6 +245,9 @@ impl NameIdMap {
 			"group:default",
 		])
 	}
+}
+
+impl<T :Id> NameIdMap<T> {
 	pub fn from_name_list(names :Vec<impl Into<String>>) -> Self {
 		let mut name_to_id = HashMap::new();
 		let mut id_to_name = Vec::with_capacity(names.len());
@@ -235,7 +255,7 @@ impl NameIdMap {
 		for name in names.into_iter() {
 			let name = name.into();
 			id_to_name.push(name.clone());
-			let mb = MapBlock::from_id_unchecked(id);
+			let mb = T::from_id_unchecked(UncheckedId::new(id));
 			name_to_id.insert(name.clone(), mb);
 			id += 1;
 		}
@@ -248,33 +268,33 @@ impl NameIdMap {
 	pub fn names(&self) -> &[String] {
 		&self.id_to_name
 	}
-	fn get_or_extend(&mut self, name :impl Into<String>) -> MapBlock {
+	fn get_or_extend(&mut self, name :impl Into<String>) -> T {
 		let name = name.into();
 		let id_to_name = &mut self.id_to_name;
 		let first_invalid_id = &mut self.first_invalid_id;
 		let mb = self.name_to_id.entry(name.clone())
 			.or_insert_with(|| {
 				id_to_name.push(name.clone());
-				let mb = MapBlock::from_id_unchecked(*first_invalid_id);
+				let mb = T::from_id_unchecked(UncheckedId::new(*first_invalid_id));
 				*first_invalid_id += 1;
 				mb
 			});
 		*mb
 	}
-	pub fn mb_from_id(&self, id :u8) -> Option<MapBlock> {
+	pub fn mb_from_id(&self, id :u8) -> Option<T> {
 		if id >= self.first_invalid_id {
 			return None;
 		}
-		Some(MapBlock::from_id_unchecked(id))
+		Some(T::from_id_unchecked(UncheckedId::new(id)))
 	}
-	pub fn get_name(&self, mb :MapBlock) -> Option<&str> {
+	pub fn get_name(&self, mb :T) -> Option<&str> {
 		self.id_to_name.get(mb.id() as usize)
 			.map(|v| {
 				let v :&str = &*v;
 				v
 			})
 	}
-	pub fn get_id<'a>(&self, s :impl Into<&'a str>) -> Option<MapBlock> {
+	pub fn get_id<'a>(&self, s :impl Into<&'a str>) -> Option<T> {
 		self.name_to_id.get(s.into())
 			.map(|v| *v)
 	}
@@ -307,7 +327,7 @@ impl GameParams {
 				p.display_name.eq_ignore_ascii_case(name)
 			})
 			.map(|(id, _p)| {
-				MapBlock::from_id_unchecked(id as u8)
+				MapBlock::from_id_unchecked(UncheckedId::new(id as u8))
 			})
 	}
 }

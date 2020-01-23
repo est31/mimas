@@ -12,7 +12,7 @@ use crate::sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
 use crate::local_auth::SqliteLocalAuth;
 use std::num::NonZeroU64;
-use crate::game_params::{NameIdMap, parse_block_name};
+use crate::game_params::{NameIdMap, parse_block_name, Id};
 use crate::inventory::SelectableInventory;
 
 pub struct SqliteStorageBackend {
@@ -199,7 +199,7 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 	Ok(r)
 }
 
-fn serialize_name_id_map(m :&NameIdMap) -> Vec<u8> {
+fn serialize_name_id_map<T :Id>(m :&NameIdMap<T>) -> Vec<u8> {
 	use std::io::Write;
 	let names = m.names();
 	let mut r = Vec::new();
@@ -215,7 +215,7 @@ fn serialize_name_id_map(m :&NameIdMap) -> Vec<u8> {
 	r
 }
 
-fn deserialize_name_id_map(data :&[u8]) -> Result<NameIdMap, StrErr> {
+fn deserialize_name_id_map<T :Id>(data :&[u8]) -> Result<NameIdMap<T>, StrErr> {
 	use std::io::Read;
 	let mut rdr = data;
 	let version = rdr.read_u8()?;

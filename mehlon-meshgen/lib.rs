@@ -7,7 +7,7 @@ extern crate mehlon_server;
 
 use mehlon_server::map::{MapChunkData,
 	CHUNKSIZE};
-use mehlon_server::game_params::{GameParamsHdl, DrawStyle};
+use mehlon_server::game_params::{GameParamsHdl, DrawStyle, Id};
 use mehlon_server::map::MapBlock;
 use nalgebra::Vector3;
 
