@@ -52,16 +52,16 @@ pub struct DigGroup(u8);
 
 impl Default for DigGroup {
 	fn default() -> Self {
-		DigGroup::from_id_unchecked(0)
+		DigGroup::from_id_unchecked(UncheckedId::new(0))
 	}
 }
 
-impl DigGroup {
-	pub fn id(self) -> u8 {
+impl Id for DigGroup {
+	fn id(self) -> u8 {
 		self.0
 	}
-	pub(super) fn from_id_unchecked(id :u8) -> Self {
-		DigGroup(id)
+	fn from_id_unchecked(id :UncheckedId) -> Self {
+		DigGroup(id.id())
 	}
 }
 
@@ -116,7 +116,7 @@ pub struct GameParams {
 	pub block_roles :BlockRoles,
 	pub schematics :Schematics,
 	pub name_id_map :NameIdMap,
-	pub dig_group_ids :NameIdMap,
+	pub dig_group_ids :NameIdMap<DigGroup>,
 	pub texture_hashes :HashMap<String, Vec<u8>>,
 	pub hand_tool_groups :Vec<ToolGroup>,
 }
@@ -149,13 +149,10 @@ pub struct ServerGameParams {
 	pub textures :HashMap<Vec<u8>, Vec<u8>>,
 }
 
-fn hand_tool_groups(dig_group_ids :&mut NameIdMap) -> Vec<ToolGroup> {
+fn hand_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>) -> Vec<ToolGroup> {
 	vec![
 		ToolGroup {
-			group : {
-				let gr_id = dig_group_ids.get_or_extend("default:default").id();
-				DigGroup::from_id_unchecked(gr_id)
-			},
+			group : dig_group_ids.get_or_extend("default:default"),
 			speed : 10.0,
 		},
 	]
@@ -240,6 +237,8 @@ impl NameIdMap {
 			"default:iron_ore",
 		])
 	}
+}
+impl NameIdMap<DigGroup> {
 	pub fn default_group_list() -> Self {
 		Self::from_name_list(vec![
 			"group:default",
@@ -526,8 +525,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		};
 		let dig_group = if let Some(dg) = block.get("dig_group") {
 			let dg = dg.convert::<str>()?;
-			let dg_id = params.p.dig_group_ids.get_or_extend(dg);
-			DigGroup::from_id_unchecked(dg_id.id())
+			params.p.dig_group_ids.get_or_extend(dg)
 		} else {
 			DigGroup::default()
 		};
@@ -540,7 +538,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 					let gr_id = dig_group_ids.get_or_extend(group);
 					let speed = *tg.read::<f64>("speed")?;
 					Ok(ToolGroup {
-						group : DigGroup::from_id_unchecked(gr_id.id()),
+						group : gr_id,
 						speed,
 					})
 				})
