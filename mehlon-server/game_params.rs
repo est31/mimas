@@ -152,8 +152,8 @@ pub struct ServerGameParams {
 fn hand_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>) -> Vec<ToolGroup> {
 	vec![
 		ToolGroup {
-			group : dig_group_ids.get_or_extend("default:default"),
-			speed : 10.0,
+			group : dig_group_ids.get_or_extend("group:default"),
+			speed : 5.0,
 		},
 	]
 }
