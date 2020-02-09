@@ -3,8 +3,11 @@ use mehlon_server::map::{Map, MapBackend, ClientMap,
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
-use glutin::dpi::LogicalPosition;
-use glutin::KeyboardInput;
+use glium::glutin::platform::desktop::EventLoopExtDesktop;
+use glutin::dpi::PhysicalPosition;
+use glutin::event_loop::{EventLoop, ControlFlow};
+use glutin::event::{Event, ElementState, KeyboardInput, VirtualKeyCode,
+	WindowEvent, MouseButton, MouseScrollDelta};
 use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
@@ -83,7 +86,7 @@ pub struct Game<C :NetworkClientConn> {
 	sel_inventory :SelectableInventory,
 	craft_inv :SelectableInventory,
 
-	last_pos :Option<LogicalPosition>,
+	last_pos :Option<PhysicalPosition<f64>>,
 
 	last_frame_time :Instant,
 	last_fps :f32,
@@ -151,12 +154,12 @@ fn title() -> String {
 }
 
 impl<C :NetworkClientConn> Game<C> {
-	pub fn new(events_loop :&glutin::EventsLoop,
+	pub fn new(event_loop :&EventLoop<()>,
 			srv_conn :C, config :Config, nick_pw :Option<(String, String)>) -> Self {
-		let window = glutin::WindowBuilder::new()
+		let window = glutin::window::WindowBuilder::new()
 			.with_title(&title());
 		let context = glutin::ContextBuilder::new().with_depth_buffer(24);
-		let display = glium::Display::new(window, context, events_loop).unwrap();
+		let display = glium::Display::new(window, context, event_loop).unwrap();
 
 		let mut map = ClientMap::new();
 		let camera = Camera::new();
@@ -284,7 +287,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.chest_menu.is_some() ||
 			self.menu_enabled
 	}
-	pub fn run_loop(&mut self, events_loop :&mut glutin::EventsLoop) {
+	pub fn run_loop(&mut self, event_loop :&mut EventLoop<()>) {
 		let fonts = vec![Font::from_bytes(KENPIXEL).unwrap()];
 		let mut glyph_brush = GlyphBrush::new(&self.display, fonts);
 		'game_main_loop :loop {
@@ -292,7 +295,7 @@ impl<C :NetworkClientConn> Game<C> {
 				self.camera.pos.map(|v| v as isize), 4, 2);
 			self.render(&mut glyph_brush);
 			let float_delta = self.update_fps();
-			let close = self.handle_events(events_loop);
+			let close = self.handle_events(event_loop);
 			self.handle_mouse_buttons(float_delta);
 			if !self.in_background() {
 				self.movement(float_delta);
@@ -393,7 +396,7 @@ impl<C :NetworkClientConn> Game<C> {
 				break;
 			}
 			if self.grabbing_cursor {
-				self.display.gl_window().window().set_cursor_position(LogicalPosition {
+				self.display.gl_window().window().set_cursor_position(PhysicalPosition {
 					x : self.swidth / 2.0,
 					y : self.sheight / 2.0,
 				}).unwrap();
@@ -724,8 +727,8 @@ impl<C :NetworkClientConn> Game<C> {
 		let grabbing_cursor = self.has_focus &&
 			!self.in_background() && self.grab_cursor;
 		if self.grabbing_cursor != grabbing_cursor {
-			self.display.gl_window().window().hide_cursor(grabbing_cursor);
-			let _  = self.display.gl_window().window().grab_cursor(grabbing_cursor);
+			self.display.gl_window().window().set_cursor_visible(!grabbing_cursor);
+			let _  = self.display.gl_window().window().set_cursor_grab(grabbing_cursor);
 			self.grabbing_cursor = grabbing_cursor;
 		}
 	}
@@ -750,7 +753,7 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn handle_kinput(&mut self, input :&KeyboardInput) -> bool {
 		match input.virtual_keycode {
-			Some(glutin::VirtualKeyCode::Q) if input.modifiers.ctrl => {
+			Some(VirtualKeyCode::Q) if input.modifiers.ctrl() => {
 				return true;
 			},
 			_ => (),
@@ -760,7 +763,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.handle_chat_win_ev(ev);
 			return false;
 		}
-		if input.virtual_keycode == Some(glutin::VirtualKeyCode::Escape) {
+		if input.virtual_keycode == Some(VirtualKeyCode::Escape) {
 			if let Some(m) = self.inventory_menu.take() {
 				maybe_inventory_change!(m, self);
 
@@ -775,14 +778,14 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 
 		match input.virtual_keycode {
-			Some(glutin::VirtualKeyCode::Escape) => {
-				if input.state == glutin::ElementState::Pressed {
+			Some(VirtualKeyCode::Escape) => {
+				if input.state == ElementState::Pressed {
 					self.menu_enabled = !self.menu_enabled;
 					self.check_grab_change();
 				}
 			},
-			Some(glutin::VirtualKeyCode::I) => {
-				if input.state == glutin::ElementState::Pressed {
+			Some(VirtualKeyCode::I) => {
+				if input.state == ElementState::Pressed {
 					if let Some(m) = self.inventory_menu.take() {
 						maybe_inventory_change!(m, self);
 					} else {
@@ -897,28 +900,28 @@ impl<C :NetworkClientConn> Game<C> {
 			}
 		}
 	}
-	fn handle_events(&mut self, events_loop :&mut glutin::EventsLoop) -> bool {
+	fn handle_events(&mut self, event_loop :&mut EventLoop<()>) -> bool {
 		let mut close = false;
-		events_loop.poll_events(|event| {
+		event_loop.run_return(|event, _, cflow| {
 			match event {
-				glutin::Event::WindowEvent { event, .. } => match event {
+				Event::WindowEvent { event, .. } => match event {
 
-					glutin::WindowEvent::Focused(focus) => {
+					WindowEvent::Focused(focus) => {
 						self.has_focus = focus;
 						self.check_grab_change();
 					},
 
-					glutin::WindowEvent::CloseRequested => close = true,
+					WindowEvent::CloseRequested => close = true,
 
-					glutin::WindowEvent::Resized(glium::glutin::dpi::LogicalSize {width, height}) => {
-						self.swidth = width;
-						self.sheight = height;
+					WindowEvent::Resized(glutin::dpi::PhysicalSize {width, height}) => {
+						self.swidth = width.into();
+						self.sheight = height.into();
 						self.camera.aspect_ratio = (width / height) as f32;
 					},
-					glutin::WindowEvent::KeyboardInput { input, .. } => {
+					WindowEvent::KeyboardInput { input, .. } => {
 						close |= self.handle_kinput(&input);
 					},
-					glutin::WindowEvent::ReceivedCharacter(ch) => {
+					WindowEvent::ReceivedCharacter(ch) => {
 						let ev = if let Some(ref mut w) = self.chat_window {
 							w.handle_character(ch)
 						} else {
@@ -935,17 +938,17 @@ impl<C :NetworkClientConn> Game<C> {
 						};
 						self.handle_chat_win_ev(ev);
 					},
-					glutin::WindowEvent::CursorMoved { position, .. } => {
+					WindowEvent::CursorMoved { position, .. } => {
 						if self.has_focus && !self.in_background() {
 							if self.grab_cursor {
-								self.last_pos = Some(LogicalPosition {
+								self.last_pos = Some(PhysicalPosition {
 									x : self.swidth / 2.0,
 									y : self.sheight / 2.0,
 								});
 							}
 
 							if let Some(last) = self.last_pos {
-								let delta = LogicalPosition {
+								let delta = PhysicalPosition {
 									x : position.x - last.x,
 									y : position.y - last.y,
 								};
@@ -961,17 +964,17 @@ impl<C :NetworkClientConn> Game<C> {
 							}
 						}
 					},
-					glutin::WindowEvent::MouseInput { state, button, .. } => {
+					WindowEvent::MouseInput { state, button, .. } => {
 						if !self.in_background() {
-							let pressed = state == glutin::ElementState::Pressed;
-							if button == glutin::MouseButton::Left {
+							let pressed = state == ElementState::Pressed;
+							if button == MouseButton::Left {
 								self.camera.handle_mouse_left(pressed);
-							} else if button == glutin::MouseButton::Right {
+							} else if button == MouseButton::Right {
 								self.camera.handle_mouse_right(pressed);
 							}
 							if let Some((_selected_pos, before_selected))
 									= self.selected_pos {
-								if pressed && button == glutin::MouseButton::Middle {
+								if pressed && button == MouseButton::Middle {
 									let msg = ClientToServerMsg::PlaceTree(before_selected);
 									let _ = self.srv_conn.send(msg);
 								}
@@ -985,11 +988,11 @@ impl<C :NetworkClientConn> Game<C> {
 							}
 						}
 					},
-					glutin::WindowEvent::MouseWheel { delta, .. } => {
+					WindowEvent::MouseWheel { delta, .. } => {
 						if !self.in_background() {
 							let lines_diff = match delta {
-								glutin::MouseScrollDelta::LineDelta(_x, y) => y,
-								glutin::MouseScrollDelta::PixelDelta(p) => p.y as f32,
+								MouseScrollDelta::LineDelta(_x, y) => y,
+								MouseScrollDelta::PixelDelta(p) => p.y as f32,
 							};
 							if lines_diff < 0.0 {
 								self.sel_inventory.rotate(true);
@@ -1002,6 +1005,9 @@ impl<C :NetworkClientConn> Game<C> {
 					},
 
 					_ => (),
+				},
+				Event::MainEventsCleared => {
+					*cflow = ControlFlow::Exit;
 				},
 				_ => (),
 			}
@@ -1140,35 +1146,35 @@ impl Camera {
 		};
 		let mut b = None;
 		match key {
-			glutin::VirtualKeyCode::W => b = Some(&mut self.forward_pressed),
-			glutin::VirtualKeyCode::A => b = Some(&mut self.left_pressed),
-			glutin::VirtualKeyCode::S => b = Some(&mut self.backward_pressed),
-			glutin::VirtualKeyCode::D => b = Some(&mut self.right_pressed),
-			glutin::VirtualKeyCode::Space => b = Some(&mut self.up_pressed),
-			glutin::VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
+			VirtualKeyCode::W => b = Some(&mut self.forward_pressed),
+			VirtualKeyCode::A => b = Some(&mut self.left_pressed),
+			VirtualKeyCode::S => b = Some(&mut self.backward_pressed),
+			VirtualKeyCode::D => b = Some(&mut self.right_pressed),
+			VirtualKeyCode::Space => b = Some(&mut self.up_pressed),
+			VirtualKeyCode::LShift => b = Some(&mut self.down_pressed),
 		_ => (),
 		}
-		if key == glutin::VirtualKeyCode::E {
-			self.fast_pressed = input.state == glutin::ElementState::Pressed;
+		if key == VirtualKeyCode::E {
+			self.fast_pressed = input.state == ElementState::Pressed;
 		}
-		if key == glutin::VirtualKeyCode::K {
-			if input.state == glutin::ElementState::Pressed {
+		if key == VirtualKeyCode::K {
+			if input.state == ElementState::Pressed {
 				self.fly_mode = !self.fly_mode;
 			}
 		}
-		if key == glutin::VirtualKeyCode::J {
-			if input.state == glutin::ElementState::Pressed {
+		if key == VirtualKeyCode::J {
+			if input.state == ElementState::Pressed {
 				self.fast_mode = !self.fast_mode;
 			}
 		}
-		if key == glutin::VirtualKeyCode::H {
-			if input.state == glutin::ElementState::Pressed {
+		if key == VirtualKeyCode::H {
+			if input.state == ElementState::Pressed {
 				self.noclip_mode = !self.noclip_mode;
 			}
 		}
 
 		if let Some(b) = b {
-			*b = input.state == glutin::ElementState::Pressed;
+			*b = input.state == ElementState::Pressed;
 		}
 	}
 	fn delta_pos(&mut self) -> Vector3<f32> {
@@ -1198,7 +1204,7 @@ impl Camera {
 
 		delta_pos
 	}
-	fn handle_mouse_move(&mut self, delta :LogicalPosition) {
+	fn handle_mouse_move(&mut self, delta :PhysicalPosition<f64>) {
 		let factor = 0.7;
 		// Limit the pitch by this value so that we never look 100%
 		// straight down. Otherwise the Matrix4::look_at_rh function

@@ -4,8 +4,9 @@ use glium_glyph::glyph_brush::{
 	Section, Layout, HorizontalAlign,
 };
 use nalgebra::Vector3;
-use glium::glutin::{KeyboardInput, VirtualKeyCode, ElementState,
-	MouseButton, dpi::LogicalPosition};
+use glium::glutin::event::{KeyboardInput, VirtualKeyCode,
+	ElementState, MouseButton};
+use glium::glutin::dpi::PhysicalPosition;
 use glium_glyph::glyph_brush::GlyphCruncher;
 use mehlon_server::inventory::{SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
@@ -348,7 +349,7 @@ const SPACER_ID :usize = 999;
 pub struct InventoryMenu {
 	params :GameParamsHdl,
 	invs :[SelectableInventory; 3],
-	last_mouse_pos :Option<LogicalPosition>,
+	last_mouse_pos :Option<PhysicalPosition<f64>>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
 }
@@ -373,7 +374,7 @@ impl InventoryMenu {
 	pub fn craft_inv(&self) -> &SelectableInventory {
 		&self.invs[CRAFTING_ID]
 	}
-	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
+	pub fn handle_mouse_moved(&mut self, pos :PhysicalPosition<f64>)  {
 		self.last_mouse_pos = Some(pos);
 	}
 	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {
@@ -488,7 +489,7 @@ pub struct ChestMenu {
 	params :GameParamsHdl,
 	invs :[SelectableInventory; 2],
 	chest_pos :Vector3<isize>,
-	last_mouse_pos :Option<LogicalPosition>,
+	last_mouse_pos :Option<PhysicalPosition<f64>>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
 }
@@ -517,7 +518,7 @@ impl ChestMenu {
 	pub fn chest_pos(&self) -> Vector3<isize> {
 		self.chest_pos
 	}
-	pub fn handle_mouse_moved(&mut self, pos :LogicalPosition)  {
+	pub fn handle_mouse_moved(&mut self, pos :PhysicalPosition<f64>)  {
 		self.last_mouse_pos = Some(pos);
 	}
 	pub fn handle_mouse_input(&mut self, state :ElementState, button :MouseButton) {

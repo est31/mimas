@@ -78,10 +78,10 @@ fn main() -> Result<(), StrErr> {
 		Box::new(client_conn)
 	};
 
-	let mut events_loop = glutin::EventsLoop::new();
-	let mut game = Game::new(&events_loop, client_conn, config, nick_pw);
+	let mut event_loop = glutin::event_loop::EventLoop::new();
+	let mut game = Game::new(&event_loop, client_conn, config, nick_pw);
 
-	game.run_loop(&mut events_loop);
+	game.run_loop(&mut event_loop);
 
 	Ok(())
 }
