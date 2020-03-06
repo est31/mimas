@@ -20,7 +20,7 @@ rand = "0.7"
 structopt = "0.3"
 srp = "0.4"
 sha2 = "0.8"
-image = { version = "0.22", default-features = false, features = ["png_codec"] }
+image = { version = "0.23", default-features = false, features = ["png"] }
 mehlon-server = { path = "../mehlon-server" }
 mehlon-meshgen = { path = "../mehlon-meshgen" }
 dirs = "2.0"
