@@ -14,7 +14,7 @@ path = "lib.rs"
 
 [dependencies]
 noise = { version = "0.6", default-features = false }
-nalgebra = { version = "0.19", features = ["serde-serialize"] }
+nalgebra = { version = "0.20", features = ["serde-serialize"] }
 rand_pcg = "0.2"
 rand = "0.7"
 serde = "1.0"
