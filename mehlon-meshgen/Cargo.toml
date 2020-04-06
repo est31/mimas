@@ -9,5 +9,5 @@ path = "lib.rs"
 
 [dependencies]
 nalgebra = "0.20"
-glium = "0.26"
+glium = "0.27"
 mehlon-server = { path = "../mehlon-server" }
