@@ -173,13 +173,13 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.build()?;
 
 	let listen_addr = "[::]:0".parse().unwrap();
-	let (endpoint, _) = runtime.enter(|| endpoint.bind(&listen_addr))?;
 
-	let endpoint_future = endpoint.connect(
-		&url,
-		"mehlon-host"
-	)?;
 	runtime.block_on(async { loop {
+		let (endpoint, _incoming) = endpoint.bind(&listen_addr)?;
+		let endpoint_future = endpoint.connect(
+			&url,
+			"mehlon-host"
+		)?;
 		let new_conn = match endpoint_future.await {
 			Ok(new_conn) => new_conn,
 			Err(e) => {
@@ -207,7 +207,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 			println!("failed to shutdown stream: {}", e)
 		}
 		break Ok(());
-	}}).map_err(|()| "network error")?;
+	}}).map_err(|e :StrErr| e)?;
 	Ok(())
 }
 
