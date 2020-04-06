@@ -68,7 +68,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 		// when there is no activiy on the connection
 		.max_idle_timeout(None)?;
 
-	let runtime = runtime::Builder::new()
+	let mut runtime = runtime::Builder::new()
 		.basic_scheduler()
 		.enable_all()
 		.build()?;
@@ -77,7 +77,8 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 	endpoint.listen(server_config);
 
 	let (_endpoint, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
-	runtime.spawn(async move {
+
+	runtime.block_on(async move {
 		while let Some(connecting) = incoming.next().await {
 			let sender_clone = conn_send.clone();
 			tokio::spawn(async move { loop {
