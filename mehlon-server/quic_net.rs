@@ -1,14 +1,16 @@
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::{SocketAddr, ToSocketAddrs};
 use crate::StrErr;
-use quinn::{RecvStream, EndpointBuilder};
+use quinn::RecvStream;
+use quinn::generic::EndpointBuilder;
+use quinn::crypto::rustls::TlsSession;
 use crate::generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
 use std::sync::Arc;
 
 use std::thread;
 
-use futures::{StreamExt, TryFutureExt};
+use futures::StreamExt;
 use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
 use tokio::runtime;
 use tokio::io::AsyncWriteExt;
@@ -46,13 +48,9 @@ impl rustls::ServerCertVerifier for NullVerifier {
 	}
 }
 
-// This value prevents the connection from timing
-// out when there is no activiy on the connection
-const TRANSPORT_IDLE_TIMEOUT :u64 = 0;
-
 fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 
-	let mut server_config = quinn::ServerConfigBuilder::default();
+	let mut server_config = quinn::generic::ServerConfigBuilder::default();
 	let cert = rcgen::generate_simple_self_signed(vec!["mehlon-host".into()])?;
 
 	let key_der = cert.serialize_private_key_der();
@@ -66,9 +64,11 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 
 	Arc::get_mut(&mut server_config.transport)
 		.unwrap()
-		.idle_timeout = TRANSPORT_IDLE_TIMEOUT;
+		// Prevent the connection from timing out
+		// when there is no activiy on the connection
+		.max_idle_timeout(None);
 
-	let mut runtime = runtime::Builder::new()
+	let runtime = runtime::Builder::new()
 		.basic_scheduler()
 		.enable_all()
 		.build()?;
@@ -76,7 +76,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 	let mut endpoint = EndpointBuilder::default();
 	endpoint.listen(server_config);
 
-	let (driver, _, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
+	let (_endpoint, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
 	runtime.spawn(async move {
 		while let Some(connecting) = incoming.next().await {
 			let sender_clone = conn_send.clone();
@@ -86,8 +86,6 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				} else {
 					break;
 				};
-				tokio::spawn(new_conn.driver
-					.map_err(|e| eprintln!("Connection driver error: {}", e)));
 				let addr = new_conn.connection.remote_address();
 				// Only regard the first stream as new connection
 				let (stream, _incoming) = new_conn.bi_streams.into_future().await;
@@ -119,7 +117,6 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 			} });
 		}
 	});
-    runtime.block_on(driver)?;
 	Ok(())
 }
 
@@ -152,7 +149,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
 	let mut endpoint = EndpointBuilder::default();
-	let mut client_config = quinn::ClientConfigBuilder::default();
+	let mut client_config = quinn::generic::ClientConfigBuilder::<TlsSession>::default();
 
 	client_config.protocols(&[b"mehlon"]);
 
@@ -160,7 +157,9 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 
 	Arc::get_mut(&mut client_config.transport)
 		.unwrap()
-		.idle_timeout = TRANSPORT_IDLE_TIMEOUT;
+		// Prevent the connection from timing out
+		// when there is no activiy on the connection
+		.max_idle_timeout(None);
 
 	// Trust all certificates
 	Arc::get_mut(&mut client_config.crypto).unwrap().dangerous()
@@ -174,13 +173,12 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.build()?;
 
 	let listen_addr = "[::]:0".parse().unwrap();
-	let (driver, endpoint, _) = runtime.enter(|| endpoint.bind(&listen_addr))?;
+	let (endpoint, _) = runtime.enter(|| endpoint.bind(&listen_addr))?;
 
 	let endpoint_future = endpoint.connect(
 		&url,
 		"mehlon-host"
 	)?;
-	runtime.spawn(driver.map_err(|e| eprintln!("IO error: {}", e)));
 	runtime.block_on(async { loop {
 		let new_conn = match endpoint_future.await {
 			Ok(new_conn) => new_conn,
@@ -190,7 +188,6 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 			},
 		};
 		println!("connected to server.");
-		tokio::spawn(new_conn.driver.map_err(|e| eprintln!("connection driver error: {}", e)));
 		let stream = new_conn.connection.open_bi();
 		let (mut wtr, rdr) = match stream.await {
 			Ok(stream) => stream,
