@@ -66,7 +66,7 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 		.unwrap()
 		// Prevent the connection from timing out
 		// when there is no activiy on the connection
-		.max_idle_timeout(None);
+		.max_idle_timeout(None)?;
 
 	let runtime = runtime::Builder::new()
 		.basic_scheduler()
@@ -159,7 +159,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.unwrap()
 		// Prevent the connection from timing out
 		// when there is no activiy on the connection
-		.max_idle_timeout(None);
+		.max_idle_timeout(None)?;
 
 	// Trust all certificates
 	Arc::get_mut(&mut client_config.crypto).unwrap().dangerous()
