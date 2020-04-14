@@ -449,11 +449,14 @@ impl InventoryMenu {
 					if hv.0 == CRAFTING_OUTPUT_ID {
 						// If we click onto the crafting output menu,
 						// add the output to the inventory immediately.
-						// TODO figure out something for the remainder stack
-						self.invs[NORMAL_INV_ID].put(self.invs[CRAFTING_OUTPUT_ID].stacks()[0]);
-						// Reduce inputs.
-						for st in self.invs[CRAFTING_ID].stacks_mut().iter_mut() {
-							st.take_n(1);
+						// Only do something if there is something to craft
+						if self.invs[CRAFTING_OUTPUT_ID].stacks()[0] != Stack::Empty {
+							// TODO figure out something for the remainder stack
+							self.invs[NORMAL_INV_ID].put(self.invs[CRAFTING_OUTPUT_ID].stacks()[0]);
+							// Reduce inputs.
+							for st in self.invs[CRAFTING_ID].stacks_mut().iter_mut() {
+								st.take_n(1);
+							}
 						}
 					} else {
 						self.from_pos = Some(hv);
