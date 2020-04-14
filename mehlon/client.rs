@@ -468,7 +468,7 @@ impl<C :NetworkClientConn> Game<C> {
 			self.camera.velocity = nalgebra::zero();
 			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
 				// Jumping speed
-				let jumping_speed = Vector3::new(0.0, 0.0, 60.0);
+				let jumping_speed = Vector3::new(0.0, 0.0, 120.0);
 				self.camera.velocity = jumping_speed;
 			}
 		} else {
