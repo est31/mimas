@@ -251,7 +251,7 @@ fn deserialize_name_id_map<T :Id>(data :&[u8]) -> Result<NameIdMap<T>, StrErr> {
 fn ensure_name_id_roundtrip() {
 	let nm = NameIdMap::builtin_name_list();
 	let serialized = serialize_name_id_map(&nm);
-	let round_trip = deserialize_name_id_map(&serialized).unwrap();
+	let round_trip :NameIdMap = deserialize_name_id_map(&serialized).unwrap();
 	assert_eq!(nm.names(), round_trip.names());
 }
 
