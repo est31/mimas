@@ -22,16 +22,6 @@ In order to compile and run mimas, you'll need the [Rust](https://github.com/rus
 
 Either, you can obtain it from your distro, or you can use [rustup](https://rustup.rs/).
 
-#### Compiling with stable Rust
-
-Mehlon only requires stabilized Rust features, but currently
-requires 1.41 which hasn't been released yet. For the time
-being, I suggest using nightly, then beta once 1.41 moves there,
-and finally stable (on Jan 30, 2020).
-
-If you still want to compile mimas on stable Rust,
-you can easily edit `Cargo.toml` to compile it yourself.
-
 ### License
 
 Licensed under the MPL 2.0. For details, see the [LICENSE](LICENSE) file.
