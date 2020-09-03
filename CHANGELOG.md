@@ -1,5 +1,21 @@
 # Changelog
 
+## Release 0.4 - September 4, 2020
+
+Minimum required Rust version: 1.42.0
+
+Featuring:
+
+* Texture support
+* New items:
+  - Chests
+  - Flowers
+  - Ground with grass
+  - Copper ore
+  - Gold ore
+  - Diamond ore
+* FPS limiting
+
 ## Release 0.3 - August 20, 2019
 
 Minimum required Rust version: 1.38.0
