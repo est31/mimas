@@ -23,26 +23,26 @@ cargo run --release -- --connect 127.0.0.1:7700 --nick tester --password test
 A server can be started using:
 
 ```
-cargo run --release -p mehlon-server
+cargo run --release -p mimas-server
 ```
 
 Per default it only accepts connections from localhost on port 7700.
 You can make it accept on other addresses and ports by e.g. doing:
 
 ```
-cargo run --release -p mehlon-server --listen 0.0.0.0:7700
+cargo run --release -p mimas-server --listen 0.0.0.0:7700
 ```
 
 Help on command line params can be obtained using:
 
 ```
 cargo run --release -- --help
-cargo run --release -p mehlon-server -- --help
+cargo run --release -p mimas-server -- --help
 ```
 
 ### Settings files
 
-`mehlon` has the ability to read from settings files.
+`mimas` has the ability to read from settings files.
 Currently, it reads the `settings.toml` file from the current working directory.
 Descriptions of the available settings are obtainable in [settings.toml.example](settings.toml.example).
 

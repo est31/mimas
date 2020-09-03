@@ -1,6 +1,6 @@
 [workspace]
-members = ["mehlon", "mehlon-server", "mehlon-meshgen"]
-default-members = ["mehlon"]
+members = ["mimas", "mimas-server", "mimas-meshgen"]
+default-members = ["mimas"]
 
 [profile.dev]
 # Default opt level
@@ -13,7 +13,7 @@ debug = false
 [profile.dev.package."*"]
 opt-level = 3
 
-# Also optimize mehlon-meshgen
+# Also optimize mimas-meshgen
 # Per default, workspace members are not included by "*".
-[profile.dev.package.mehlon-meshgen]
+[profile.dev.package.mimas-meshgen]
 opt-level = 3

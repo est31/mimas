@@ -8,7 +8,7 @@ use rand::Rng;
 use crate::StrErr;
 use crate::map_storage::PlayerIdPair;
 
-/// Magic used to identify the mehlon application.
+/// Magic used to identify the mimas application.
 ///
 /// This magic was taken from hexdump -n 32 /dev/urandom output.
 const MEHLON_LOCALAUTH_APP_ID :i32 = 0x7bb612f as i32;

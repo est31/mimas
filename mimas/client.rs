@@ -1,4 +1,4 @@
-use mehlon_server::map::{Map, MapBackend, ClientMap,
+use mimas_server::map::{Map, MapBackend, ClientMap,
 	CHUNKSIZE, MapBlock, MetadataEntry};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
@@ -26,15 +26,15 @@ use srp::groups::G_4096;
 use sha2::Sha256;
 use rand::RngCore;
 
-use mehlon_server::{btchn, ServerToClientMsg, ClientToServerMsg};
-use mehlon_server::generic_net::NetworkClientConn;
-use mehlon_server::local_auth::{PlayerPwHash, HashParams};
-use mehlon_server::config::Config;
-use mehlon_server::map_storage::{PlayerPosition, PlayerIdPair};
-use mehlon_server::inventory::SelectableInventory;
-use mehlon_server::game_params::GameParamsHdl;
+use mimas_server::{btchn, ServerToClientMsg, ClientToServerMsg};
+use mimas_server::generic_net::NetworkClientConn;
+use mimas_server::local_auth::{PlayerPwHash, HashParams};
+use mimas_server::config::Config;
+use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
+use mimas_server::inventory::SelectableInventory;
+use mimas_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::{Vertex, mesh_for_chunk, push_block,
+use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
 	BlockTextureIds, TextureIdCache, ChunkMesh};
 
 use assets::{Assets, UiColors};

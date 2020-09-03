@@ -3,12 +3,12 @@
 extern crate nalgebra;
 #[macro_use]
 extern crate glium;
-extern crate mehlon_server;
+extern crate mimas_server;
 
-use mehlon_server::map::{MapChunkData,
+use mimas_server::map::{MapChunkData,
 	CHUNKSIZE};
-use mehlon_server::game_params::{GameParamsHdl, DrawStyle, Id};
-use mehlon_server::map::MapBlock;
+use mimas_server::game_params::{GameParamsHdl, DrawStyle, Id};
+use mimas_server::map::MapBlock;
 use nalgebra::Vector3;
 
 #[repr(transparent)]

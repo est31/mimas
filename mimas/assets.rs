@@ -1,5 +1,5 @@
-use mehlon_server::StrErr;
-use mehlon_server::game_params::{GameParamsHdl, DrawStyle};
+use mimas_server::StrErr;
+use mimas_server::game_params::{GameParamsHdl, DrawStyle};
 
 use std::fs::File;
 use std::io::Read;
@@ -13,7 +13,7 @@ use image::{RgbaImage, Pixel};
 
 use sha2::{Sha256, Digest};
 
-use mehlon_meshgen::{TextureId, BlockTextureIds, MeshDrawStyle};
+use mimas_meshgen::{TextureId, BlockTextureIds, MeshDrawStyle};
 
 pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
@@ -84,7 +84,7 @@ fn format_hex(hex :&[u8]) -> String {
 
 fn cache_dir() -> Result<PathBuf, StrErr> {
 	Ok(dirs::cache_dir().ok_or_else(|| "Couldn't find cache dir")?
-		.join("mehlon").join("asset-cache"))
+		.join("mimas").join("asset-cache"))
 }
 
 pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), StrErr> {
@@ -146,7 +146,7 @@ impl Assets {
 		MeshDrawStyle::Blocky(match ds {
 			DrawStyle::Colored(color) => {
 				let id = self.add_color(*color);
-				let id_h = self.add_color(mehlon_meshgen::colorh(*color));
+				let id_h = self.add_color(mimas_meshgen::colorh(*color));
 				BlockTextureIds::new_tb(id, id_h)
 			},
 			DrawStyle::Crossed(path) => {

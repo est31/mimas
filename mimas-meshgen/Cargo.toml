@@ -1,13 +1,13 @@
 [package]
-name = "mehlon-meshgen"
+name = "mimas-meshgen"
 version = "0.4.0-dev"
 authors = ["est31 <MTest31@outlook.com>"]
 
 [lib]
-name = "mehlon_meshgen"
+name = "mimas_meshgen"
 path = "lib.rs"
 
 [dependencies]
 nalgebra = "0.21"
 glium = "0.27"
-mehlon-server = { path = "../mehlon-server" }
+mimas-server = { path = "../mimas-server" }

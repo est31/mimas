@@ -51,7 +51,7 @@ impl rustls::ServerCertVerifier for NullVerifier {
 fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
 
 	let mut server_config = quinn::generic::ServerConfigBuilder::default();
-	let cert = rcgen::generate_simple_self_signed(vec!["mehlon-host".into()])?;
+	let cert = rcgen::generate_simple_self_signed(vec!["mimas-host".into()])?;
 
 	let key_der = cert.serialize_private_key_der();
 	let cert_der = cert.serialize_der()?;
@@ -152,7 +152,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 	let mut endpoint = EndpointBuilder::default();
 	let mut client_config = quinn::generic::ClientConfigBuilder::<TlsSession>::default();
 
-	client_config.protocols(&[b"mehlon"]);
+	client_config.protocols(&[b"mimas"]);
 
 	let mut client_config = client_config.build();
 
@@ -179,7 +179,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		let (endpoint, _incoming) = endpoint.bind(&listen_addr)?;
 		let endpoint_future = endpoint.connect(
 			&url,
-			"mehlon-host"
+			"mimas-host"
 		)?;
 		let new_conn = match endpoint_future.await {
 			Ok(new_conn) => new_conn,

@@ -1,15 +1,15 @@
 [package]
-name = "mehlon-server"
+name = "mimas-server"
 version = "0.4.0-dev"
 authors = ["est31 <MTest31@outlook.com>"]
 edition = "2018"
 
 [[bin]]
-name = "mehlon-server"
+name = "mimas-server"
 path = "main.rs"
 
 [lib]
-name = "mehlon_server"
+name = "mimas_server"
 path = "lib.rs"
 
 [dependencies]

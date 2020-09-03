@@ -8,12 +8,12 @@ use glium::glutin::event::{KeyboardInput, VirtualKeyCode,
 	ElementState, MouseButton};
 use glium::glutin::dpi::PhysicalPosition;
 use glium_glyph::glyph_brush::GlyphCruncher;
-use mehlon_server::inventory::{SelectableInventory, Stack,
+use mimas_server::inventory::{SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
-use mehlon_server::crafting::get_matching_recipe;
-use mehlon_server::game_params::GameParamsHdl;
+use mimas_server::crafting::get_matching_recipe;
+use mimas_server::game_params::GameParamsHdl;
 
-use mehlon_meshgen::{Vertex, TextureId};
+use mimas_meshgen::{Vertex, TextureId};
 
 use assets::UiColors;
 

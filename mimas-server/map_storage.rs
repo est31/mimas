@@ -20,7 +20,7 @@ pub struct SqliteStorageBackend {
 	ctr :u32,
 }
 
-/// Magic used to identify the mehlon application.
+/// Magic used to identify the mimas application.
 ///
 /// This magic was taken from hexdump -n 32 /dev/urandom output.
 const MEHLON_SQLITE_APP_ID :i32 = 0x84eeae3cu32 as i32;

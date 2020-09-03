@@ -14,8 +14,8 @@ extern crate sha2;
 extern crate image;
 extern crate dirs;
 
-extern crate mehlon_server;
-extern crate mehlon_meshgen;
+extern crate mimas_server;
+extern crate mimas_meshgen;
 
 mod assets;
 mod client;
@@ -29,14 +29,14 @@ use client::Game;
 use structopt::StructOpt;
 
 use std::thread;
-use mehlon_server::{Server, StrErr};
-use mehlon_server::generic_net::{MpscServerSocket, NetworkClientConn};
-use mehlon_server::quic_net::QuicClientConn;
-use mehlon_server::config::load_config;
+use mimas_server::{Server, StrErr};
+use mimas_server::generic_net::{MpscServerSocket, NetworkClientConn};
+use mimas_server::quic_net::QuicClientConn;
+use mimas_server::config::load_config;
 
 /// Mehlon client
 #[derive(StructOpt, Debug)]
-#[structopt(name = "mehlon")]
+#[structopt(name = "mimas")]
 struct Options {
 	/// Connect to the given server
 	#[structopt(long = "connect")]

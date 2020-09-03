@@ -1,18 +1,18 @@
 #![forbid(unsafe_code)]
 
-extern crate mehlon_server;
+extern crate mimas_server;
 extern crate structopt;
 
-use mehlon_server::{Server, StrErr};
-//use mehlon_server::generic_net::TcpServerSocket;
-use mehlon_server::quic_net::QuicServerSocket;
-use mehlon_server::config::load_config;
+use mimas_server::{Server, StrErr};
+//use mimas_server::generic_net::TcpServerSocket;
+use mimas_server::quic_net::QuicServerSocket;
+use mimas_server::config::load_config;
 
 use structopt::StructOpt;
 
 /// Mehlon server
 #[derive(StructOpt, Debug)]
-#[structopt(name = "mehlon")]
+#[structopt(name = "mimas")]
 struct Options {
 	/// Set the listen address
 	#[structopt(long = "listen")]
