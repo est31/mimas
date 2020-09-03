@@ -1,6 +1,6 @@
 [package]
 name = "mimas-meshgen"
-version = "0.4.0-dev"
+version = "0.4.0"
 authors = ["est31 <MTest31@outlook.com>"]
 
 [lib]
