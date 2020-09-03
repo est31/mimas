@@ -34,7 +34,7 @@ use mimas_server::generic_net::{MpscServerSocket, NetworkClientConn};
 use mimas_server::quic_net::QuicClientConn;
 use mimas_server::config::load_config;
 
-/// Mehlon client
+/// Mimas client
 #[derive(StructOpt, Debug)]
 #[structopt(name = "mimas")]
 struct Options {

@@ -10,7 +10,7 @@ use mimas_server::config::load_config;
 
 use structopt::StructOpt;
 
-/// Mehlon server
+/// Mimas server
 #[derive(StructOpt, Debug)]
 #[structopt(name = "mimas")]
 struct Options {

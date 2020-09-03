@@ -1,6 +1,6 @@
-## Mehlon
+## Mimas
 
-Mehlon is a WIP voxel engine and game, inspired a little by Minecraft and a lot by Minetest.
+Mimas is a WIP voxel engine and game, inspired a little by Minecraft and a lot by Minetest.
 
 For usage instructions, please view [USAGE.md](USAGE.md).
 
