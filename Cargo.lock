@@ -664,7 +664,7 @@ checksum = "7abc8dd8451921606d809ba32e95b6111925cd2906060d2dcc29c070220503eb"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.9.0+wasi-snapshot-preview1",
+ "wasi",
 ]
 
 [[package]]
@@ -931,9 +931,9 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.17.3"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56d90181c2904c287e5390186be820e5ef311a3c62edebb7d6ca3d6a48ce041d"
+checksum = "e3a245984b1b06c291f46e27ebda9f369a94a1ab8461d0e845e23f9ced01f5db"
 dependencies = [
  "pkg-config",
  "vcpkg",
@@ -1754,9 +1754,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.21.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64a656821bb6317a84b257737b7934f79c0dbb7eb694710475908280ebad3e64"
+checksum = "4c78c3275d9d6eb684d2db4b2388546b32fdae0586c20a82f3905d21ea78b9ef"
 dependencies = [
  "bitflags",
  "fallible-iterator",
@@ -1764,7 +1764,7 @@ dependencies = [
  "libsqlite3-sys",
  "lru-cache",
  "memchr",
- "time",
+ "smallvec",
 ]
 
 [[package]]
@@ -2050,17 +2050,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "tokio"
 version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2199,12 +2188,6 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
-
-[[package]]
-name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasm-bindgen"
