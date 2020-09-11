@@ -32,7 +32,7 @@ use mimas_server::local_auth::{PlayerPwHash, HashParams};
 use mimas_server::config::Config;
 use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mimas_server::inventory::SelectableInventory;
-use mimas_server::game_params::{GameParamsHdl, ToolGroup};
+use mimas_server::game_params::{GameParamsHdl, DigGroup, ToolGroup};
 
 use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
 	BlockTextureIds, TextureIdCache, ChunkMesh};
@@ -837,7 +837,9 @@ impl<C :NetworkClientConn> Game<C> {
 						let dig_group = params.get_block_params(blk).unwrap().dig_group;
 						let sel = self.sel_inventory.get_selected();
 						let try_tool_groups = |tool_groups :&[ToolGroup]| {
-							if let Some(tg) = tool_groups.iter().find(|g| g.group == dig_group.0) {
+							let tgs = tool_groups.iter()
+								.filter(|g| g.group == dig_group.0 || g.group == DigGroup::any());
+							for tg in tgs {
 								// Only start digging if hardness is below or at the tool theshold
 								if dig_group.1 <= tg.hardness {
 									return Some((0.01 + 1.0/tg.speed) as f32);
@@ -845,16 +847,19 @@ impl<C :NetworkClientConn> Game<C> {
 							}
 							None
 						};
-						// Set block specific cooldown
+						// Set block specific cooldown:
+						// 1. Try if the currently selected tool supports the group
 						let tool_cooldown = if let Some(sel) = sel {
 							let tool_groups = &params.get_block_params(sel).unwrap().tool_groups;
 							try_tool_groups(tool_groups)
 						} else {
 							None
 						};
+						// 2. Try the groups of the bare hand
 						let cooldown = tool_cooldown.or_else(|| {
 							try_tool_groups(&params.hand_tool_groups)
 						});
+						// If any of the groups matched:
 						if let Some(cooldown) = cooldown {
 							*v = Some((selected_pos, cooldown));
 						}

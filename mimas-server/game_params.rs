@@ -66,6 +66,12 @@ impl Id for DigGroup {
 	}
 }
 
+impl DigGroup {
+	pub fn any() -> Self {
+		DigGroup::default()
+	}
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlockRoles {
 	pub air :MapBlock,
