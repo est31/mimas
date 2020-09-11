@@ -150,7 +150,7 @@ pub struct ServerGameParams {
 	pub textures :HashMap<Vec<u8>, Vec<u8>>,
 }
 
-fn hand_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>) -> Vec<ToolGroup> {
+fn default_hand_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>) -> Vec<ToolGroup> {
 	vec![
 		ToolGroup {
 			group : dig_group_ids.get_or_extend("group:default"),
@@ -413,6 +413,28 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 		.collect::<Result<Vec<_>, StrErr>>()
 }
 
+fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value>) -> Result<Vec<ToolGroup>, StrErr> {
+	let tool_groups = if let Some(tgs) = tgs {
+		let tgs = tgs.convert::<Vec<Value>>()?;
+		tgs.iter()
+			.map(|tg| {
+				let group = tg.read::<str>("group")?;
+				let gr_id = dig_group_ids.get_or_extend(group);
+				let speed = *tg.read::<f64>("speed")?;
+				let hardness = *tg.read::<i64>("hardness")? as u16;
+				Ok(ToolGroup {
+					group : gr_id,
+					speed,
+					hardness,
+				})
+			})
+			.collect::<Result<Vec<ToolGroup>, StrErr>>()?
+	} else {
+		Vec::new()
+	};
+	Ok(tool_groups)
+}
+
 fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrErr> {
 
 	let override_default = val.get("override-default")
@@ -423,7 +445,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		let block_roles = BlockRoles::dummy(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
 		let mut dig_group_ids = NameIdMap::default_group_list();
-		let hand_tool_groups = hand_tool_groups(&mut dig_group_ids);
+		let hand_tool_groups = default_hand_tool_groups(&mut dig_group_ids);
 		let p = GameParams {
 			recipes : Vec::new(),
 			block_params : Vec::new(),
@@ -544,25 +566,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		} else {
 			(DigGroup::default(), 1)
 		};
-		let tool_groups = if let Some(tgs) = block.get("tool_groups") {
-			let tgs = tgs.convert::<Vec<Value>>()?;
-			let dig_group_ids = &mut params.p.dig_group_ids;
-			tgs.iter()
-				.map(|tg| {
-					let group = tg.read::<str>("group")?;
-					let gr_id = dig_group_ids.get_or_extend(group);
-					let speed = *tg.read::<f64>("speed")?;
-					let hardness = *tg.read::<i64>("hardness")? as u16;
-					Ok(ToolGroup {
-						group : gr_id,
-						speed,
-						hardness,
-					})
-				})
-				.collect::<Result<Vec<ToolGroup>, StrErr>>()?
-		} else {
-			Vec::new()
-		};
+		let tool_groups = parse_tool_groups(&mut params.p.dig_group_ids, block.get("tool_groups"))?;
 
 		let block_params = BlockParams {
 			draw_style,
@@ -685,6 +689,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			}
 
 		}
+	}
+
+	if let Some(hand) = val.get("hand") {
+		let dig_group_ids = &mut params.p.dig_group_ids;
+		params.p.hand_tool_groups = parse_tool_groups(dig_group_ids, hand.get("tool_groups"))?;
 	}
 
 	Ok(params)
