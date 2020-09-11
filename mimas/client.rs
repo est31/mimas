@@ -32,7 +32,7 @@ use mimas_server::local_auth::{PlayerPwHash, HashParams};
 use mimas_server::config::Config;
 use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
 use mimas_server::inventory::SelectableInventory;
-use mimas_server::game_params::GameParamsHdl;
+use mimas_server::game_params::{GameParamsHdl, ToolGroup};
 
 use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
 	BlockTextureIds, TextureIdCache, ChunkMesh};
@@ -819,6 +819,7 @@ impl<C :NetworkClientConn> Game<C> {
 		if let Some((selected_pos, before_selected)) = self.selected_pos {
 			if self.camera.mouse_left_down {
 				match &mut self.camera.dig_cooldown {
+					// End the digging interaction
 					Some((pos, dc)) => if *pos != selected_pos {
 						self.camera.dig_cooldown = None;
 					} else if *dc <= 0.0 {
@@ -830,28 +831,29 @@ impl<C :NetworkClientConn> Game<C> {
 						let msg = ClientToServerMsg::Dig(selected_pos);
 						let _ = self.srv_conn.send(msg);
 					},
+					// Start new digging interaction
 					v @ None => {
 						let blk = self.map.get_blk(selected_pos).unwrap();
-						let dig_group_id = params.get_block_params(blk).unwrap().dig_group;
+						let dig_group = params.get_block_params(blk).unwrap().dig_group;
 						let sel = self.sel_inventory.get_selected();
+						let try_tool_groups = |tool_groups :&[ToolGroup]| {
+							if let Some(tg) = tool_groups.iter().find(|g| g.group == dig_group.0) {
+								// Only start digging if hardness is below or at the tool theshold
+								if dig_group.1 <= tg.hardness {
+									return Some((0.01 + 1.0/tg.speed) as f32);
+								}
+							}
+							None
+						};
 						// Set block specific cooldown
 						let tool_cooldown = if let Some(sel) = sel {
 							let tool_groups = &params.get_block_params(sel).unwrap().tool_groups;
-							if let Some(tg) = tool_groups.iter().find(|g| g.group == dig_group_id) {
-								Some((0.01 + 1.0/tg.speed) as f32)
-							} else {
-								None
-							}
+							try_tool_groups(tool_groups)
 						} else {
 							None
 						};
-						let hand_tool_groups = &params.hand_tool_groups;
 						let cooldown = tool_cooldown.or_else(|| {
-							if let Some(tg) = hand_tool_groups.iter().find(|g| g.group == dig_group_id) {
-								Some((0.01 + 1.0/tg.speed) as f32)
-							} else {
-								None
-							}
+							try_tool_groups(&params.hand_tool_groups)
 						});
 						if let Some(cooldown) = cooldown {
 							*v = Some((selected_pos, cooldown));

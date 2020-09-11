@@ -32,6 +32,7 @@ pub enum DrawStyle {
 pub struct ToolGroup {
 	pub group :DigGroup,
 	pub speed :f64,
+	pub hardness :u16,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -43,7 +44,7 @@ pub struct BlockParams {
 	pub inventory :Option<u8>,
 	pub display_name :String,
 	pub drops :Stack,
-	pub dig_group :DigGroup,
+	pub dig_group :(DigGroup, u16),
 	pub tool_groups :Vec<ToolGroup>,
 }
 
@@ -154,6 +155,7 @@ fn hand_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>) -> Vec<ToolGroup> {
 		ToolGroup {
 			group : dig_group_ids.get_or_extend("group:default"),
 			speed : 5.0,
+			hardness : 1,
 		},
 	]
 }
@@ -174,7 +176,7 @@ impl Default for BlockParams {
 			display_name : String::new(),
 			inventory : None,
 			drops : Stack::Empty,
-			dig_group : DigGroup::default(),
+			dig_group : (DigGroup::default(), 1),
 			tool_groups : Vec::new(),
 		}
 	}
@@ -358,6 +360,19 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	}
 }
 
+pub fn resolve_dig_group_specifier(nm :&mut NameIdMap<DigGroup>, sp :&str)
+		-> Result<(DigGroup, u16), StrErr> {
+	let mut nit = sp.split(' ');
+	if let (Some(name), Some(hardness), None) = (nit.next(), nit.next(), nit.next()) {
+		let dig_group = nm.get_or_extend(name);
+		let hardness = u16::from_str(hardness)?;
+		Ok((dig_group, hardness))
+	} else {
+		Err(format!("Invalid dig group specifier '{}'. Must be in format 'modname:name hardness'.", sp))?;
+		unreachable!()
+	}
+}
+
 pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 		-> Result<Stack, StrErr> {
 	if sp.is_empty() {
@@ -525,9 +540,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 		};
 		let dig_group = if let Some(dg) = block.get("dig_group") {
 			let dg = dg.convert::<str>()?;
-			params.p.dig_group_ids.get_or_extend(dg)
+			resolve_dig_group_specifier(&mut params.p.dig_group_ids, dg)?
 		} else {
-			DigGroup::default()
+			(DigGroup::default(), 1)
 		};
 		let tool_groups = if let Some(tgs) = block.get("tool_groups") {
 			let tgs = tgs.convert::<Vec<Value>>()?;
@@ -537,9 +552,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 					let group = tg.read::<str>("group")?;
 					let gr_id = dig_group_ids.get_or_extend(group);
 					let speed = *tg.read::<f64>("speed")?;
+					let hardness = *tg.read::<i64>("hardness")? as u16;
 					Ok(ToolGroup {
 						group : gr_id,
 						speed,
+						hardness,
 					})
 				})
 				.collect::<Result<Vec<ToolGroup>, StrErr>>()?
