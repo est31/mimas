@@ -477,7 +477,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	// First step: populate the name id map.
 	// This allows us to refer to blocks other than our own
 	// regardless of order.
-	let blocks = val.read::<Array>("block")?;
+	let blocks = if let Some(blocks) = val.get("block") {
+		blocks.convert::<Array>()?.as_slice()
+	} else {
+		&[]
+	};
 	for block in blocks.iter() {
 		let name = block.read::<str>("name")?;
 		let _name_components = parse_block_name(name)?;
