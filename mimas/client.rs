@@ -1044,6 +1044,7 @@ fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> V
 
 fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 	let yaw = -pos.yaw() / 180.0 * std::f32::consts::PI;
+	let pitch = pos.pitch() / 180.0 * std::f32::consts::PI;
 	let pos = pos.pos();
 	let mut vertices = Vec::new();
 
@@ -1060,9 +1061,11 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 		[cx, cy, -0.8 - 0.4],
 		texture_ids_body, 0.8, |_| false);
 
+	let head_start = vertices.len();
+
 	push_block(&mut vertices,
-		[cx, cy, - 0.4],
-		texture_ids_head, 0.8, |_| false);
+		[-0.5*0.78, -0.5*0.78, - 0.4],
+		texture_ids_head, 0.78, |_| false);
 
 	push_block(&mut vertices,
 		[cx + 0.65, cy + 0.15, -0.1],
@@ -1073,7 +1076,14 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 
 	let translation = Translation3::new(pos.x, pos.y, pos.z);
 	let rotation = Rotation3::from_euler_angles(0.0, 0.0, yaw);
+	let pitch_rotation = Rotation3::from_euler_angles(0.0, pitch, 0.0);
 	let iso = translation * rotation;
+	vertices[head_start .. ].iter_mut().for_each(|v| {
+		let p :Point3<f32> = v.position.into();
+		let p :Point3<f32> = pitch_rotation * p;
+		v.position = [p.x, p.y, p.z];
+		// TODO also rotate the normal
+	});
 	vertices.iter_mut().for_each(|v| {
 		let p :Point3<f32> = v.position.into();
 		let p :Point3<f32> = iso * p;
