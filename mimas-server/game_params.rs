@@ -249,7 +249,7 @@ impl NameIdMap {
 impl NameIdMap<DigGroup> {
 	pub fn default_group_list() -> Self {
 		Self::from_name_list(vec![
-			"group:default",
+			"group:any",
 		])
 	}
 }
