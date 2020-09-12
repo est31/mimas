@@ -8,7 +8,7 @@ use glutin::dpi::PhysicalPosition;
 use glutin::event_loop::{EventLoop, ControlFlow};
 use glutin::event::{Event, ElementState, KeyboardInput, VirtualKeyCode,
 	WindowEvent, MouseButton, MouseScrollDelta};
-use nalgebra::{Vector3, Matrix4, Point3, Rotation3};
+use nalgebra::{Vector3, Matrix4, Point3, Translation3, Rotation3};
 use num_traits::identities::Zero;
 use glium_glyph::GlyphBrush;
 use glium_glyph::glyph_brush::{
@@ -1043,6 +1043,7 @@ fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> V
 }
 
 fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
+	let yaw = -pos.yaw()/ 180.0 * std::f32::consts::PI;
 	let pos = pos.pos();
 	let mut vertices = Vec::new();
 
@@ -1051,22 +1052,32 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 	let texture_ids_eyes = BlockTextureIds::uniform(ui_colors.color_eyes);
 
 	push_block(&mut vertices,
-		[pos.x, pos.y, pos.z - 1.6 - 0.4],
+		[-0.4, -0.4, 0.0 - 1.6 - 0.4],
 		texture_ids_body, 0.8, |_| false);
 	push_block(&mut vertices,
-		[pos.x, pos.y, pos.z - 0.8 - 0.4],
+		[-0.4, -0.4, 0.0 - 0.8 - 0.4],
 		texture_ids_body, 0.8, |_| false);
 
 	push_block(&mut vertices,
-		[pos.x, pos.y, pos.z - 0.4],
+		[-0.4, -0.4, 0.0 - 0.4],
 		texture_ids_head, 0.8, |_| false);
 
 	push_block(&mut vertices,
-		[pos.x + 0.15, pos.y + 0.65, pos.z - 0.1],
+		[-0.4 + 0.65, -0.4 + 0.15, 0.0 - 0.1],
 		texture_ids_eyes, 0.2, |_| false);
 	push_block(&mut vertices,
-		[pos.x + 0.45, pos.y + 0.65, pos.z - 0.1],
+		[-0.4 + 0.65, -0.4 + 0.45, 0.0 - 0.1],
 		texture_ids_eyes, 0.2, |_| false);
+
+	let translation = Translation3::new(pos.x, pos.y, pos.z);
+	let rotation = Rotation3::from_euler_angles(0.0, 0.0, yaw);
+	let iso = translation * rotation;
+	vertices.iter_mut().for_each(|v| {
+		let p :Point3<f32> = v.position.into();
+		let p :Point3<f32> = (iso * p);
+		v.position = [p.x, p.y, p.z];
+		// TODO also rotate the normal
+	});
 	vertices
 }
 
