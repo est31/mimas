@@ -1043,7 +1043,7 @@ fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> V
 }
 
 fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
-	let yaw = -pos.yaw()/ 180.0 * std::f32::consts::PI;
+	let yaw = -pos.yaw() / 180.0 * std::f32::consts::PI;
 	let pos = pos.pos();
 	let mut vertices = Vec::new();
 
@@ -1051,22 +1051,24 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 	let texture_ids_head = BlockTextureIds::uniform(ui_colors.color_head);
 	let texture_ids_eyes = BlockTextureIds::uniform(ui_colors.color_eyes);
 
+	let cx = -0.4;
+	let cy = -0.4;
 	push_block(&mut vertices,
-		[-0.4, -0.4, 0.0 - 1.6 - 0.4],
+		[cx, cy, -1.6 - 0.4],
 		texture_ids_body, 0.8, |_| false);
 	push_block(&mut vertices,
-		[-0.4, -0.4, 0.0 - 0.8 - 0.4],
+		[cx, cy, -0.8 - 0.4],
 		texture_ids_body, 0.8, |_| false);
 
 	push_block(&mut vertices,
-		[-0.4, -0.4, 0.0 - 0.4],
+		[cx, cy, - 0.4],
 		texture_ids_head, 0.8, |_| false);
 
 	push_block(&mut vertices,
-		[-0.4 + 0.65, -0.4 + 0.15, 0.0 - 0.1],
+		[cx + 0.65, cy + 0.15, -0.1],
 		texture_ids_eyes, 0.2, |_| false);
 	push_block(&mut vertices,
-		[-0.4 + 0.65, -0.4 + 0.45, 0.0 - 0.1],
+		[cx + 0.65, cy + 0.45, -0.1],
 		texture_ids_eyes, 0.2, |_| false);
 
 	let translation = Translation3::new(pos.x, pos.y, pos.z);
@@ -1074,7 +1076,7 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 	let iso = translation * rotation;
 	vertices.iter_mut().for_each(|v| {
 		let p :Point3<f32> = v.position.into();
-		let p :Point3<f32> = (iso * p);
+		let p :Point3<f32> = iso * p;
 		v.position = [p.x, p.y, p.z];
 		// TODO also rotate the normal
 	});
