@@ -542,7 +542,8 @@ impl<C :NetworkClientConn> Game<C> {
 
 			// TODO: only update if the position actually changed from the prior one
 			// this spares us needless chatter with the GPU
-			let vertices = selection_mesh(selected_pos, &ui_colors);
+			let digging = self.camera.dig_cooldown.is_some();
+			let vertices = selection_mesh(selected_pos, digging, &ui_colors);
 			let vbuff = VertexBuffer::new(&self.display, &vertices).unwrap();
 			selbuff = vec![vbuff];
 		}
@@ -1023,12 +1024,17 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 }
 
-fn selection_mesh(pos :Vector3<isize>, ui_colors :&UiColors) -> Vec<Vertex> {
+fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> Vec<Vertex> {
 	const DELTA :f32 = 0.05;
 	const DELTAH :f32 = DELTA / 2.0;
 	let mut vertices = Vec::new();
 
-	let texture_ids = BlockTextureIds::uniform(ui_colors.block_selection_color);
+	let color = if digging {
+		ui_colors.block_selection_color_digging
+	} else {
+		ui_colors.block_selection_color
+	};
+	let texture_ids = BlockTextureIds::uniform(color);
 
 	push_block(&mut vertices,
 		[pos.x as f32 - DELTAH, pos.y as f32 - DELTAH, pos.z as f32 - DELTAH],
