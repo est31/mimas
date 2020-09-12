@@ -1047,6 +1047,7 @@ fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 
 	let texture_ids_body = BlockTextureIds::uniform(ui_colors.color_body);
 	let texture_ids_head = BlockTextureIds::uniform(ui_colors.color_head);
+	let texture_ids_eyes = BlockTextureIds::uniform(ui_colors.color_eyes);
 
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 1.6 - 0.4],
@@ -1054,9 +1055,17 @@ fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.8 - 0.4],
 		texture_ids_body, 0.8, |_| false);
+
 	push_block(&mut vertices,
 		[pos.x, pos.y, pos.z - 0.4],
 		texture_ids_head, 0.8, |_| false);
+
+	push_block(&mut vertices,
+		[pos.x + 0.15, pos.y + 0.65, pos.z - 0.1],
+		texture_ids_eyes, 0.2, |_| false);
+	push_block(&mut vertices,
+		[pos.x + 0.45, pos.y + 0.65, pos.z - 0.1],
+		texture_ids_eyes, 0.2, |_| false);
 	vertices
 }
 

@@ -212,8 +212,10 @@ pub struct UiColors {
 	pub block_selection_color :TextureId,
 	pub block_selection_color_digging :TextureId,
 	pub crosshair_color :TextureId,
+	// Player colors
 	pub color_body :TextureId,
 	pub color_head :TextureId,
+	pub color_eyes :TextureId,
 }
 
 impl UiColors {
@@ -228,6 +230,7 @@ impl UiColors {
 			crosshair_color : assets.add_color([0.8, 0.8, 0.8, 0.85]),
 			color_body : assets.add_color([0.3, 0.3, 0.5, 1.0]),
 			color_head : assets.add_color([0.94, 0.76, 0.49, 1.0]),
+			color_eyes : assets.add_color([0.2, 0.2, 0.2, 1.0]),
 		}
 	}
 }
