@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Featuring:
+
+* New items:
+  - Tools (Pickaxe)
+
 ## Release 0.4 - September 4, 2020
 
 Minimum required Rust version: 1.42.0
