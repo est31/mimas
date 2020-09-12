@@ -1080,13 +1080,13 @@ fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
 	let iso = translation * rotation;
 	vertices[head_start .. ].iter_mut().for_each(|v| {
 		let p :Point3<f32> = v.position.into();
-		let p :Point3<f32> = pitch_rotation * p;
+		let p = pitch_rotation * p;
 		v.position = [p.x, p.y, p.z];
 		// TODO also rotate the normal
 	});
 	vertices.iter_mut().for_each(|v| {
 		let p :Point3<f32> = v.position.into();
-		let p :Point3<f32> = iso * p;
+		let p = iso * p;
 		v.position = [p.x, p.y, p.z];
 		// TODO also rotate the normal
 	});
