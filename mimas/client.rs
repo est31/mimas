@@ -91,7 +91,7 @@ pub struct Game<C :NetworkClientConn> {
 	last_frame_time :Instant,
 	last_fps :f32,
 
-	player_positions :Option<(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>)>,
+	player_positions :Option<(PlayerIdPair, Vec<(PlayerIdPair, PlayerPosition)>)>,
 
 	grab_cursor :bool,
 	grabbing_cursor :bool,
@@ -1042,7 +1042,8 @@ fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> V
 	vertices
 }
 
-fn player_mesh(pos :Vector3<f32>, ui_colors :&UiColors) -> Vec<Vertex> {
+fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
+	let pos = pos.pos();
 	let mut vertices = Vec::new();
 
 	let texture_ids_body = BlockTextureIds::uniform(ui_colors.color_body);

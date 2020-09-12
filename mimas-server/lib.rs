@@ -87,7 +87,7 @@ pub enum ServerToClientMsg {
 	GameParams(GameParams),
 	HashedBlobs(Vec<(Vec<u8>, Vec<u8>)>),
 
-	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, Vector3<f32>)>),
+	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, PlayerPosition)>),
 
 	SetPos(PlayerPosition),
 	SetInventory(SelectableInventory),
@@ -586,7 +586,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let players = self.players.clone();
 		let mut players_to_remove = Vec::new();
 		let player_positions = players.borrow().iter()
-			.map(|(id, player)| (*id, player.pos()))
+			.map(|(id, player)| (*id, player.pos))
 			.collect::<Vec<_>>();
 		for (id, player) in players.borrow_mut().iter_mut() {
 			let msg = ServerToClientMsg::PlayerPositions(*id, player_positions.clone());
