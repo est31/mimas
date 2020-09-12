@@ -148,6 +148,100 @@ limit_a = 2.0
 limit_b = 0.88
 limit_boundary = -240
 
+# Items
+
+[[block]]
+name = "default:stick"
+placeable = false
+
+[[recipe]]
+inputs = [
+	"default:wood"
+]
+output = "default:stick 4"
+
+# Tools
+
+[[block]]
+name = "default:pick_wood"
+tool_groups = [{ group = "default:group_stone", speed = 0.5, hardness = 2 }]
+placeable = false
+
+[[block]]
+name = "default:pick_cobble"
+tool_groups = [{ group = "default:group_stone", speed = 1.5, hardness = 3 }]
+placeable = false
+
+[[block]]
+name = "default:pick_iron"
+tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
+placeable = false
+
+[[block]]
+name = "default:pick_copper"
+tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
+placeable = false
+
+[[block]]
+name = "default:pick_gold"
+tool_groups = [{ group = "default:group_stone", speed = 4.5, hardness = 4 }]
+placeable = false
+
+[[block]]
+name = "default:pick_diamond"
+tool_groups = [{ group = "default:group_stone", speed = 7.0, hardness = 5 }]
+placeable = false
+
+[[recipe]]
+inputs = [
+	"default:wood", "default:wood", "default:wood",
+	"default:wood", "default:stick", "",
+	"default:wood", "", "default:stick",
+]
+output = "default:pick_wood 1"
+
+[[recipe]]
+inputs = [
+	"default:cobble", "default:cobble", "default:cobble",
+	"default:cobble", "default:stick", "",
+	"default:cobble", "", "default:stick",
+]
+output = "default:pick_cobble 1"
+
+[[recipe]]
+inputs = [
+	"default:iron_ore", "default:iron_ore", "default:iron_ore",
+	"default:iron_ore", "default:stick", "",
+	"default:iron_ore", "", "default:stick",
+]
+output = "default:pick_iron 1"
+
+[[recipe]]
+inputs = [
+	"default:copper_ore", "default:copper_ore", "default:copper_ore",
+	"default:copper_ore", "default:stick", "",
+	"default:copper_ore", "", "default:stick",
+]
+output = "default:pick_copper 1"
+
+[[recipe]]
+inputs = [
+	"default:pick_gold", "default:pick_gold", "default:pick_gold",
+	"default:pick_gold", "default:stick", "",
+	"default:pick_gold", "", "default:stick",
+]
+output = "default:pick_gold 1"
+
+[[recipe]]
+inputs = [
+	"default:diamond_ore", "default:diamond_ore", "default:diamond_ore",
+	"default:diamond_ore", "default:stick", "",
+	"default:diamond_ore", "", "default:stick",
+]
+output = "default:pick_diamond 1"
+
+# Grass
+
 [[block]]
 name = "default:grass_1"
 drops = "default:grass_3 1"
