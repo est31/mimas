@@ -33,11 +33,13 @@ texture = "assets/textures/default_wood.png"
 
 [[block]]
 name = "default:stone"
+dig_group = "default:group_stone 2"
 drops = "default:cobble 1"
 texture = "assets/textures/default_stone.png"
 
 [[block]]
 name = "default:cobble"
+dig_group = "default:group_stone 2"
 texture = "assets/textures/default_cobble.png"
 
 [[block]]
@@ -60,22 +62,27 @@ texture = [
 
 [[block]]
 name = "default:coal"
+dig_group = "default:group_stone 2"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_coal.png"
 
 [[block]]
 name = "default:iron_ore"
+dig_group = "default:group_stone 2"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_iron.png"
 
 [[block]]
 name = "default:copper_ore"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_copper.png"
 
 [[block]]
 name = "default:gold_ore"
+dig_group = "default:group_stone 4"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_gold.png"
 
 [[block]]
 name = "default:diamond_ore"
+dig_group = "default:group_stone 5"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_diamond.png"
 
 [[block]]
