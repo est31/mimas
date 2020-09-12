@@ -28,6 +28,7 @@ fn main() -> Result<(), StrErr> {
 	} else {
 		QuicServerSocket::new()?
 	};
+	println!("Listening on {}", server_socket.listen_addr());
 	let config = load_config();
 	let mut server = Server::new(server_socket, false, config);
 	server.run_loop();

@@ -260,6 +260,7 @@ impl QuicClientConn {
 }
 
 pub struct QuicServerSocket {
+	listen_addr :SocketAddr,
 	conn_recv :Receiver<QuicServerConn>,
 }
 
@@ -276,8 +277,12 @@ impl QuicServerSocket {
 			run_quinn_server(&addr, conn_send).expect("errors in quic server");
 		});
 		Ok(Self {
+			listen_addr : addr,
 			conn_recv
 		})
+	}
+	pub fn listen_addr(&self) -> &SocketAddr {
+		&self.listen_addr
 	}
 }
 
