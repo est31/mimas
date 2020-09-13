@@ -661,11 +661,6 @@ fn render_inventories<'a, 'b>(
 				if hovering {
 					hover_idx = Some((inv_id, i));
 				}
-				if let Some(content) = invs[inv_id].stacks()[i].content() {
-					if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
-						return tid;
-					}
-				}
 				if from_pos == Some((inv_id, i)) {
 					ui_colors.selected_slot_color
 				} else if hovering {
@@ -673,6 +668,14 @@ fn render_inventories<'a, 'b>(
 				} else {
 					ui_colors.slot_color
 				}
+			},
+			|i| { // icon_fn
+				if let Some(content) = invs[inv_id].stacks()[i].content() {
+					if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
+						return Some(tid);
+					}
+				}
+				None
 			},
 			|line| { // mesh_y_fn
 				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
@@ -704,6 +707,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		ui_width :f32,
 		screen_dims :(u32, u32),
 		mut texture_fn :impl FnMut(usize, i32, i32) -> TextureId,
+		mut icon_fn :impl FnMut(usize) -> Option<TextureId>,
 		mesh_y_fn :impl Fn(usize) -> i32,
 		text_y_fn :impl Fn(usize) -> f32,
 		glyph_brush :&mut GlyphBrush<'a, 'b>,
@@ -717,13 +721,22 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 		let mesh_y = -offsets.1 as i32 + mesh_y_fn(line);
 		let tx = texture_fn(i, mesh_x, mesh_y);
+		let icon = icon_fn(i);
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, tx));
+		if let Some(icon) = icon {
+			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
+				dims, screen_dims, icon));
+		}
 		let content = inv.stacks()
 			.get(i)
 			.unwrap_or(&Stack::Empty);
 		let text = if let Stack::Content { item, count } = content {
-			format!("{} ({})", params.block_display_name(*item), count)
+			if icon.is_some() {
+				format!("{}", count)
+			} else {
+				format!("{} ({})", params.block_display_name(*item), count)
+			}
 		} else {
 			String::from("")
 		};
@@ -784,6 +797,14 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 			} else {
 				ui_colors.slot_color
 			}
+		},
+		|i| { // icon_fn
+			if let Some(content) = inv.stacks()[i].content() {
+				if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
+					return Some(tid);
+				}
+			}
+			None
 		},
 		|_line| { // mesh_y_fn
 			(hud_height * 0.10) as i32
