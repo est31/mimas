@@ -13,7 +13,7 @@ use mimas_server::inventory::{SelectableInventory, Stack,
 use mimas_server::crafting::get_matching_recipe;
 use mimas_server::game_params::GameParamsHdl;
 
-use mimas_meshgen::{Vertex, TextureId};
+use mimas_meshgen::{Vertex, TextureId, TextureIdCache};
 
 use assets::UiColors;
 
@@ -389,7 +389,7 @@ impl InventoryMenu {
 		self.invs[CRAFTING_OUTPUT_ID] = SelectableInventory::from_stacks(stacks);
 	}
 	pub fn render<'a, 'b>(&mut self,
-			ui_colors :&UiColors,
+			ui_colors :&UiColors, tid_cache :&TextureIdCache,
 			display :&glium::Display, program :&glium::Program,
 			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 
@@ -429,7 +429,7 @@ impl InventoryMenu {
 		});
 		let mouse_pos = self.last_mouse_pos.map(|pos|(pos.x as f32, pos.y as f32));
 		let hover_idx = render_inventories(&self.params,
-			ui_colors, display, program, glyph_brush, target,
+			ui_colors, tid_cache, display, program, glyph_brush, target,
 			&mut layout, slot_counts_x, &self.invs, mouse_pos,
 			self.from_pos);
 
@@ -528,7 +528,7 @@ impl ChestMenu {
 		self.mouse_input_ev = Some((state, button));
 	}
 	pub fn render<'a, 'b>(&mut self,
-			ui_colors :&UiColors,
+			ui_colors :&UiColors, tid_cache :&TextureIdCache,
 			display :&glium::Display, program :&glium::Program,
 			glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame) {
 
@@ -559,7 +559,7 @@ impl ChestMenu {
 		});
 		let mouse_pos = self.last_mouse_pos.map(|pos|(pos.x as f32, pos.y as f32));
 		let hover_idx = render_inventories(&self.params,
-			ui_colors, display, program, glyph_brush, target,
+			ui_colors, tid_cache, display, program, glyph_brush, target,
 			&mut layout, slot_counts_x, &self.invs, mouse_pos,
 			self.from_pos);
 
@@ -600,6 +600,7 @@ impl ChestMenu {
 fn render_inventories<'a, 'b>(
 		params :&GameParamsHdl,
 		ui_colors :&UiColors,
+		tid_cache :&TextureIdCache,
 		display :&glium::Display, program :&glium::Program,
 		glyph_brush :&mut GlyphBrush<'a, 'b>, target :&mut glium::Frame,
 		layout :&mut LayoutNode,
@@ -659,6 +660,11 @@ fn render_inventories<'a, 'b>(
 					.unwrap_or(false);
 				if hovering {
 					hover_idx = Some((inv_id, i));
+				}
+				if let Some(content) = invs[inv_id].stacks()[i].content() {
+					if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
+						return tid;
+					}
 				}
 				if from_pos == Some((inv_id, i)) {
 					ui_colors.selected_slot_color
@@ -739,7 +745,7 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 }
 
 pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
-		ui_colors :&UiColors,
+		ui_colors :&UiColors, tid_cache :&TextureIdCache,
 		display :&glium::Display, program :&glium::Program,
 		glyph_brush :&mut GlyphBrush<'a, 'b>, gm_params :&GameParamsHdl,
 		target :&mut glium::Frame) {
@@ -856,36 +862,42 @@ pub fn square_mesh_frac_limits(
 
 	let z = 0.2;
 	let tex_ind = tx.0;
-	let tex_pos = [0.0, 0.0];
 
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		tex_pos, tex_ind,
+		tex_pos : [0.0, 0.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
-		tex_pos, tex_ind,
+		tex_pos : [1.0, 0.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		tex_pos, tex_ind,
+		tex_pos : [1.0, 1.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
+
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
-		tex_pos, tex_ind,
+		tex_pos : [1.0, 1.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
-		tex_pos, tex_ind,
+		tex_pos : [0.0, 1.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
-		tex_pos, tex_ind,
+		tex_pos : [0.0, 0.0],
+		tex_ind,
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices

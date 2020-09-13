@@ -75,22 +75,31 @@ pub struct TextureIdCache {
 	fallback_id :BlockTextureIds,
 	block_texture_ids :Vec<Option<BlockTextureIds>>,
 	mesh_draw_styles :Vec<Option<MeshDrawStyle>>,
+	inv_texture_ids :Vec<Option<TextureId>>,
+}
+
+pub trait TextureIdObtainer {
+	fn mesh_draw_st(&mut self, _ :&DrawStyle) -> MeshDrawStyle;
+	fn inv_texture_id(&mut self, _ :&str) -> TextureId;
 }
 
 impl TextureIdCache {
-	pub fn from_hdl(hdl :&GameParamsHdl,
-			mut style_to_id :impl FnMut(&DrawStyle) -> MeshDrawStyle) -> Self {
-		let fallback_id = style_to_id(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0])).blocky().unwrap();
+	pub fn from_hdl(hdl :&GameParamsHdl, ob :&mut impl TextureIdObtainer) -> Self {
+		let fallback_id = ob.mesh_draw_st(&DrawStyle::Colored([0.0, 0.0, 0.0, 1.0])).blocky().unwrap();
 		let mesh_draw_styles = hdl.block_params.iter()
-			.map(|p| p.draw_style.as_ref().map(&mut style_to_id))
+			.map(|p| p.draw_style.as_ref().map(|ds| ob.mesh_draw_st(ds)))
 			.collect::<Vec<_>>();
 		let block_texture_ids = mesh_draw_styles.iter()
 			.map(|v| v.and_then(|v| v.blocky()))
+			.collect::<Vec<_>>();
+		let inv_texture_ids = hdl.block_params.iter()
+			.map(|p| p.inv_texture.as_ref().map(|it| ob.inv_texture_id(it)))
 			.collect::<Vec<_>>();
 		Self {
 			fallback_id,
 			block_texture_ids,
 			mesh_draw_styles,
+			inv_texture_ids,
 		}
 	}
 	pub fn get_bl_tex_ids(&self, bl :&MapBlock) -> Option<BlockTextureIds> {
@@ -100,6 +109,10 @@ impl TextureIdCache {
 	}
 	pub fn get_mesh_draw_style(&self, bl :&MapBlock) -> Option<MeshDrawStyle> {
 		self.mesh_draw_styles.get(bl.id() as usize)
+			.and_then(|v| *v)
+	}
+	pub fn get_inv_texture_id(&self, bl :&MapBlock) -> Option<TextureId> {
+		self.inv_texture_ids.get(bl.id() as usize)
 			.and_then(|v| *v)
 	}
 }

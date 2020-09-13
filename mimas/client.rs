@@ -355,9 +355,7 @@ impl<C :NetworkClientConn> Game<C> {
 							crate::assets::store_hashed_blobs(&blobs).unwrap();
 							if let Some(spawner) = self.meshgen_spawner.take() {
 								let mut assets = Assets::new();
-								let cache = TextureIdCache::from_hdl(params, |ds| {
-									assets.add_draw_style(params, ds)
-								});
+								let cache = TextureIdCache::from_hdl(params, &mut assets.obtainer(params));
 								spawner(cache.clone());
 								self.texture_id_cache = Some(cache);
 								self.ui_colors = Some(UiColors::new(&mut assets));
@@ -661,10 +659,11 @@ impl<C :NetworkClientConn> Game<C> {
 					&self.program, &uniforms, &params).unwrap();
 			}
 		}
-		if let (Some(params), Some(ui_colors)) = (&self.params, &self.ui_colors) {
+		if let (Some(params), Some(ui_colors), Some(tid_cache)) = (&self.params, &self.ui_colors, &self.texture_id_cache) {
 			render_inventory_hud(
 				&self.sel_inventory,
 				ui_colors,
+				tid_cache,
 				&mut self.display,
 				&self.program, glyph_brush,
 				params, &mut target);
@@ -674,15 +673,17 @@ impl<C :NetworkClientConn> Game<C> {
 				render_menu(ui_colors, &mut self.display, &self.program, glyph_brush, &mut target);
 			} else if let (Some(cw), Some(ui_colors)) = (&self.chat_window, &self.ui_colors) {
 				cw.render(ui_colors, &mut self.display, &self.program, glyph_brush, &mut target);
-			} else if let (Some(m), Some(ui_colors)) = (&mut self.inventory_menu, &self.ui_colors) {
+			} else if let (Some(m), Some(ui_colors), Some(tid_cache)) = (&mut self.inventory_menu, &self.ui_colors, &self.texture_id_cache) {
 				m.render(
 					ui_colors,
+					tid_cache,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 				maybe_inventory_change!(m, self);
-			} else if let (Some(m), Some(ui_colors)) = (&mut self.chest_menu, &self.ui_colors) {
+			} else if let (Some(m), Some(ui_colors), Some(tid_cache)) = (&mut self.chest_menu, &self.ui_colors, &self.texture_id_cache) {
 				m.render(
 					ui_colors,
+					tid_cache,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 				maybe_chest_inventory_change!(m, self);

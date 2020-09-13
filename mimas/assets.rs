@@ -13,7 +13,7 @@ use image::{RgbaImage, Pixel};
 
 use sha2::{Sha256, Digest};
 
-use mimas_meshgen::{TextureId, BlockTextureIds, MeshDrawStyle};
+use mimas_meshgen::{TextureId, BlockTextureIds, MeshDrawStyle, TextureIdObtainer};
 
 pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
@@ -184,6 +184,12 @@ impl Assets {
 			},
 		})
 	}
+	pub fn add_flat_texture(&mut self, game_params :&GameParamsHdl, path :&str)-> TextureId {
+		let image = load_image(game_params, path, false)
+			.expect("couldn't load image");
+		let id = self.add_asset(image);
+		id
+	}
 	pub fn add_color(&mut self, color :[f32; 4]) -> TextureId {
 		let pixels = std::iter::repeat(color.iter())
 			.take(256)
@@ -201,6 +207,26 @@ impl Assets {
 			.collect::<Vec<_>>();
 		let res = SrgbTexture2dArray::new(facade, imgs)?;
 		Ok(res)
+	}
+	pub fn obtainer<'b>(&mut self, game_params :&'b GameParamsHdl) -> AssetObtainer<'_, 'b> {
+		AssetObtainer {
+			assets: self,
+			game_params,
+		}
+	}
+}
+
+pub struct AssetObtainer<'a, 'b> {
+	assets :&'a mut Assets,
+	game_params :&'b GameParamsHdl,
+}
+
+impl<'a, 'b> TextureIdObtainer for AssetObtainer<'a, 'b> {
+	fn mesh_draw_st(&mut self, ds :&DrawStyle) -> mimas_meshgen::MeshDrawStyle {
+		self.assets.add_draw_style(self.game_params, ds)
+	}
+	fn inv_texture_id(&mut self, path :&str) -> TextureId {
+		self.assets.add_flat_texture(self.game_params, path)
 	}
 }
 

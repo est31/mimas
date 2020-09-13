@@ -38,6 +38,7 @@ pub struct ToolGroup {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlockParams {
 	pub draw_style :Option<DrawStyle>,
+	pub inv_texture :Option<String>,
 	pub pointable :bool,
 	pub placeable :bool,
 	pub solid :bool,
@@ -176,6 +177,7 @@ impl Default for BlockParams {
 	fn default() -> Self {
 		Self {
 			draw_style : Some(DrawStyle::default()),
+			inv_texture : None,
 			pointable : true,
 			placeable : true,
 			solid : true,
@@ -545,6 +547,13 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			(None, Some(_)) => Err("false type")?,
 			(None, None) => None,
 		};
+		let inv_texture = if let Some(n) = block.get("inv_texture") {
+			let texture = n.convert::<str>()?;
+			textures.push(texture.to_owned());
+			Some(texture.to_owned())
+		} else {
+			None
+		};
 		let pointable = block.get("pointable")
 			.unwrap_or(&Value::Boolean(true));
 		let pointable = *pointable.convert::<bool>()?;
@@ -580,6 +589,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 
 		let block_params = BlockParams {
 			draw_style,
+			inv_texture,
 			pointable,
 			placeable,
 			solid,
