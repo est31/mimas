@@ -669,14 +669,6 @@ fn render_inventories<'a, 'b>(
 					ui_colors.slot_color
 				}
 			},
-			|i| { // icon_fn
-				if let Some(content) = invs[inv_id].stacks()[i].content() {
-					if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
-						return Some(tid);
-					}
-				}
-				None
-			},
 			|line| { // mesh_y_fn
 				(height / 2.0 - (unit * 1.1 * (line + 1) as f32)) as i32
 			},
@@ -685,6 +677,7 @@ fn render_inventories<'a, 'b>(
 					+ unit * 1.1 * line as f32 + unit * 0.1) * 0.5 + offs.1 * 0.5
 			},
 			glyph_brush,
+			tid_cache,
 			params,
 		));
 	});
@@ -707,10 +700,10 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 		ui_width :f32,
 		screen_dims :(u32, u32),
 		mut texture_fn :impl FnMut(usize, i32, i32) -> TextureId,
-		mut icon_fn :impl FnMut(usize) -> Option<TextureId>,
 		mesh_y_fn :impl Fn(usize) -> i32,
 		text_y_fn :impl Fn(usize) -> f32,
 		glyph_brush :&mut GlyphBrush<'a, 'b>,
+		tid_cache :&TextureIdCache,
 		params :&GameParamsHdl) -> Vec<Vertex> {
 	let mut vertices = Vec::new();
 	for i in 0 .. slot_count {
@@ -721,7 +714,9 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 		let mesh_y = -offsets.1 as i32 + mesh_y_fn(line);
 		let tx = texture_fn(i, mesh_x, mesh_y);
-		let icon = icon_fn(i);
+		let icon = inv.stacks().get(i)
+			.and_then(|s| s.content())
+			.and_then(|content| tid_cache.get_inv_texture_id(&content.0));
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, tx));
 		if let Some(icon) = icon {
@@ -798,14 +793,6 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 				ui_colors.slot_color
 			}
 		},
-		|i| { // icon_fn
-			if let Some(content) = inv.stacks()[i].content() {
-				if let Some(tid) = tid_cache.get_inv_texture_id(&content.0) {
-					return Some(tid);
-				}
-			}
-			None
-		},
 		|_line| { // mesh_y_fn
 			(hud_height * 0.10) as i32
 		},
@@ -813,6 +800,7 @@ pub fn render_inventory_hud<'a, 'b>(inv :&SelectableInventory,
 			screen_dims.1 as f32 - hud_height * 0.5
 		},
 		glyph_brush,
+		tid_cache,
 		&gm_params,
 	));
 
