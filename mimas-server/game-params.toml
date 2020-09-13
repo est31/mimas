@@ -171,16 +171,19 @@ output = "default:stick 4"
 
 [[block]]
 name = "default:pick_wood"
+inv_texture = "assets/textures/default_tool_woodpick.png"
 tool_groups = [{ group = "default:group_stone", speed = 0.5, hardness = 2 }]
 placeable = false
 
 [[block]]
 name = "default:pick_cobble"
+inv_texture = "assets/textures/default_tool_stonepick.png"
 tool_groups = [{ group = "default:group_stone", speed = 1.5, hardness = 3 }]
 placeable = false
 
 [[block]]
 name = "default:pick_iron"
+inv_texture = "assets/textures/default_tool_steelpick.png"
 tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
 placeable = false
 
@@ -196,6 +199,7 @@ placeable = false
 
 [[block]]
 name = "default:pick_diamond"
+inv_texture = "assets/textures/default_tool_diamondpick.png"
 tool_groups = [{ group = "default:group_stone", speed = 7.0, hardness = 5 }]
 placeable = false
 
