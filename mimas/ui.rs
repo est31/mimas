@@ -861,32 +861,32 @@ pub fn square_mesh_frac_limits(
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_min, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_max, y_max, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_max, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices.push(Vertex {
 		position : [x_min, y_min, z],
 		tex_pos, tex_ind,
-		normal :[0.0, 1.0, 0.0],
+		normal : [0.0, 1.0, 0.0],
 	});
 	vertices
 }
