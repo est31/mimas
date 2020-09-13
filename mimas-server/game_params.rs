@@ -552,7 +552,11 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			textures.push(texture.to_owned());
 			Some(texture.to_owned())
 		} else {
-			None
+			if let Some(DrawStyle::Crossed(path)) = &draw_style {
+				Some(path.clone())
+			} else {
+				None
+			}
 		};
 		let pointable = block.get("pointable")
 			.unwrap_or(&Value::Boolean(true));
