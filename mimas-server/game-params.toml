@@ -159,6 +159,7 @@ limit_boundary = -240
 
 [[block]]
 name = "default:stick"
+inv_texture = "assets/textures/default_stick.png"
 placeable = false
 
 [[recipe]]
