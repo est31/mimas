@@ -79,6 +79,12 @@ drops = "default:copper_lump 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_copper.png"
 
 [[block]]
+name = "default:tin_ore"
+dig_group = "default:group_stone 3"
+drops = "default:tin_lump 1"
+texture = "assets/textures/default_stone.png^assets/textures/default_mineral_tin.png"
+
+[[block]]
 name = "default:gold_ore"
 dig_group = "default:group_stone 4"
 drops = "default:gold_lump 1"
@@ -103,6 +109,11 @@ placeable = false
 [[block]]
 name = "default:copper_lump"
 inv_texture = "assets/textures/default_copper_lump.png"
+placeable = false
+
+[[block]]
+name = "default:tin_lump"
+inv_texture = "assets/textures/default_tin_lump.png"
 placeable = false
 
 [[block]]
@@ -166,6 +177,16 @@ limit_b = 0.8
 limit_boundary = -90
 
 [[mapgen.ore]]
+name = "default:tin_ore"
+noise_seed = "noi--tin"
+pcg_seed = "pcg--tin"
+freq = 0.083961
+pcg_limit = 0.7
+limit_a = 2.0
+limit_b = 0.8
+limit_boundary = -98
+
+[[mapgen.ore]]
 name = "default:gold_ore"
 noise_seed = "noi-gold"
 pcg_seed = "pcg-gold"
@@ -195,6 +216,11 @@ placeable = false
 [[block]]
 name = "default:copper_ingot"
 inv_texture = "assets/textures/default_copper_ingot.png"
+placeable = false
+
+[[block]]
+name = "default:tin_ingot"
+inv_texture = "assets/textures/default_tin_ingot.png"
 placeable = false
 
 [[block]]
