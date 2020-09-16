@@ -215,12 +215,12 @@ placeable = false
 [[block]]
 name = "default:pick_iron"
 inv_texture = "assets/textures/default_tool_steelpick.png"
-tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
+tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 5 }]
 placeable = false
 
 [[block]]
-name = "default:pick_copper"
-tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 5 }]
+name = "default:pick_bronze"
+tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
 placeable = false
 
 [[block]]
@@ -264,7 +264,7 @@ inputs = [
 	"default:copper_ore", "default:stick", "",
 	"default:copper_ore", "", "default:stick",
 ]
-output = "default:pick_copper 1"
+output = "default:pick_bronze 1"
 
 [[recipe]]
 inputs = [
