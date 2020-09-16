@@ -1123,7 +1123,7 @@ fn clamp(a :f32, min :f32, max :f32) -> f32 {
 
 /// Degrees to radians
 fn dtr(v :f32) -> f32 {
-	v / 180.0 * std::f32::consts::PI
+	v.to_radians()
 }
 
 struct Camera {
