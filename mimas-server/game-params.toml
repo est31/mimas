@@ -63,27 +63,52 @@ texture = [
 [[block]]
 name = "default:coal"
 dig_group = "default:group_stone 2"
+drops = "default:coal_lump 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_coal.png"
 
 [[block]]
 name = "default:iron_ore"
 dig_group = "default:group_stone 2"
+drops = "default:iron_lump 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_iron.png"
 
 [[block]]
 name = "default:copper_ore"
 dig_group = "default:group_stone 3"
+drops = "default:copper_lump 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_copper.png"
 
 [[block]]
 name = "default:gold_ore"
 dig_group = "default:group_stone 4"
+drops = "default:gold_lump 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_gold.png"
 
 [[block]]
 name = "default:diamond_ore"
 dig_group = "default:group_stone 5"
+drops = "default:diamond 1"
 texture = "assets/textures/default_stone.png^assets/textures/default_mineral_diamond.png"
+
+[[block]]
+name = "default:coal_lump"
+placeable = false
+
+[[block]]
+name = "default:iron_lump"
+placeable = false
+
+[[block]]
+name = "default:copper_lump"
+placeable = false
+
+[[block]]
+name = "default:gold_lump"
+placeable = false
+
+[[block]]
+name = "default:diamond"
+placeable = false
 
 [[block]]
 name = "default:chest"
@@ -222,15 +247,15 @@ output = "default:pick_cobble 1"
 
 [[recipe]]
 inputs = [
-	"default:iron_ore", "default:iron_ore", "default:iron_ore",
-	"default:iron_ore", "default:stick", "",
-	"default:iron_ore", "", "default:stick",
+	"default:iron_lump", "default:iron_lump", "default:iron_lump",
+	"default:iron_lump", "default:stick", "",
+	"default:iron_lump", "", "default:stick",
 ]
 output = "default:pick_iron 1"
 
 [[recipe]]
 inputs = [
-	"default:copper_ore", "default:copper_ore", "default:copper_ore",
+	"default:copper_ore", "default:copper_ore", "default:copper_lump",
 	"default:copper_ore", "default:stick", "",
 	"default:copper_ore", "", "default:stick",
 ]
@@ -238,17 +263,17 @@ output = "default:pick_copper 1"
 
 [[recipe]]
 inputs = [
-	"default:gold_ore", "default:gold_ore", "default:gold_ore",
-	"default:gold_ore", "default:stick", "",
-	"default:gold_ore", "", "default:stick",
+	"default:gold_lump", "default:gold_lump", "default:gold_lump",
+	"default:gold_lump", "default:stick", "",
+	"default:gold_lump", "", "default:stick",
 ]
 output = "default:pick_gold 1"
 
 [[recipe]]
 inputs = [
-	"default:diamond_ore", "default:diamond_ore", "default:diamond_ore",
-	"default:diamond_ore", "default:stick", "",
-	"default:diamond_ore", "", "default:stick",
+	"default:diamond", "default:diamond", "default:diamond",
+	"default:diamond", "default:stick", "",
+	"default:diamond", "", "default:stick",
 ]
 output = "default:pick_diamond 1"
 
