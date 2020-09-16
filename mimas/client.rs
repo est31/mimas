@@ -1044,8 +1044,8 @@ fn selection_mesh(pos :Vector3<isize>, digging :bool, ui_colors :&UiColors) -> V
 }
 
 fn player_mesh(pos :PlayerPosition, ui_colors :&UiColors) -> Vec<Vertex> {
-	let yaw = -pos.yaw() / 180.0 * std::f32::consts::PI;
-	let pitch = pos.pitch() / 180.0 * std::f32::consts::PI;
+	let yaw = -dtr(pos.yaw());
+	let pitch = dtr(pos.pitch());
 	let pos = pos.pos();
 	let mut vertices = Vec::new();
 
