@@ -238,9 +238,9 @@ output = "default:pick_copper 1"
 
 [[recipe]]
 inputs = [
-	"default:pick_gold", "default:pick_gold", "default:pick_gold",
-	"default:pick_gold", "default:stick", "",
-	"default:pick_gold", "", "default:stick",
+	"default:gold_ore", "default:gold_ore", "default:gold_ore",
+	"default:gold_ore", "default:stick", "",
+	"default:gold_ore", "", "default:stick",
 ]
 output = "default:pick_gold 1"
 
