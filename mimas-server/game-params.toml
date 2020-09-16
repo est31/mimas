@@ -220,18 +220,18 @@ placeable = false
 
 [[block]]
 name = "default:pick_copper"
-tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
+tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 5 }]
 placeable = false
 
 [[block]]
 name = "default:pick_gold"
-tool_groups = [{ group = "default:group_stone", speed = 4.5, hardness = 4 }]
+tool_groups = [{ group = "default:group_stone", speed = 4.5, hardness = 2 }]
 placeable = false
 
 [[block]]
 name = "default:pick_diamond"
 inv_texture = "assets/textures/default_tool_diamondpick.png"
-tool_groups = [{ group = "default:group_stone", speed = 7.0, hardness = 5 }]
+tool_groups = [{ group = "default:group_stone", speed = 7.0, hardness = 6 }]
 placeable = false
 
 [[recipe]]
