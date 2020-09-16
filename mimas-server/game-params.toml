@@ -269,11 +269,13 @@ placeable = false
 
 [[block]]
 name = "default:pick_bronze"
+inv_texture = "assets/textures/default_tool_bronzepick.png"
 tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 4 }]
 placeable = false
 
 [[block]]
 name = "default:pick_gold"
+inv_texture = "assets/textures/default_tool_mesepick.png"
 tool_groups = [{ group = "default:group_stone", speed = 3.0, hardness = 2 }]
 placeable = false
 
