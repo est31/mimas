@@ -185,6 +185,55 @@ limit_a = 2.0
 limit_b = 0.88
 limit_boundary = -240
 
+# Ingots
+
+[[block]]
+name = "default:steel_ingot"
+inv_texture = "assets/textures/default_steel_ingot.png"
+placeable = false
+
+[[block]]
+name = "default:copper_ingot"
+inv_texture = "assets/textures/default_copper_ingot.png"
+placeable = false
+
+[[block]]
+name = "default:bronze_ingot"
+inv_texture = "assets/textures/default_bronze_ingot.png"
+placeable = false
+
+[[block]]
+name = "default:gold_ingot"
+inv_texture = "assets/textures/default_gold_ingot.png"
+placeable = false
+
+# Ingot crafts
+# TODO once we have furnaces, make furnaces craft them
+
+[[recipe]]
+inputs = [
+	"default:iron_lump"
+]
+output = "default:steel_ingot 1"
+
+[[recipe]]
+inputs = [
+	"default:copper_lump"
+]
+output = "default:copper_ingot 1"
+
+[[recipe]]
+inputs = [
+	"default:copper_ingot"
+]
+output = "default:bronze_ingot 1"
+
+[[recipe]]
+inputs = [
+	"default:gold_lump"
+]
+output = "default:gold_ingot 1"
+
 # Items
 
 [[block]]
