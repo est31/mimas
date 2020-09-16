@@ -206,6 +206,83 @@ limit_a = 2.0
 limit_b = 0.88
 limit_boundary = -240
 
+# Ingot Blocks
+
+[[block]]
+name = "default:steel_block"
+texture = "assets/textures/default_steel_block.png"
+
+[[block]]
+name = "default:copper_block"
+texture = "assets/textures/default_copper_block.png"
+
+[[block]]
+name = "default:tin_block"
+texture = "assets/textures/default_tin_block.png"
+
+[[block]]
+name = "default:bronze_block"
+texture = "assets/textures/default_bronze_block.png"
+
+[[block]]
+name = "default:gold_block"
+texture = "assets/textures/default_gold_block.png"
+
+[[block]]
+name = "default:diamond_block"
+texture = "assets/textures/default_diamond_block.png"
+
+[[recipe]]
+inputs = [
+	"default:steel_ingot", "default:steel_ingot", "default:steel_ingot",
+	"default:steel_ingot", "default:steel_ingot", "default:steel_ingot",
+	"default:steel_ingot", "default:steel_ingot", "default:steel_ingot",
+]
+output = "default:steel_block 1"
+
+[[recipe]]
+inputs = [
+	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
+	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
+	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
+]
+output = "default:copper_block 1"
+
+[[recipe]]
+inputs = [
+	"default:tin_ingot", "default:tin_ingot", "default:tin_ingot",
+	"default:tin_ingot", "default:tin_ingot", "default:tin_ingot",
+	"default:tin_ingot", "default:tin_ingot", "default:tin_ingot",
+]
+output = "default:tin_block 1"
+
+
+[[recipe]]
+inputs = [
+	"default:bronze_ingot", "default:bronze_ingot", "default:bronze_ingot",
+	"default:bronze_ingot", "default:bronze_ingot", "default:bronze_ingot",
+	"default:bronze_ingot", "default:bronze_ingot", "default:bronze_ingot",
+]
+output = "default:bronze_block 1"
+
+
+[[recipe]]
+inputs = [
+	"default:gold_ingot", "default:gold_ingot", "default:gold_ingot",
+	"default:gold_ingot", "default:gold_ingot", "default:gold_ingot",
+	"default:gold_ingot", "default:gold_ingot", "default:gold_ingot",
+]
+output = "default:gold_block 1"
+
+
+[[recipe]]
+inputs = [
+	"default:diamond", "default:diamond", "default:diamond",
+	"default:diamond", "default:diamond", "default:diamond",
+	"default:diamond", "default:diamond", "default:diamond",
+]
+output = "default:diamond_block 1"
+
 # Ingots
 
 [[block]]
