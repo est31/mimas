@@ -714,20 +714,29 @@ fn inventory_slots_mesh<'a, 'b>(inv :&SelectableInventory,
 			(-ui_width / 2.0 + (unit * 1.1 * col as f32) + unit * 0.1) as i32;
 		let mesh_y = -offsets.1 as i32 + mesh_y_fn(line);
 		let tx = texture_fn(i, mesh_x, mesh_y);
-		let icon = inv.stacks().get(i)
-			.and_then(|s| s.content())
-			.and_then(|content| tid_cache.get_inv_texture_id(&content.0));
 		vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 			dims, screen_dims, tx));
+		let content = inv.stacks().get(i)
+			.and_then(|s| s.content());
+		// First check if there is an icon for the block, if yes
+		let mut icon_found = false;
+		let icon = content.and_then(|c| tid_cache.get_inv_texture_id(&c.0));
 		if let Some(icon) = icon {
 			vertices.extend_from_slice(&square_mesh_xy(mesh_x, mesh_y,
 				dims, screen_dims, icon));
+			icon_found = true;
+		} else if let Some(content) = content {
+			if let Some(texture_ids) = tid_cache.get_bl_tex_ids(&content.0) {
+				push_block_mesh_xy(&mut vertices, mesh_x, mesh_y,
+					dims, screen_dims, texture_ids);
+				icon_found = true;
+			}
 		}
 		let content = inv.stacks()
 			.get(i)
 			.unwrap_or(&Stack::Empty);
 		let text = if let Stack::Content { item, count } = content {
-			if icon.is_some() {
+			if icon_found {
 				format!("{}", count)
 			} else {
 				format!("{} ({})", params.block_display_name(*item), count)
@@ -910,4 +919,45 @@ pub fn square_mesh_frac_limits(
 		normal : [0.0, 1.0, 0.0],
 	});
 	vertices
+}
+
+fn push_block_mesh_xy(vertices :&mut Vec<Vertex>, mesh_x :i32, mesh_y :i32,
+		mesh_dims :(i32, i32), framebuffer_dims :(u32, u32),
+		texture_ids :mimas_meshgen::BlockTextureIds) {
+	use nalgebra::{Translation3, Point3, Isometry3, Orthographic3};
+
+	let offs_x = mesh_dims.0 as f32 * 0.5;
+	let offs_y = mesh_dims.1 as f32 * 0.5;
+	let mesh_x = (mesh_x as f32 + offs_x) / (framebuffer_dims.0 as f32);
+	let mesh_y = (mesh_y as f32 + offs_y) / (framebuffer_dims.1 as f32);
+
+	let mut vertices_to_rotate :Vec<Vertex> = vec![];
+	mimas_meshgen::push_block(&mut vertices_to_rotate,
+		[1.0, 1.0, 1.0],
+		texture_ids, 1.0, |_| false);
+	let m = Isometry3::look_at_rh(&(Point3::origin()),
+		&(Point3::origin() + Vector3::x() + Vector3::y() + Vector3::z()), &Vector3::z());
+
+	let translation = Translation3::new(mesh_x, mesh_y, 0.0);
+
+	let perspective = {
+		let sc = 13.0;
+		let left = -sc;
+		let right = sc;
+		let bottom = -sc;
+		let top = sc;
+		let znear = 0.5;
+		let zfar = 200.0;
+		Orthographic3::new(left, right, bottom, top, znear, zfar)
+	};
+
+	vertices_to_rotate.iter_mut().for_each(|v| {
+		let p :Point3<f32> = v.position.into();
+		let p = m * p;
+		let p = perspective.project_point(&p);
+		let p = translation * p;
+		v.position = [p.x, p.y, p.z];
+		// TODO also change the normal
+	});
+	vertices.extend_from_slice(&vertices_to_rotate);
 }
