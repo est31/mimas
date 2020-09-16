@@ -301,25 +301,25 @@ output = "default:pick_cobble 1"
 
 [[recipe]]
 inputs = [
-	"default:iron_lump", "default:iron_lump", "default:iron_lump",
-	"default:iron_lump", "default:stick", "",
-	"default:iron_lump", "", "default:stick",
+	"default:steel_ingot", "default:steel_ingot", "default:steel_ingot",
+	"default:steel_ingot", "default:stick", "",
+	"default:steel_ingot", "", "default:stick",
 ]
 output = "default:pick_iron 1"
 
 [[recipe]]
 inputs = [
-	"default:copper_ore", "default:copper_ore", "default:copper_lump",
-	"default:copper_ore", "default:stick", "",
-	"default:copper_ore", "", "default:stick",
+	"default:bronze_ingot", "default:bronze_ingot", "default:bronze_ingot",
+	"default:bronze_ingot", "default:stick", "",
+	"default:bronze_ingot", "", "default:stick",
 ]
 output = "default:pick_bronze 1"
 
 [[recipe]]
 inputs = [
-	"default:gold_lump", "default:gold_lump", "default:gold_lump",
-	"default:gold_lump", "default:stick", "",
-	"default:gold_lump", "", "default:stick",
+	"default:gold_ingot", "default:gold_ingot", "default:gold_ingot",
+	"default:gold_ingot", "default:stick", "",
+	"default:gold_ingot", "", "default:stick",
 ]
 output = "default:pick_gold 1"
 
