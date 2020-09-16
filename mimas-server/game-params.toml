@@ -92,22 +92,27 @@ texture = "assets/textures/default_stone.png^assets/textures/default_mineral_dia
 
 [[block]]
 name = "default:coal_lump"
+inv_texture = "assets/textures/default_coal_lump.png"
 placeable = false
 
 [[block]]
 name = "default:iron_lump"
+inv_texture = "assets/textures/default_iron_lump.png"
 placeable = false
 
 [[block]]
 name = "default:copper_lump"
+inv_texture = "assets/textures/default_copper_lump.png"
 placeable = false
 
 [[block]]
 name = "default:gold_lump"
+inv_texture = "assets/textures/default_gold_lump.png"
 placeable = false
 
 [[block]]
 name = "default:diamond"
+inv_texture = "assets/textures/default_diamond.png"
 placeable = false
 
 [[block]]
