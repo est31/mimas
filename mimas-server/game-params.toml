@@ -242,11 +242,23 @@ output = "default:steel_block 1"
 
 [[recipe]]
 inputs = [
+	"default:steel_block",
+]
+output = "default:steel_ingot 9"
+
+[[recipe]]
+inputs = [
 	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
 	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
 	"default:copper_ingot", "default:copper_ingot", "default:copper_ingot",
 ]
 output = "default:copper_block 1"
+
+[[recipe]]
+inputs = [
+	"default:copper_block",
+]
+output = "default:copper_ingot 9"
 
 [[recipe]]
 inputs = [
@@ -256,6 +268,11 @@ inputs = [
 ]
 output = "default:tin_block 1"
 
+[[recipe]]
+inputs = [
+	"default:tin_block",
+]
+output = "default:tin_ingot 9"
 
 [[recipe]]
 inputs = [
@@ -265,6 +282,11 @@ inputs = [
 ]
 output = "default:bronze_block 1"
 
+[[recipe]]
+inputs = [
+	"default:bronze_block",
+]
+output = "default:bronze_ingot 9"
 
 [[recipe]]
 inputs = [
@@ -274,6 +296,11 @@ inputs = [
 ]
 output = "default:gold_block 1"
 
+[[recipe]]
+inputs = [
+	"default:gold_block",
+]
+output = "default:gold_ingot 9"
 
 [[recipe]]
 inputs = [
@@ -282,6 +309,12 @@ inputs = [
 	"default:diamond", "default:diamond", "default:diamond",
 ]
 output = "default:diamond_block 1"
+
+[[recipe]]
+inputs = [
+	"default:diamond_block",
+]
+output = "default:diamond 9"
 
 # Ingots
 
