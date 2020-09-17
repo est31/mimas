@@ -872,7 +872,8 @@ impl<C :NetworkClientConn> Game<C> {
 					&& self.camera.mouse_right_cooldown <= 0.0 {
 				let blk_sel = self.map.get_blk(selected_pos).unwrap();
 				let has_inv = params.get_block_params(blk_sel).unwrap().inventory;
-				if let Some(stack_num) = has_inv {
+
+				if let (Some(stack_num), false) = (has_inv, self.camera.down_pressed) {
 					// open chest inventory
 					let chest_inv = self.map.get_blk_meta(selected_pos).unwrap()
 						.map(|v| {
