@@ -210,26 +210,32 @@ limit_boundary = -240
 
 [[block]]
 name = "default:steel_block"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_steel_block.png"
 
 [[block]]
 name = "default:copper_block"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_copper_block.png"
 
 [[block]]
 name = "default:tin_block"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_tin_block.png"
 
 [[block]]
 name = "default:bronze_block"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_bronze_block.png"
 
 [[block]]
 name = "default:gold_block"
+dig_group = "default:group_stone 3"
 texture = "assets/textures/default_gold_block.png"
 
 [[block]]
 name = "default:diamond_block"
+dig_group = "default:group_stone 4"
 texture = "assets/textures/default_diamond_block.png"
 
 [[recipe]]
