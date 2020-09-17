@@ -426,7 +426,7 @@ impl<C :NetworkClientConn> Game<C> {
 				}
 			}
 		}
-		let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.6);
+		let player_pos = self.camera.pos - Vector3::new(0.35, 0.35, 1.4);
 		let mut touches_ground = false;
 		for pos in cubes.into_iter() {
 			// X coord
