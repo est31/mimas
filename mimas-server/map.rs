@@ -57,7 +57,7 @@ big_array! { BigArray; }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MapChunkData(
 	#[serde(with = "BigArray")]
-	pub(in super) [MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
+	pub(super) [MapBlock; (CHUNKSIZE * CHUNKSIZE * CHUNKSIZE) as usize],
 	pub MapChunkMetadata,
 );
 
