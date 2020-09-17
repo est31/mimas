@@ -4,8 +4,14 @@
 
 Featuring:
 
+* Texture support for inventory items
+* Player avatar improvements (eyes, rotation)
 * New items:
-  - Tools (Pickaxe)
+  - Tools (Pickaxes)
+  - Ore lumps, ingots
+* Blocks
+  - Tin ore
+  - Ingot blocks
 
 ## Release 0.4 - September 4, 2020
 
