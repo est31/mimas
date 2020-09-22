@@ -892,17 +892,15 @@ impl<C :NetworkClientConn> Game<C> {
 					return;
 				}
 
-				let sel = self.sel_inventory.get_selected();
-				if let Some(sel) = sel {
+				let sel = self.sel_inventory.get_sel_idx_and_content();
+				if let Some((sel_idx, sel)) = sel {
 					let placeable = params.get_block_params(sel).unwrap().placeable;
 					if placeable {
 						let taken = self.sel_inventory.take_selected();
 						assert_eq!(taken, Some(sel));
 						let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 						blk.set(sel);
-						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
-						let _ = self.srv_conn.send(msg);
-						let msg = ClientToServerMsg::PlaceBlock(before_selected, sel);
+						let msg = ClientToServerMsg::PlaceBlock(before_selected, sel_idx, sel);
 						let _ = self.srv_conn.send(msg);
 						self.camera.mouse_right_cooldown = RIGHT_BUTTON_COOLDOWN;
 					}

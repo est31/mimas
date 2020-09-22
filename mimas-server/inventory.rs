@@ -117,6 +117,11 @@ impl SelectableInventory {
 			self.stacks[idx].content().map(|(it, _count)| it)
 		})
 	}
+	pub fn get_sel_idx_and_content(&self) -> Option<(usize, MapBlock)> {
+		self.selection.and_then(|idx| {
+			self.stacks[idx].content().map(|(it, _count)| (idx, it))
+		})
+	}
 	pub fn take_selected(&mut self) -> Option<MapBlock> {
 		self.selection.and_then(|idx| {
 			self.stacks[idx].take_one().map(|(it, _emptied)| it)

@@ -69,7 +69,7 @@ pub enum ClientToServerMsg {
 	SendM1(Vec<u8>), // Auth for existing users
 	GetHashedBlobs(Vec<Vec<u8>>),
 
-	PlaceBlock(Vector3<isize>, MapBlock),
+	PlaceBlock(Vector3<isize>, usize, MapBlock),
 	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
 	Dig(Vector3<isize>),
@@ -817,7 +817,24 @@ impl<S :NetworkServerSocket> Server<S> {
 							close_connections(&[id], &mut *self.players.borrow_mut());
 						}
 					},
-					PlaceBlock(p, b) => {
+					PlaceBlock(p, sel_idx, b) => {
+						// Block to make the borrow_mut work
+						{
+							let players = &mut self.players.borrow_mut();
+							let player = players.get_mut(&id).unwrap();
+							let sel = player.inventory.get_sel_idx_and_content();
+							if Some((sel_idx, b)) != sel {
+								// TODO log something about selected inventory mismatch
+								// between client and server
+
+								// TODO Maybe send msg to the client
+								// that the block placing failed??
+								continue;
+							}
+							player.inventory.take_selected();
+							// Don't send anything to the client, its
+							// prediction was alright.
+						};
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {
 							hdl.set(b);
 						} else {
