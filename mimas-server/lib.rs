@@ -69,6 +69,12 @@ pub enum ClientToServerMsg {
 	SendM1(Vec<u8>), // Auth for existing users
 	GetHashedBlobs(Vec<Vec<u8>>),
 
+	/// Params: Position, current inventory selection location, mapblock to place
+	///
+	/// The redundancy of specifying both inventory selection location
+	/// and mapblock to place allows the server to recognize cases
+	/// where client and server have desynced, and prevents mistakingly
+	/// placing a wrong block.
 	PlaceBlock(Vector3<isize>, usize, MapBlock),
 	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
