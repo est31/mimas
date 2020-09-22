@@ -2,6 +2,7 @@ use crate::map::MapBlock;
 use std::num::NonZeroU16;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use nalgebra::Vector3;
 use crate::game_params::{NameIdMap, Id};
 use crate::StrErr;
 
@@ -263,4 +264,12 @@ impl SelectableInventory {
 			stacks : stacks.into_boxed_slice(),
 		})
 	}
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct InventoryPos {
+	stack_pos :usize,
+	/// None if the local player's inventory.
+	/// Some(pos) if chest at given position.
+	location :Option<Vector3<isize>>,
 }

@@ -53,7 +53,7 @@ use std::fmt::Display;
 use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use crate::config::Config;
 use crate::map_storage::{PlayerIdPair, PlayerPosition};
-use crate::inventory::{SelectableInventory, Stack};
+use crate::inventory::{SelectableInventory, Stack, InventoryPos};
 use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
 use srp::server::{SrpServer, UserRecord};
@@ -81,6 +81,7 @@ pub enum ClientToServerMsg {
 	Dig(Vector3<isize>),
 
 	SetPos(PlayerPosition),
+	InventorySwap(InventoryPos, InventoryPos),
 	SetInventory(SelectableInventory),
 	Chat(String),
 }
@@ -906,6 +907,10 @@ impl<S :NetworkServerSocket> Server<S> {
 					},
 					SetPos(_p) => unreachable!(),
 					SetInventory(_inv) => unreachable!(),
+					InventorySwap(_from_pos, _to_pos) => {
+						// TODO handle
+						unimplemented!()
+					},
 					Chat(m) => {
 						if m.starts_with('/') {
 							self.handle_command(id, m);
