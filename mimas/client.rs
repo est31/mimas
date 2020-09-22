@@ -902,7 +902,7 @@ impl<C :NetworkClientConn> Game<C> {
 						blk.set(sel);
 						let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
 						let _ = self.srv_conn.send(msg);
-						let msg = ClientToServerMsg::SetBlock(before_selected, sel);
+						let msg = ClientToServerMsg::PlaceBlock(before_selected, sel);
 						let _ = self.srv_conn.send(msg);
 						self.camera.mouse_right_cooldown = RIGHT_BUTTON_COOLDOWN;
 					}

@@ -69,7 +69,7 @@ pub enum ClientToServerMsg {
 	SendM1(Vec<u8>), // Auth for existing users
 	GetHashedBlobs(Vec<Vec<u8>>),
 
-	SetBlock(Vector3<isize>, MapBlock),
+	PlaceBlock(Vector3<isize>, MapBlock),
 	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
 	Dig(Vector3<isize>),
@@ -817,7 +817,7 @@ impl<S :NetworkServerSocket> Server<S> {
 							close_connections(&[id], &mut *self.players.borrow_mut());
 						}
 					},
-					SetBlock(p, b) => {
+					PlaceBlock(p, b) => {
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {
 							hdl.set(b);
 						} else {
