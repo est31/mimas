@@ -240,32 +240,42 @@ impl SelectableInventory {
 	}
 }
 
-pub fn merge_or_swap(invs :&mut [SelectableInventory],
+pub fn merge_or_swap(invs :&mut [impl InvRef],
 		from :(usize, usize), to :(usize, usize)) {
 	if from == to {
 		return;
 	}
-	let stack_from = invs[from.0].stacks[from.1];
-	let new_stack = invs[to.0].stacks[to.1]
+	let stack_from = invs[from.0].as_mut().stacks[from.1];
+	let new_stack = invs[to.0].as_mut().stacks[to.1]
 		.put(stack_from, false, STACK_SIZE_LIMIT);
 	if stack_from != new_stack {
 		// Partial merge successful
-		invs[from.0].stacks[from.1] = new_stack;
+		invs[from.0].as_mut().stacks[from.1] = new_stack;
 	} else {
 		// Merging wasn't possible, fall back to swap
-		let tmp = invs[to.0].stacks[to.1];
-		invs[to.0].stacks[to.1] = invs[from.0].stacks[from.1];
-		invs[from.0].stacks[from.1] = tmp;
+		let tmp = invs[to.0].as_mut().stacks[to.1];
+		invs[to.0].as_mut().stacks[to.1] = invs[from.0].as_mut().stacks[from.1];
+		invs[from.0].as_mut().stacks[from.1] = tmp;
 	}
 }
 
-pub fn move_n_if_possible(invs :&mut [SelectableInventory],
+pub fn move_n_if_possible(invs :&mut [impl InvRef],
 		from :(usize, usize), to :(usize, usize), count :u16) {
-	let stack_from = invs[from.0].stacks[from.1].take_n(count).0;
-	let new_stack = invs[to.0].stacks[to.1]
+	let stack_from = invs[from.0].as_mut().stacks[from.1].take_n(count).0;
+	let new_stack = invs[to.0].as_mut().stacks[to.1]
 		.put(stack_from, true, STACK_SIZE_LIMIT);
 	// Put back any residue
-	invs[from.0].stacks[from.1].put(new_stack, true, STACK_SIZE_LIMIT);
+	invs[from.0].as_mut().stacks[from.1].put(new_stack, true, STACK_SIZE_LIMIT);
+}
+
+pub trait InvRef {
+	fn as_mut(&mut self) -> &mut SelectableInventory;
+}
+
+impl InvRef for SelectableInventory {
+	fn as_mut(&mut self) -> &mut SelectableInventory {
+		self
+	}
 }
 
 #[derive(Serialize, Deserialize, Clone)]
