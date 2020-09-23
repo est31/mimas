@@ -8,7 +8,7 @@ use glium::glutin::event::{KeyboardInput, VirtualKeyCode,
 	ElementState, MouseButton};
 use glium::glutin::dpi::PhysicalPosition;
 use glium_glyph::glyph_brush::GlyphCruncher;
-use mimas_server::inventory::{SelectableInventory, Stack,
+use mimas_server::inventory::{self, SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
 use mimas_server::crafting::get_matching_recipe;
 use mimas_server::game_params::GameParamsHdl;
@@ -471,12 +471,12 @@ impl InventoryMenu {
 				// Putting into the crafting menu is not possible
 			} else {
 				if button == MouseButton::Left {
-					SelectableInventory::merge_or_swap(
+					inventory::merge_or_swap(
 						&mut self.invs,
 						from_pos, to_pos);
 				}
 				if button == MouseButton::Right {
-					SelectableInventory::move_n_if_possible(
+					inventory::move_n_if_possible(
 						&mut self.invs,
 						from_pos, to_pos, 1);
 				}
@@ -584,12 +584,12 @@ impl ChestMenu {
 		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if button == MouseButton::Left {
-				SelectableInventory::merge_or_swap(
+				inventory::merge_or_swap(
 					&mut self.invs,
 					from_pos, to_pos);
 			}
 			if button == MouseButton::Right {
-				SelectableInventory::move_n_if_possible(
+				inventory::move_n_if_possible(
 					&mut self.invs,
 					from_pos, to_pos, 1);
 			}
