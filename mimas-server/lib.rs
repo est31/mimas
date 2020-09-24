@@ -53,7 +53,7 @@ use std::fmt::Display;
 use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use crate::config::Config;
 use crate::map_storage::{PlayerIdPair, PlayerPosition};
-use crate::inventory::{SelectableInventory, Stack, InventoryPos};
+use crate::inventory::{SelectableInventory, Stack, InventoryPos, InvRef};
 use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
 use srp::server::{SrpServer, UserRecord};
@@ -907,9 +907,81 @@ impl<S :NetworkServerSocket> Server<S> {
 					},
 					SetPos(_p) => unreachable!(),
 					SetInventory(_inv) => unreachable!(),
-					InventorySwap(_from_pos, _to_pos) => {
-						// TODO handle
-						unimplemented!()
+
+					InventorySwap(from_pos, to_pos) => {
+						// Inventory movement (or swapping)
+
+						// Create a temporary RefCell so that we can have code that
+						// seems to access self.map twice.
+						// Note though that we forbid moving between two different
+						// chests in the map by a manual check, so there won't be
+						// an instance where the RefCell is borrowed twice at the same time.
+						let map_cell = RefCell::new(&mut self.map);
+
+						// Helper macro to save us some repetitive code
+						macro_rules! do_for_inv_ref {
+							($location:expr, $name:ident, $thing:expr) => {
+								if let Some(p) = $location {
+									// Move between two locations inside the chest
+									if let Some(mut hdl) = map_cell.borrow_mut().get_blk_meta_mut(p) {
+										if let Some(MetadataEntry::Inventory(inv)) = hdl.get().clone() {
+											let mut $name = inv.clone();
+											let invs = $thing;
+											hdl.set(MetadataEntry::Inventory(invs.0));
+											invs.1
+										} else {
+											// TODO log something about no metadata present
+											continue;
+										}
+										// TODO send chunk update or something
+									} else {
+										// TODO log something about an attempted action in an unloaded chunk
+										continue;
+									}
+								} else {
+									// Move inside the player's inventory
+									let mut players = self.players.borrow_mut();
+									let player = &mut players.get_mut(&id).unwrap();
+									let mut $name = &mut player.inventory;
+
+									let invs = $thing;
+
+									// TODO maybe send changed inventory to player?
+
+									invs.1
+								}
+							};
+						}
+
+						if from_pos.location == to_pos.location {
+							// Move inside the same inventory
+							let (from, to) = ((0, from_pos.stack_pos), (0, to_pos.stack_pos));
+							do_for_inv_ref!(from_pos.location, inv, {
+								{
+									let mut invs = [(&mut inv) as &mut SelectableInventory];
+									inventory::merge_or_swap(&mut invs, from, to);
+								}
+								(inv, ())
+							});
+						} else {
+							if from_pos.location.is_some() && to_pos.location.is_some() {
+								// TODO log something about attempted move between two chests.
+								// For now, this is unsupported (and would panic anyways due to the RefCell).
+								continue;
+							}
+							// Move between different inventories
+							let (from, to) = ((0, from_pos.stack_pos), (1, to_pos.stack_pos));
+							do_for_inv_ref!(from_pos.location, inv_from, {
+								let inv_from = do_for_inv_ref!(to_pos.location, inv_to, {
+									{
+										let mut invs = [(&mut inv_from) as &mut dyn InvRef, (&mut inv_to) as &mut dyn InvRef];
+										inventory::merge_or_swap(&mut invs, from, to);
+									}
+									(inv_to, inv_from,)
+								});
+								(inv_from, (),)
+							});
+						}
 					},
 					Chat(m) => {
 						if m.starts_with('/') {

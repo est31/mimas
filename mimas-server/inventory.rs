@@ -278,10 +278,18 @@ impl InvRef for SelectableInventory {
 	}
 }
 
+impl<'a, T: InvRef + ?Sized> InvRef for &'a mut T {
+	fn as_mut(&mut self) -> &mut SelectableInventory {
+		let t : &mut T = &mut *self;
+		t.as_mut()
+	}
+}
+
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InventoryPos {
-	stack_pos :usize,
+	pub stack_pos :usize,
 	/// None if the local player's inventory.
 	/// Some(pos) if chest at given position.
-	location :Option<Vector3<isize>>,
+	pub location :Option<Vector3<isize>>,
 }
