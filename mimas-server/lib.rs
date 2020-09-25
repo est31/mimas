@@ -925,7 +925,6 @@ impl<S :NetworkServerSocket> Server<S> {
 											// TODO log something about no metadata present
 											continue;
 										}
-										// TODO send chunk update or something
 									} else {
 										// TODO log something about an attempted action in an unloaded chunk
 										continue;
