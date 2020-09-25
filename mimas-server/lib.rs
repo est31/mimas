@@ -42,8 +42,8 @@ pub mod game_params;
 pub mod toml_util;
 pub mod server;
 
-// TODO remove the blanket export
-pub use server::*;
+pub use server::{ClientToServerMsg, ServerToClientMsg, Server, btchn};
+pub(crate) use server::btpic;
 
 use std::fmt::Display;
 
