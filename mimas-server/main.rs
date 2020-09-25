@@ -3,7 +3,8 @@
 extern crate mimas_server;
 extern crate structopt;
 
-use mimas_server::{Server, StrErr};
+use anyhow::Result;
+use mimas_server::Server;
 //use mimas_server::generic_net::TcpServerSocket;
 use mimas_server::quic_net::QuicServerSocket;
 use mimas_server::config::load_config;
@@ -19,7 +20,7 @@ struct Options {
 	listen_addr :Option<String>,
 }
 
-fn main() -> Result<(), StrErr> {
+fn main() -> Result<()> {
 	let options = Options::from_args();
 
 	let server_socket = if let Some(addr) = options.listen_addr {

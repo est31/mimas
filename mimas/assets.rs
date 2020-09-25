@@ -1,5 +1,4 @@
-use anyhow::{anyhow, bail};
-use mimas_server::StrErr;
+use anyhow::{anyhow, bail, Result};
 use mimas_server::game_params::{GameParamsHdl, DrawStyle};
 
 use std::fs::File;
@@ -20,7 +19,7 @@ pub struct Assets {
 	assets :Vec<(Vec<f32>, (u32, u32))>,
 }
 
-fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage, StrErr> {
+fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage> {
 	let hash = game_params.texture_hashes.get(&path.to_owned());
 	let hash = if let Some(hash) = hash {
 		hash
@@ -47,7 +46,7 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 	Ok(img.to_rgba())
 }
 
-pub fn find_uncached_hashes(game_params :&GameParamsHdl) -> Result<Vec<Vec<u8>>, StrErr> {
+pub fn find_uncached_hashes(game_params :&GameParamsHdl) -> Result<Vec<Vec<u8>>> {
 	let cache_dir = cache_dir()?;
 	let mut uncached_hashes = Vec::new();
 	for (_path, hash) in game_params.texture_hashes.iter() {
@@ -83,12 +82,12 @@ fn format_hex(hex :&[u8]) -> String {
 	hex
 }
 
-fn cache_dir() -> Result<PathBuf, StrErr> {
+fn cache_dir() -> Result<PathBuf> {
 	Ok(dirs::cache_dir().ok_or_else(|| anyhow!("Couldn't find cache dir"))?
 		.join("mimas").join("asset-cache"))
 }
 
-pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), StrErr> {
+pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<()> {
 	let cache_dir = cache_dir()?;
 	// Avoid creating a directory if there are no blobs to store
 	if hashed_blobs.len() == 0 {
@@ -102,12 +101,12 @@ pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), Str
 	Ok(())
 }
 
-fn load_image(game_params :&GameParamsHdl, path :&str, opaque :bool) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
+fn load_image(game_params :&GameParamsHdl, path :&str, opaque :bool) -> Result<(Vec<f32>, (u32, u32))> {
 	let mut imgs_iter = path.split("^")
 		.map(|p| load_image_inner(game_params, p));
 	let mut image = imgs_iter.next()
 		.ok_or_else(|| anyhow!("No image path specified"))??;
-	let imgs = imgs_iter.collect::<Result<Vec<_>, StrErr>>()?;
+	let imgs = imgs_iter.collect::<Result<Vec<_>>>()?;
 	for overlay in imgs.iter() {
 		image.pixels_mut()
 			.zip(overlay.pixels())
@@ -201,7 +200,7 @@ impl Assets {
 		self.add_asset((pixels, (16, 16)))
 	}
 	pub fn into_texture_array<F: Facade>(self,
-			facade :&F) -> Result<SrgbTexture2dArray, StrErr> {
+			facade :&F) -> Result<SrgbTexture2dArray> {
 		let imgs = self.assets.into_iter()
 			.map(|(pixels, dimensions)| {
 				RawImage2d::from_raw_rgba_reversed(&pixels, dimensions)

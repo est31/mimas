@@ -46,7 +46,7 @@ pub mod server;
 pub use server::{ClientToServerMsg, ServerToClientMsg, Server, btchn};
 pub(crate) use server::btpic;
 
-pub use anyhow::Error as StrErr;
+pub(crate) use anyhow::Error as StrErr;
 /*
 #[derive(Debug)]
 pub struct StrErr(String);

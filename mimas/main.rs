@@ -29,8 +29,9 @@ use client::Game;
 
 use structopt::StructOpt;
 
+use anyhow::Result;
 use std::thread;
-use mimas_server::{Server, StrErr};
+use mimas_server::Server;
 use mimas_server::generic_net::{MpscServerSocket, NetworkClientConn};
 use mimas_server::quic_net::QuicClientConn;
 use mimas_server::config::load_config;
@@ -52,7 +53,7 @@ struct Options {
 	pw :Option<String>,
 }
 
-fn main() -> Result<(), StrErr> {
+fn main() -> Result<()> {
 
 	let options = Options::from_args();
 	let config = load_config();
