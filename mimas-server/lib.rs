@@ -768,13 +768,10 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	pub fn run_loop(&mut self) {
 		loop {
-			let exit = self.tick();
-			if exit {
-				break;
-			}
+			self.tick();
 		}
 	}
-	fn tick(&mut self) -> bool {
+	fn tick(&mut self) {
 		let positions = self.players.borrow().iter()
 			.map(|(_, player)| {
 				(btchn(player.pos.pos().map(|v| v as isize)), player.last_chunk_pos)
@@ -792,7 +789,6 @@ impl<S :NetworkServerSocket> Server<S> {
 		self.send_positions_to_players();
 		self.map.tick();
 		let _float_delta = self.update_fps();
-		let exit = false;
 		while let Some(conn) = self.srv_socket.try_open_conn() {
 			if self.is_singleplayer {
 				let id = PlayerIdPair::singleplayer();
@@ -1005,7 +1001,6 @@ impl<S :NetworkServerSocket> Server<S> {
 				},
 			}
 		}
-		exit
 	}
 }
 
