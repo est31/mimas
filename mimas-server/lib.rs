@@ -768,241 +768,244 @@ impl<S :NetworkServerSocket> Server<S> {
 	}
 	pub fn run_loop(&mut self) {
 		loop {
-			let positions = self.players.borrow().iter()
-				.map(|(_, player)| {
-					(btchn(player.pos.pos().map(|v| v as isize)), player.last_chunk_pos)
-				})
-				.filter(|(cp, lcp)| cp != lcp)
-				.map(|(cp, _lcp)| cp)
-				.collect::<Vec<_>>();
-			for pos in positions {
-				gen_chunks_around(&mut self.map,
-					pos.map(|v| v as isize),
-					self.config.mapgen_radius_xy,
-					self.config.mapgen_radius_z);
-			}
-			self.send_chunks_to_players();
-			self.send_positions_to_players();
-			self.map.tick();
-			let _float_delta = self.update_fps();
-			let exit = false;
-			while let Some(conn) = self.srv_socket.try_open_conn() {
-				if self.is_singleplayer {
-					let id = PlayerIdPair::singleplayer();
-					self.add_player_waiting(conn, id, "singleplayer".to_owned());
-				} else {
-					self.unauthenticated_players.push((conn, AuthState::Unauthenticated));
-				}
-			}
-			self.handle_auth_msgs();
-			self.handle_players_waiting_for_kv();
-			self.store_player_kvs().unwrap();
-
-			let msgs = self.get_msgs();
-
-			for (id, msg) in msgs {
-				use crate::ClientToServerMsg::*;
-				match msg {
-					LogIn(..) |
-					SendHash(_) |
-					SendM1(..) => {
-						// Invalid at this state. Ignore.
-						// TODO maybe issue a warning in the log? idk
-					},
-					GetHashedBlobs(blob_list) => {
-						let hashed_blobs = blob_list.iter()
-							.filter_map(|h| self.params.textures.get(h)
-								.map(|b| (h.clone(), b.clone())))
-							.collect::<Vec<_>>();
-						let msg = ServerToClientMsg::HashedBlobs(hashed_blobs);
-						let remove_player = {
-							let player = &self.players.borrow_mut()[&id];
-							player.conn.send(msg.clone()).is_err()
-						};
-						if remove_player {
-							close_connections(&[id], &mut *self.players.borrow_mut());
-						}
-					},
-					PlaceBlock(p, sel_idx, b) => {
-						// Block to make the borrow_mut work
-						{
-							let players = &mut self.players.borrow_mut();
-							let player = players.get_mut(&id).unwrap();
-							let sel = player.inventory.get_sel_idx_and_content();
-							if Some((sel_idx, b)) != sel {
-								// TODO log something about selected inventory mismatch
-								// between client and server
-
-								// TODO Maybe send msg to the client
-								// that the block placing failed??
-								continue;
-							}
-							player.inventory.take_selected();
-							// Don't send anything to the client, its
-							// prediction was alright.
-						};
-						if let Some(mut hdl) = self.map.get_blk_mut(p) {
-							hdl.set(b);
-						} else {
-							// TODO log something about an attempted action in an unloaded chunk
-						}
-					},
-					PlaceTree(p) => {
-						map::spawn_tree(&mut self.map, p, &self.params);
-					},
-					Dig(p) => {
-						let mut remove = true;
-						if let Some(chest_meta) = self.map.get_blk_meta(p) {
-							if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
-								if !inv.is_empty() {
-									remove = false;
-								}
-							}
-						} else {
-							// TODO log something about an attempted action in an unloaded chunk
-							remove = false;
-						}
-						let mut drops = None;
-						if remove {
-							{
-								// We can unwrap here as above we set remove to false if
-								// the result is None
-								let mut hdl = self.map.get_blk_mut(p).unwrap();
-								drops = Some(self.params.p.get_block_params(hdl.get()).unwrap().drops);
-								let air_bl = self.params.p.block_roles.air;
-								hdl.set(air_bl);
-							}
-							let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
-							hdl.clear();
-						} else {
-							// Send the unchanged block to the client
-							if let Some(mut hdl) = self.map.get_blk_mut(p) {
-								hdl.fake_change();
-							}
-						}
-						let remove_player = {
-							let mut players = self.players.borrow_mut();
-							let player = &mut players.get_mut(&id).unwrap();
-							if remove {
-								// If we remove the block, put the dropped item
-								// into the inventory. Send the new inventory to
-								// the client in any case to override any
-								// possibly mistaken local prediction.
-								player.inventory.put(drops.unwrap());
-							}
-							let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
-							player.conn.send(msg).is_err()
-						};
-						if remove_player {
-							close_connections(&[id], &mut *self.players.borrow_mut());
-						}
-					},
-					SetPos(_p) => unreachable!(),
-					SetInventory(_inv) => unreachable!(),
-
-					InventorySwap(from_pos, to_pos, only_move_one) => {
-						// Inventory movement (or swapping)
-
-						// Create a temporary RefCell so that we can have code that
-						// seems to access self.map twice.
-						// Note though that we forbid moving between two different
-						// chests in the map by a manual check, so there won't be
-						// an instance where the RefCell is borrowed twice at the same time.
-						let map_cell = RefCell::new(&mut self.map);
-
-						// Helper macro to save us some repetitive code
-						macro_rules! do_for_inv_ref {
-							($location:expr, $name:ident, $thing:expr) => {
-								if let Some(p) = $location {
-									// Move between two locations inside the chest
-									if let Some(mut hdl) = map_cell.borrow_mut().get_blk_meta_mut(p) {
-										if let Some(MetadataEntry::Inventory(inv)) = hdl.get().clone() {
-											let mut $name = inv.clone();
-											let invs = $thing;
-											hdl.set(MetadataEntry::Inventory(invs.0));
-											invs.1
-										} else {
-											// TODO log something about no metadata present
-											continue;
-										}
-									} else {
-										// TODO log something about an attempted action in an unloaded chunk
-										continue;
-									}
-								} else {
-									// Move inside the player's inventory
-
-									// Store the inventory inside a local variable so that
-									// the borrow to all players gets invalidated
-									let mut inv = {
-										let mut players = self.players.borrow_mut();
-										let player = &mut players.get_mut(&id).unwrap();
-										player.inventory.clone()
-									};
-									let mut $name = &mut inv;
-
-									let invs = $thing;
-
-									{
-										let mut players = self.players.borrow_mut();
-										let player = &mut players.get_mut(&id).unwrap();
-										player.inventory = invs.0.clone();
-									};
-									// TODO maybe send changed inventory to player?
-
-									invs.1
-								}
-							};
-						}
-
-						if from_pos.location == to_pos.location {
-							// Move inside the same inventory
-							let (from, to) = ((0, from_pos.stack_pos), (0, to_pos.stack_pos));
-							do_for_inv_ref!(from_pos.location, inv, {
-								{
-									let mut invs = [(&mut inv) as &mut SelectableInventory];
-									inventory::merge_or_move(&mut invs, from, to, only_move_one);
-								}
-								(inv, ())
-							});
-						} else {
-							if from_pos.location.is_some() && to_pos.location.is_some() {
-								// TODO log something about attempted move between two chests.
-								// For now, this is unsupported (and would panic anyways due to the RefCell).
-								continue;
-							}
-							// Move between different inventories
-							let (from, to) = ((0, from_pos.stack_pos), (1, to_pos.stack_pos));
-							do_for_inv_ref!(from_pos.location, inv_from, {
-								let inv_from = do_for_inv_ref!(to_pos.location, inv_to, {
-									{
-										let mut invs = [(&mut inv_from) as &mut dyn InvRef, (&mut inv_to) as &mut dyn InvRef];
-										inventory::merge_or_move(&mut invs, from, to, only_move_one);
-									}
-									(inv_to, inv_from,)
-								});
-								(inv_from, (),)
-							});
-						}
-					},
-					Chat(m) => {
-						if m.starts_with('/') {
-							self.handle_command(id, m);
-						} else {
-							let m = {
-								let nick = &self.players.borrow()[&id].nick;
-								format!("<{}> {}", nick, m)
-							};
-							self.handle_chat_msg(m);
-						}
-					},
-				}
-			}
-
+			let exit = self.tick();
 			if exit {
 				break;
 			}
 		}
+	}
+	fn tick(&mut self) -> bool {
+		let positions = self.players.borrow().iter()
+			.map(|(_, player)| {
+				(btchn(player.pos.pos().map(|v| v as isize)), player.last_chunk_pos)
+			})
+			.filter(|(cp, lcp)| cp != lcp)
+			.map(|(cp, _lcp)| cp)
+			.collect::<Vec<_>>();
+		for pos in positions {
+			gen_chunks_around(&mut self.map,
+				pos.map(|v| v as isize),
+				self.config.mapgen_radius_xy,
+				self.config.mapgen_radius_z);
+		}
+		self.send_chunks_to_players();
+		self.send_positions_to_players();
+		self.map.tick();
+		let _float_delta = self.update_fps();
+		let exit = false;
+		while let Some(conn) = self.srv_socket.try_open_conn() {
+			if self.is_singleplayer {
+				let id = PlayerIdPair::singleplayer();
+				self.add_player_waiting(conn, id, "singleplayer".to_owned());
+			} else {
+				self.unauthenticated_players.push((conn, AuthState::Unauthenticated));
+			}
+		}
+		self.handle_auth_msgs();
+		self.handle_players_waiting_for_kv();
+		self.store_player_kvs().unwrap();
+
+		let msgs = self.get_msgs();
+
+		for (id, msg) in msgs {
+			use crate::ClientToServerMsg::*;
+			match msg {
+				LogIn(..) |
+				SendHash(_) |
+				SendM1(..) => {
+					// Invalid at this state. Ignore.
+					// TODO maybe issue a warning in the log? idk
+				},
+				GetHashedBlobs(blob_list) => {
+					let hashed_blobs = blob_list.iter()
+						.filter_map(|h| self.params.textures.get(h)
+							.map(|b| (h.clone(), b.clone())))
+						.collect::<Vec<_>>();
+					let msg = ServerToClientMsg::HashedBlobs(hashed_blobs);
+					let remove_player = {
+						let player = &self.players.borrow_mut()[&id];
+						player.conn.send(msg.clone()).is_err()
+					};
+					if remove_player {
+						close_connections(&[id], &mut *self.players.borrow_mut());
+					}
+				},
+				PlaceBlock(p, sel_idx, b) => {
+					// Block to make the borrow_mut work
+					{
+						let players = &mut self.players.borrow_mut();
+						let player = players.get_mut(&id).unwrap();
+						let sel = player.inventory.get_sel_idx_and_content();
+						if Some((sel_idx, b)) != sel {
+							// TODO log something about selected inventory mismatch
+							// between client and server
+
+							// TODO Maybe send msg to the client
+							// that the block placing failed??
+							continue;
+						}
+						player.inventory.take_selected();
+						// Don't send anything to the client, its
+						// prediction was alright.
+					};
+					if let Some(mut hdl) = self.map.get_blk_mut(p) {
+						hdl.set(b);
+					} else {
+						// TODO log something about an attempted action in an unloaded chunk
+					}
+				},
+				PlaceTree(p) => {
+					map::spawn_tree(&mut self.map, p, &self.params);
+				},
+				Dig(p) => {
+					let mut remove = true;
+					if let Some(chest_meta) = self.map.get_blk_meta(p) {
+						if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
+							if !inv.is_empty() {
+								remove = false;
+							}
+						}
+					} else {
+						// TODO log something about an attempted action in an unloaded chunk
+						remove = false;
+					}
+					let mut drops = None;
+					if remove {
+						{
+							// We can unwrap here as above we set remove to false if
+							// the result is None
+							let mut hdl = self.map.get_blk_mut(p).unwrap();
+							drops = Some(self.params.p.get_block_params(hdl.get()).unwrap().drops);
+							let air_bl = self.params.p.block_roles.air;
+							hdl.set(air_bl);
+						}
+						let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
+						hdl.clear();
+					} else {
+						// Send the unchanged block to the client
+						if let Some(mut hdl) = self.map.get_blk_mut(p) {
+							hdl.fake_change();
+						}
+					}
+					let remove_player = {
+						let mut players = self.players.borrow_mut();
+						let player = &mut players.get_mut(&id).unwrap();
+						if remove {
+							// If we remove the block, put the dropped item
+							// into the inventory. Send the new inventory to
+							// the client in any case to override any
+							// possibly mistaken local prediction.
+							player.inventory.put(drops.unwrap());
+						}
+						let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
+						player.conn.send(msg).is_err()
+					};
+					if remove_player {
+						close_connections(&[id], &mut *self.players.borrow_mut());
+					}
+				},
+				SetPos(_p) => unreachable!(),
+				SetInventory(_inv) => unreachable!(),
+
+				InventorySwap(from_pos, to_pos, only_move_one) => {
+					// Inventory movement (or swapping)
+
+					// Create a temporary RefCell so that we can have code that
+					// seems to access self.map twice.
+					// Note though that we forbid moving between two different
+					// chests in the map by a manual check, so there won't be
+					// an instance where the RefCell is borrowed twice at the same time.
+					let map_cell = RefCell::new(&mut self.map);
+
+					// Helper macro to save us some repetitive code
+					macro_rules! do_for_inv_ref {
+						($location:expr, $name:ident, $thing:expr) => {
+							if let Some(p) = $location {
+								// Move between two locations inside the chest
+								if let Some(mut hdl) = map_cell.borrow_mut().get_blk_meta_mut(p) {
+									if let Some(MetadataEntry::Inventory(inv)) = hdl.get().clone() {
+										let mut $name = inv.clone();
+										let invs = $thing;
+										hdl.set(MetadataEntry::Inventory(invs.0));
+										invs.1
+									} else {
+										// TODO log something about no metadata present
+										continue;
+									}
+								} else {
+									// TODO log something about an attempted action in an unloaded chunk
+									continue;
+								}
+							} else {
+								// Move inside the player's inventory
+
+								// Store the inventory inside a local variable so that
+								// the borrow to all players gets invalidated
+								let mut inv = {
+									let mut players = self.players.borrow_mut();
+									let player = &mut players.get_mut(&id).unwrap();
+									player.inventory.clone()
+								};
+								let mut $name = &mut inv;
+
+								let invs = $thing;
+
+								{
+									let mut players = self.players.borrow_mut();
+									let player = &mut players.get_mut(&id).unwrap();
+									player.inventory = invs.0.clone();
+								};
+								// TODO maybe send changed inventory to player?
+
+								invs.1
+							}
+						};
+					}
+
+					if from_pos.location == to_pos.location {
+						// Move inside the same inventory
+						let (from, to) = ((0, from_pos.stack_pos), (0, to_pos.stack_pos));
+						do_for_inv_ref!(from_pos.location, inv, {
+							{
+								let mut invs = [(&mut inv) as &mut SelectableInventory];
+								inventory::merge_or_move(&mut invs, from, to, only_move_one);
+							}
+							(inv, ())
+						});
+					} else {
+						if from_pos.location.is_some() && to_pos.location.is_some() {
+							// TODO log something about attempted move between two chests.
+							// For now, this is unsupported (and would panic anyways due to the RefCell).
+							continue;
+						}
+						// Move between different inventories
+						let (from, to) = ((0, from_pos.stack_pos), (1, to_pos.stack_pos));
+						do_for_inv_ref!(from_pos.location, inv_from, {
+							let inv_from = do_for_inv_ref!(to_pos.location, inv_to, {
+								{
+									let mut invs = [(&mut inv_from) as &mut dyn InvRef, (&mut inv_to) as &mut dyn InvRef];
+									inventory::merge_or_move(&mut invs, from, to, only_move_one);
+								}
+								(inv_to, inv_from,)
+							});
+							(inv_from, (),)
+						});
+					}
+				},
+				Chat(m) => {
+					if m.starts_with('/') {
+						self.handle_command(id, m);
+					} else {
+						let m = {
+							let nick = &self.players.borrow()[&id].nick;
+							format!("<{}> {}", nick, m)
+						};
+						self.handle_chat_msg(m);
+					}
+				},
+			}
+		}
+		exit
 	}
 }
 
