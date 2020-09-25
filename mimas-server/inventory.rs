@@ -1,11 +1,10 @@
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use crate::map::MapBlock;
 use std::num::NonZeroU16;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use nalgebra::Vector3;
 use crate::game_params::{NameIdMap, Id};
-use crate::StrErr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SelectableInventory {
@@ -201,11 +200,11 @@ impl SelectableInventory {
 			res.write_u16::<BigEndian>(count).unwrap();
 		}
 	}
-	pub fn deserialize(buf :&[u8], m :&NameIdMap) -> Result<Self, StrErr> {
+	pub fn deserialize(buf :&[u8], m :&NameIdMap) -> Result<Self> {
 		Self::deserialize_rdr(buf, m)
 	}
 
-	pub fn deserialize_rdr(mut rdr :impl Read, m :&NameIdMap) -> Result<Self, StrErr> {
+	pub fn deserialize_rdr(mut rdr :impl Read, m :&NameIdMap) -> Result<Self> {
 		let version = rdr.read_u8()?;
 		if version != 0 {
 			// The version is too recent

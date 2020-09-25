@@ -1,11 +1,10 @@
-
+use anyhow::Result;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::net::{TcpStream, TcpListener, SocketAddr, ToSocketAddrs};
 use std::io::{Read, Write, Error as IoError, ErrorKind};
 use std::mem::replace;
 use crate::{ClientToServerMsg, ServerToClientMsg};
 use bincode::{serialize, deserialize};
-use crate::StrErr;
 
 pub trait NetworkServerSocket {
 	type Conn :NetworkServerConn + 'static;
@@ -250,7 +249,7 @@ impl TcpClientConn {
 			stream : TcpMsgStream::from_tcp_stream(tcp_stream),
 		}
 	}
-	pub fn from_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
+	pub fn from_socket_addr(addr :impl ToSocketAddrs) -> Result<Self> {
 		let tcp_stream = TcpStream::connect(addr)?;
 		Ok(TcpClientConn::from_stream(tcp_stream))
 	}
@@ -274,10 +273,10 @@ impl NetworkServerSocket for TcpServerSocket {
 }
 
 impl TcpServerSocket {
-	pub fn new() -> Result<Self, StrErr> {
+	pub fn new() -> Result<Self> {
 		Self::with_socket_addr("127.0.0.1:7700")
 	}
-	pub fn with_socket_addr(addr :impl ToSocketAddrs) -> Result<Self, StrErr> {
+	pub fn with_socket_addr(addr :impl ToSocketAddrs) -> Result<Self> {
 		let listener = TcpListener::bind(addr)?;
 		listener.set_nonblocking(true)?;
 		Ok(TcpServerSocket {

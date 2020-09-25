@@ -6,7 +6,7 @@ use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
 use crate::inventory::{self, SelectableInventory, Stack, InventoryPos, InvRef};
 use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
-use crate::StrErr;
+use anyhow::Result;
 use nalgebra::Vector3;
 use std::time::{Instant, Duration};
 use std::thread;
@@ -485,12 +485,12 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		Ok(())
 	}
-	fn store_player_kvs(&mut self) -> Result<(), StrErr> {
+	fn store_player_kvs(&mut self) -> Result<()> {
 		self.store_player_positions()?;
 		self.store_player_inventories()?;
 		Ok(())
 	}
-	fn store_player_inventories(&mut self) -> Result<(), StrErr> {
+	fn store_player_inventories(&mut self) -> Result<()> {
 		// Store the player inventories at each update instead of at certain
 		// intervals because in general, intervals don't change around.
 		let players = self.players.clone();
@@ -503,7 +503,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		Ok(())
 	}
-	fn store_player_positions(&mut self) -> Result<(), StrErr> {
+	fn store_player_positions(&mut self) -> Result<()> {
 		// This limiting makes sure we don't store the player positions
 		// too often as that would mean too much wear on the hdd
 		// and cause massive mapgen thread lag.

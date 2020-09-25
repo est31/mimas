@@ -1,5 +1,5 @@
+use anyhow::Result;
 use rusqlite::{Connection, NO_PARAMS, OpenFlags};
-use crate::StrErr;
 use std::path::Path;
 
 /// Open or create a new database connection,
@@ -8,7 +8,7 @@ use std::path::Path;
 /// Returns `(conn, created)` with `conn` being a connection
 /// to a possibly new db file and `created` being true if creation
 /// was neccessary.
-pub fn open_or_create_db(path :impl AsRef<Path> + Clone) -> Result<(Connection, bool), StrErr> {
+pub fn open_or_create_db(path :impl AsRef<Path> + Clone) -> Result<(Connection, bool)> {
 	// SQLite doesn't tell us whether a newly opened sqlite file has been
 	// existing on disk previously, or just been created.
 	// Thus, we need to do two calls: first one which doesn't auto-create,
@@ -26,22 +26,22 @@ pub fn open_or_create_db(path :impl AsRef<Path> + Clone) -> Result<(Connection, 
 	}
 }
 
-pub fn get_user_version(conn :&mut Connection) -> Result<u16, StrErr> {
+pub fn get_user_version(conn :&mut Connection) -> Result<u16> {
 	let r = conn.query_row("PRAGMA user_version;", NO_PARAMS, |v| v.get(0))?;
 	Ok(r)
 }
-pub fn set_user_version(conn :&mut Connection, version :u16) -> Result<(), StrErr> {
+pub fn set_user_version(conn :&mut Connection, version :u16) -> Result<()> {
 	// Apparently sqlite wants you to be exposed to bobby tables shit
 	// because they don't allow you to use ? or other methods to avoid
 	// string formatting :/.
 	conn.execute(&format!("PRAGMA user_version = {};", version), NO_PARAMS)?;
 	Ok(())
 }
-pub fn get_app_id(conn :&mut Connection) -> Result<i32, StrErr> {
+pub fn get_app_id(conn :&mut Connection) -> Result<i32> {
 	let r = conn.query_row("PRAGMA application_id;", NO_PARAMS, |v| v.get(0))?;
 	Ok(r)
 }
-pub fn set_app_id(conn :&mut Connection, id :i32) -> Result<(), StrErr> {
+pub fn set_app_id(conn :&mut Connection, id :i32) -> Result<()> {
 	// Apparently sqlite wants you to be exposed to bobby tables shit
 	// because they don't allow you to use ? or other methods to avoid
 	// string formatting :/.

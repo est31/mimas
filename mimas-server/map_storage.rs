@@ -1,8 +1,7 @@
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
 use crate::map::{MapChunkData, MetadataEntry, CHUNKSIZE};
-use crate::StrErr;
 use nalgebra::Vector3;
 use std::{str, io, path::Path};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
@@ -34,7 +33,7 @@ const USER_VERSION :u16 = 2;
 /// per write really slow.
 const WRITES_PER_TRANSACTION :u32 = 50;
 
-fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
+fn init_db(conn :&mut Connection) -> Result<()> {
 	set_app_id(conn, MIMAS_SQLITE_APP_ID)?;
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
@@ -58,7 +57,7 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	Ok(())
 }
 
-fn migrate_v2(conn :&mut Connection) -> Result<(), StrErr> {
+fn migrate_v2(conn :&mut Connection) -> Result<()> {
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_kvstore (
 			id_src INTEGER,
@@ -72,7 +71,7 @@ fn migrate_v2(conn :&mut Connection) -> Result<(), StrErr> {
 	Ok(())
 }
 
-fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
+fn expect_user_ver(conn :&mut Connection) -> Result<()> {
 	let app_id = get_app_id(conn)?;
 	let user_version = get_user_version(conn)?;
 	if app_id != MIMAS_SQLITE_APP_ID {
@@ -90,7 +89,7 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 }
 
 impl SqliteStorageBackend {
-	pub fn from_conn(mut conn :Connection, freshly_created :bool) -> Result<Self, StrErr> {
+	pub fn from_conn(mut conn :Connection, freshly_created :bool) -> Result<Self> {
 		if freshly_created {
 			init_db(&mut conn)?;
 		} else {
@@ -102,11 +101,11 @@ impl SqliteStorageBackend {
 			ctr : 0,
 		})
 	}
-	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self, StrErr> {
+	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self> {
 		let (conn, freshly_created) = open_or_create_db(path)?;
 		Ok(Self::from_conn(conn, freshly_created)?)
 	}
-	fn maybe_begin_commit(&mut self) -> Result<(), StrErr> {
+	fn maybe_begin_commit(&mut self) -> Result<()> {
 		if self.ctr == 0 {
 			self.ctr = WRITES_PER_TRANSACTION;
 			if !self.conn.is_autocommit() {
@@ -157,7 +156,7 @@ fn serialize_mapchunk_data(data :&MapChunkData) -> Vec<u8> {
 	r
 }
 
-fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData, StrErr> {
+fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData> {
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
 	if version > 1 {
@@ -217,7 +216,7 @@ fn serialize_name_id_map<T :Id>(m :&NameIdMap<T>) -> Vec<u8> {
 	r
 }
 
-fn deserialize_name_id_map<T :Id>(data :&[u8]) -> Result<NameIdMap<T>, StrErr> {
+fn deserialize_name_id_map<T :Id>(data :&[u8]) -> Result<NameIdMap<T>> {
 	use std::io::Read;
 	let mut rdr = data;
 	let version = rdr.read_u8()?;
@@ -259,7 +258,7 @@ fn ensure_name_id_roundtrip() {
 
 impl StorageBackend for SqliteStorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
-			data :&MapChunkData) -> Result<(), StrErr> {
+			data :&MapChunkData) -> Result<()> {
 		let pos = pos / CHUNKSIZE;
 		let data = serialize_mapchunk_data(&data);
 		self.maybe_begin_commit()?;
@@ -268,7 +267,7 @@ impl StorageBackend for SqliteStorageBackend {
 		stmt.execute(&[&pos.x as &dyn ToSql, &pos.y, &pos.z, &data])?;
 		Ok(())
 	}
-	fn tick(&mut self) -> Result<(), StrErr> {
+	fn tick(&mut self) -> Result<()> {
 		if !self.conn.is_autocommit() {
 			self.ctr = WRITES_PER_TRANSACTION;
 			let mut stmt = self.conn.prepare_cached("COMMIT;")?;
@@ -276,7 +275,7 @@ impl StorageBackend for SqliteStorageBackend {
 		}
 		Ok(())
 	}
-	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr> {
+	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>> {
 		let pos = pos / CHUNKSIZE;
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM chunks WHERE x=? AND y=? AND z=?")?;
 		let data :Option<Vec<u8>> = stmt.query_row(
@@ -290,7 +289,7 @@ impl StorageBackend for SqliteStorageBackend {
 			Ok(None)
 		}
 	}
-	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>> {
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM kvstore WHERE kkey=?")?;
 		let data :Option<Value> = stmt.query_row(
 			&[&key],
@@ -298,14 +297,14 @@ impl StorageBackend for SqliteStorageBackend {
 		).optional()?;
 		Ok(value_to_vec(data)?)
 	}
-	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr> {
+	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<()> {
 		self.maybe_begin_commit()?;
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO kvstore (kkey, content) \
 			VALUES (?, ?);")?;
 		stmt.execute(&[&key as &dyn ToSql, &content])?;
 		Ok(())
 	}
-	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>> {
 		let mut stmt = self.conn.prepare_cached("SELECT content FROM player_kvstore WHERE id_src=? AND id=? AND kkey=?")?;
 		let data :Option<Value> = stmt.query_row(
 			&[&(id_pair.id_src()) as &dyn ToSql, &(id_pair.id_i64()), &key],
@@ -313,7 +312,7 @@ impl StorageBackend for SqliteStorageBackend {
 		).optional()?;
 		Ok(value_to_vec(data)?)
 	}
-	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr> {
+	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<()> {
 		self.maybe_begin_commit()?;
 		let mut stmt = self.conn.prepare_cached("INSERT OR REPLACE INTO player_kvstore (id_src, id, kkey, content) \
 			VALUES (?, ?, ?, ?);")?;
@@ -332,7 +331,7 @@ impl StorageBackend for SqliteStorageBackend {
 // we'll have to support reading in the Text format,
 // while also supporting the Blob format for possibly binary data.
 // [1]: https://www.sqlite.org/datatype3.html
-fn value_to_vec(v :Option<Value>) -> Result<Option<Vec<u8>>, StrErr> {
+fn value_to_vec(v :Option<Value>) -> Result<Option<Vec<u8>>> {
 	Ok(match v {
 		Some(Value::Text(s)) => Some(s.into_bytes()),
 		Some(Value::Blob(b)) => Some(b),
@@ -345,25 +344,25 @@ pub struct NullStorageBackend;
 
 impl StorageBackend for NullStorageBackend {
 	fn store_chunk(&mut self, _pos :Vector3<isize>,
-			_data :&MapChunkData) -> Result<(), StrErr> {
+			_data :&MapChunkData) -> Result<()> {
 		Ok(())
 	}
-	fn tick(&mut self) -> Result<(), StrErr> {
+	fn tick(&mut self) -> Result<()> {
 		Ok(())
 	}
-	fn load_chunk(&mut self, _pos :Vector3<isize>, _m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr> {
+	fn load_chunk(&mut self, _pos :Vector3<isize>, _m :&NameIdMap) -> Result<Option<MapChunkData>> {
 		Ok(None)
 	}
-	fn get_global_kv(&mut self, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_global_kv(&mut self, _key :&str) -> Result<Option<Vec<u8>>> {
 		Ok(None)
 	}
-	fn set_global_kv(&mut self, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
+	fn set_global_kv(&mut self, _key :&str, _content :&[u8]) -> Result<()> {
 		Ok(())
 	}
-	fn get_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str) -> Result<Option<Vec<u8>>, StrErr> {
+	fn get_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str) -> Result<Option<Vec<u8>>> {
 		Ok(None)
 	}
-	fn set_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str, _content :&[u8]) -> Result<(), StrErr> {
+	fn set_player_kv(&mut self, _id_pair :PlayerIdPair, _key :&str, _content :&[u8]) -> Result<()> {
 		Ok(())
 	}
 }
@@ -416,7 +415,7 @@ fn test_player_id_pair() {
 
 // This function is not generic on the backend because of a limitation of the language:
 // Box<dyn Trait> does not impl Trait.
-pub(crate) fn load_name_id_map(backend :&mut DynStorageBackend) -> Result<NameIdMap, StrErr> {
+pub(crate) fn load_name_id_map(backend :&mut DynStorageBackend) -> Result<NameIdMap> {
 	let buf = if let Some(v) = backend.get_global_kv("name_id_map")? {
 		v
 	} else {
@@ -428,7 +427,7 @@ pub(crate) fn load_name_id_map(backend :&mut DynStorageBackend) -> Result<NameId
 
 // This function is not generic on the backend because of a limitation of the language:
 // Box<dyn Trait> does not impl Trait.
-pub(crate) fn save_name_id_map(backend :&mut DynStorageBackend, nm :&NameIdMap) -> Result<(), StrErr> {
+pub(crate) fn save_name_id_map(backend :&mut DynStorageBackend, nm :&NameIdMap) -> Result<()> {
 	let buf = serialize_name_id_map(nm);
 	backend.set_global_kv("name_id_map", &buf)?;
 	Ok(())
@@ -440,7 +439,7 @@ pub struct MapgenMetaToml {
 	mapgen_name :String,
 }
 
-fn load_mapgen_meta_toml<B :StorageBackend>(backend :&mut B) -> Result<Option<MapgenMetaToml>, StrErr> {
+fn load_mapgen_meta_toml<B :StorageBackend>(backend :&mut B) -> Result<Option<MapgenMetaToml>> {
 	let mapgen_meta_arr = if let Some(v) = backend.get_global_kv("mapgen_meta")? {
 		v
 	} else {
@@ -451,13 +450,13 @@ fn load_mapgen_meta_toml<B :StorageBackend>(backend :&mut B) -> Result<Option<Ma
 	Ok(Some(mapgen_meta))
 }
 
-fn save_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, m :&MapgenMetaToml) -> Result<(), StrErr> {
+fn save_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, m :&MapgenMetaToml) -> Result<()> {
 	let mapgen_meta_str = to_string(m)?;
 	backend.set_global_kv("mapgen_meta", mapgen_meta_str.as_bytes())?;
 	Ok(())
 }
 
-fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Config) -> Result<(), StrErr> {
+fn manage_mapgen_meta_toml<B :StorageBackend>(backend :&mut B, config :&mut Config) -> Result<()> {
 	if let Some(mapgen_meta) = load_mapgen_meta_toml(backend)? {
 		// If a seed already exists, use it
 		config.mapgen_seed = mapgen_meta.seed;
@@ -515,7 +514,7 @@ impl PlayerPosition {
 	pub fn yaw(&self) -> f32 {
 		self.yaw
 	}
-	pub fn deserialize(buf :&[u8]) -> Result<Self, StrErr> {
+	pub fn deserialize(buf :&[u8]) -> Result<Self> {
 		let serialized_str = str::from_utf8(buf)?;
 		let deserialized = from_str(serialized_str)?;
 		Ok(deserialized)
@@ -569,11 +568,11 @@ pub fn backends_from_config(config :&mut Config, auth_needed :bool)
 
 pub trait StorageBackend {
 	fn store_chunk(&mut self, pos :Vector3<isize>,
-			data :&MapChunkData) -> Result<(), StrErr>;
-	fn tick(&mut self) -> Result<(), StrErr>;
-	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>, StrErr>;
-	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
-	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<(), StrErr>;
-	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>, StrErr>;
-	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<(), StrErr>;
+			data :&MapChunkData) -> Result<()>;
+	fn tick(&mut self) -> Result<()>;
+	fn load_chunk(&mut self, pos :Vector3<isize>, m :&NameIdMap) -> Result<Option<MapChunkData>>;
+	fn get_global_kv(&mut self, key :&str) -> Result<Option<Vec<u8>>>;
+	fn set_global_kv(&mut self, key :&str, content :&[u8]) -> Result<()>;
+	fn get_player_kv(&mut self, id_pair :PlayerIdPair, key :&str) -> Result<Option<Vec<u8>>>;
+	fn set_player_kv(&mut self, id_pair :PlayerIdPair, key :&str, content :&[u8]) -> Result<()>;
 }

@@ -1,6 +1,6 @@
+use anyhow::Result;
 use std::fs::read_to_string;
 use toml::from_str;
-use super::StrErr;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
@@ -61,7 +61,7 @@ impl Default for Config {
 	}
 }
 
-pub fn load_config_failible() -> Result<Config, StrErr> {
+pub fn load_config_failible() -> Result<Config> {
 	let file_str = read_to_string("settings.toml")?;
 	let res = from_str(&file_str)?;
 	Ok(res)

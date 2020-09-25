@@ -1,14 +1,13 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use toml::value::{Value, Datetime, Array, Table};
-use crate::StrErr;
 
 pub trait TomlReadExt {
-	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T, StrErr>;
-	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T, StrErr>;
+	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T>;
+	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T>;
 }
 
 impl TomlReadExt for Value {
-	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T, StrErr> {
+	fn read<T :?Sized + TomlValue>(&self, key :&str) -> Result<&T> {
 		let val = self.get(key)
 			.ok_or_else(|| {
 				anyhow!("key {} not found", key)
@@ -20,7 +19,7 @@ impl TomlReadExt for Value {
 			})?;
 		Ok(res)
 	}
-	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T, StrErr> {
+	fn convert<T :?Sized + TomlValue>(&self) -> Result<&T> {
 		let res = <T as TomlValue>::try_conversion(self)
 			.ok_or_else(|| {
 				anyhow!("expected type {}", <T as TomlValue>::TYPE_NAME)

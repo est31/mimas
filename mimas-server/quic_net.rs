@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::{SocketAddr, ToSocketAddrs};
 use crate::StrErr;
@@ -48,7 +49,7 @@ impl rustls::ServerCertVerifier for NullVerifier {
 	}
 }
 
-fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<(), StrErr> {
+fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<()> {
 
 	let mut server_config = quinn::generic::ServerConfigBuilder::default();
 	let cert = rcgen::generate_simple_self_signed(vec!["mimas-host".into()])?;
@@ -146,7 +147,7 @@ fn spawn_msg_rcv_task(rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
 }
 
 fn run_quinn_client(url :impl ToSocketAddrs,
-		mut to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<(), StrErr> {
+		mut to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<()> {
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
 	let mut endpoint = EndpointBuilder::default();
@@ -247,7 +248,7 @@ pub type QuicClientConn = MsgStreamClientConn<QuicMsgStream>;
 pub type QuicServerConn = MsgStreamServerConn<QuicMsgStream>;
 
 impl QuicClientConn {
-	pub fn from_socket_addr(addr :&SocketAddr) -> Result<Self, StrErr> {
+	pub fn from_socket_addr(addr :&SocketAddr) -> Result<Self> {
 		let (stream, rcv, snd) = QuicMsgStream::new();
 		let addr = addr.clone();
 		thread::spawn(move || {
@@ -265,11 +266,11 @@ pub struct QuicServerSocket {
 }
 
 impl QuicServerSocket {
-	pub fn new() -> Result<Self, StrErr> {
+	pub fn new() -> Result<Self> {
 		let addr = "127.0.0.1:7700".parse().unwrap();
 		Self::with_socket_addr(&addr)
 	}
-	pub fn with_socket_addr(addr :&SocketAddr) -> Result<Self, StrErr> {
+	pub fn with_socket_addr(addr :&SocketAddr) -> Result<Self> {
 		let addr = addr.clone();
 		let (conn_send, conn_recv) = channel();
 

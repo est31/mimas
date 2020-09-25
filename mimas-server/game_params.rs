@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use crate::crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
@@ -6,7 +6,6 @@ use toml::value::{Value, Array, Table};
 use std::fs::{read_to_string, File};
 use std::path::Path;
 use crate::map::MapBlock;
-use super::StrErr;
 use crate::toml_util::TomlReadExt;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -192,7 +191,7 @@ impl Default for BlockParams {
 }
 
 impl BlockRoles {
-	fn with_get_id(get_id :impl Fn(&'static str) -> Result<MapBlock, StrErr>) -> Result<Self, StrErr> {
+	fn with_get_id(get_id :impl Fn(&'static str) -> Result<MapBlock>) -> Result<Self> {
 		Ok(Self {
 			air : get_id("default:air")?,
 			water : get_id("default:water")?,
@@ -206,14 +205,14 @@ impl BlockRoles {
 			cactus : get_id("default:cactus")?,
 		})
 	}
-	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
+	pub fn new(m :&NameIdMap) -> Result<Self> {
 		let get_id = |n| {
 			m.get_id(n)
 				.ok_or_else(|| anyhow!("Couldn't find id for builtin role '{}'", n))
 		};
 		Self::with_get_id(get_id)
 	}
-	pub fn dummy(m :&NameIdMap) -> Result<Self, StrErr> {
+	pub fn dummy(m :&NameIdMap) -> Result<Self> {
 		let get_id = |n| {
 			m.get_id(n)
 				.ok_or_else(|| anyhow!("Couldn't find id for builtin role '{}'", n))
@@ -350,7 +349,7 @@ impl ServerGameParams {
 
 /// Ensures that the modname:name format is used and
 /// returns (modname, name) tuple if it is
-pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
+pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str)> {
 	fn check_chars(v :&str) -> bool {
 		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
 	}
@@ -369,7 +368,7 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 }
 
 pub fn resolve_dig_group_specifier(nm :&mut NameIdMap<DigGroup>, sp :&str)
-		-> Result<(DigGroup, u16), StrErr> {
+		-> Result<(DigGroup, u16)> {
 	let mut nit = sp.split(' ');
 	if let (Some(name), Some(hardness), None) = (nit.next(), nit.next(), nit.next()) {
 		let dig_group = nm.get_or_extend(name);
@@ -381,7 +380,7 @@ pub fn resolve_dig_group_specifier(nm :&mut NameIdMap<DigGroup>, sp :&str)
 }
 
 pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
-		-> Result<Stack, StrErr> {
+		-> Result<Stack> {
 	if sp.is_empty() {
 		return Ok(Stack::Empty);
 	}
@@ -399,7 +398,7 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 }
 
 fn texture_hashes(asset_dir :impl AsRef<Path>,
-		textures :Vec<String>) -> Result<Vec<(String, Vec<u8>, Vec<u8>)>, StrErr> {
+		textures :Vec<String>) -> Result<Vec<(String, Vec<u8>, Vec<u8>)>> {
 	let asset_dir :&Path = asset_dir.as_ref();
 	textures.iter()
 		// TODO perform proper parsing and share it with the client
@@ -416,10 +415,10 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 			let hash = hasher.result().as_slice().to_owned();
 			Ok((tx.to_owned(), hash, buf))
 		})
-		.collect::<Result<Vec<_>, StrErr>>()
+		.collect::<Result<Vec<_>>>()
 }
 
-fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value>) -> Result<Vec<ToolGroup>, StrErr> {
+fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value>) -> Result<Vec<ToolGroup>> {
 	let tool_groups = if let Some(tgs) = tgs {
 		let tgs = tgs.convert::<Vec<Value>>()?;
 		tgs.iter()
@@ -434,14 +433,14 @@ fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value
 					hardness,
 				})
 			})
-			.collect::<Result<Vec<ToolGroup>, StrErr>>()?
+			.collect::<Result<Vec<ToolGroup>>>()?
 	} else {
 		Vec::new()
 	};
 	Ok(tool_groups)
 }
 
-fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrErr> {
+fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams> {
 
 	let override_default = val.get("override-default")
 		.unwrap_or(&Value::Boolean(false));
@@ -635,7 +634,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 						Ok(Some(mb))
 					}
 				})
-				.collect::<Result<Vec<Option<MapBlock>>, StrErr>>()?;
+				.collect::<Result<Vec<Option<MapBlock>>>>()?;
 			let output_sp = recipe.read::<str>("output")?;
 			let output = resolve_stack_specifier(&name_id_map, output_sp)?;
 
@@ -724,7 +723,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 	Ok(params)
 }
 
-fn default_game_params(nm :NameIdMap) -> Result<ServerGameParams, StrErr> {
+fn default_game_params(nm :NameIdMap) -> Result<ServerGameParams> {
 	let file_str = DEFAULT_GAME_PARAMS_STR;
 	let val = from_str(&file_str)?;
 	let res = from_val(val, nm)?;
@@ -738,7 +737,7 @@ fn default_game_params_parse_test() {
 	default_game_params(nm).unwrap();
 }
 
-pub fn load_params_failible(nm :NameIdMap) -> Result<ServerGameParams, StrErr> {
+pub fn load_params_failible(nm :NameIdMap) -> Result<ServerGameParams> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);

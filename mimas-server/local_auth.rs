@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Result};
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::ToSql;
 use crate::sqlite_generic::{get_user_version, set_user_version,
@@ -6,7 +6,6 @@ use crate::sqlite_generic::{get_user_version, set_user_version,
 use argon2::Config;
 use std::path::Path;
 use rand::Rng;
-use crate::StrErr;
 use crate::map_storage::PlayerIdPair;
 
 /// Magic used to identify the mimas application.
@@ -16,7 +15,7 @@ const MIMAS_LOCALAUTH_APP_ID :i32 = 0x7bb612f as i32;
 
 const USER_VERSION :u16 = 1;
 
-fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
+fn init_db(conn :&mut Connection) -> Result<()> {
 	set_app_id(conn, MIMAS_LOCALAUTH_APP_ID)?;
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
@@ -38,7 +37,7 @@ fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
 	Ok(())
 }
 
-fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
+fn expect_user_ver(conn :&mut Connection) -> Result<()> {
 	let app_id = get_app_id(conn)?;
 	let user_version = get_user_version(conn)?;
 	if app_id != MIMAS_LOCALAUTH_APP_ID {
@@ -74,7 +73,7 @@ pub struct HashParams {
 const PARAMS :&str = "$argon2id$v=19$m=4096,t=4,p=1$";
 
 impl PlayerPwHash {
-	pub fn deserialize(data :String) -> Result<Self, StrErr> {
+	pub fn deserialize(data :String) -> Result<Self> {
 		if !data.starts_with(PARAMS) {
 			bail!("Deserialization of player pw hash params not implemented yet!");
 		}
@@ -102,7 +101,7 @@ impl PlayerPwHash {
 	pub fn params(&self) -> &HashParams {
 		&self.params
 	}
-	pub fn hash_password(pw :&str, params :HashParams) -> Result<Self, StrErr> {
+	pub fn hash_password(pw :&str, params :HashParams) -> Result<Self> {
 		let hash = {
 			let config = params.get_argon2_config();
 
@@ -148,16 +147,16 @@ impl HashParams {
 }
 
 pub trait AuthBackend {
-	fn get_player_id(&mut self, name :&str, src :u8) -> Result<Option<PlayerIdPair>, StrErr>;
-	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr>;
-	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr>;
-	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr>;
+	fn get_player_id(&mut self, name :&str, src :u8) -> Result<Option<PlayerIdPair>>;
+	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>>;
+	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>>;
+	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<()>;
 	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
-		-> Result<PlayerIdPair, StrErr>;
+		-> Result<PlayerIdPair>;
 }
 
 impl SqliteLocalAuth {
-	pub fn from_conn(mut conn :Connection, freshly_created :bool) -> Result<Self, StrErr> {
+	pub fn from_conn(mut conn :Connection, freshly_created :bool) -> Result<Self> {
 		if freshly_created {
 			init_db(&mut conn)?;
 		} else {
@@ -168,7 +167,7 @@ impl SqliteLocalAuth {
 			conn,
 		})
 	}
-	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self, StrErr> {
+	pub fn open_or_create(path :impl AsRef<Path> + Clone) -> Result<Self> {
 		let (conn, freshly_created) = open_or_create_db(path)?;
 		Ok(Self::from_conn(conn, freshly_created)?)
 	}
@@ -176,7 +175,7 @@ impl SqliteLocalAuth {
 
 impl AuthBackend for SqliteLocalAuth {
 	fn get_player_id(&mut self, name :&str, src :u8)
-			-> Result<Option<PlayerIdPair>, StrErr> {
+			-> Result<Option<PlayerIdPair>> {
 		let name_lower = name.to_lowercase();
 		let mut stmt = self.conn.prepare_cached("SELECT id FROM player_name_id_map WHERE name=?")?;
 		let id :Option<i64> = stmt.query_row(
@@ -186,7 +185,7 @@ impl AuthBackend for SqliteLocalAuth {
 			PlayerIdPair::from_components(src, id as u64)
 		}))
 	}
-	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>, StrErr> {
+	fn get_player_name(&mut self, id :PlayerIdPair) -> Result<Option<String>> {
 		let mut stmt = self.conn.prepare_cached("SELECT name FROM player_name_id_map WHERE id=?")?;
 		let name :Option<String> = stmt.query_row(
 			&[&(id.id_i64())],
@@ -194,7 +193,7 @@ impl AuthBackend for SqliteLocalAuth {
 		).optional()?;
 		Ok(name)
 	}
-	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>, StrErr> {
+	fn get_player_pwh(&mut self, id :PlayerIdPair) -> Result<Option<PlayerPwHash>> {
 		let mut stmt = self.conn.prepare_cached("SELECT pwhash FROM player_pw_hashes WHERE id=?")?;
 		let pwh :Option<String> = stmt.query_row(
 			&[&(id.id_i64())],
@@ -206,13 +205,13 @@ impl AuthBackend for SqliteLocalAuth {
 			None
 		})
 	}
-	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<(), StrErr> {
+	fn set_player_pwh(&mut self, id :PlayerIdPair, pwh :PlayerPwHash) -> Result<()> {
 		let mut stmt = self.conn.prepare_cached("UPDATE player_pw_hashes SET pwhash=? WHERE id=?")?;
 		stmt.execute(&[&pwh.serialize() as &dyn ToSql, &(id.id_i64())])?;
 		Ok(())
 	}
 	fn add_player(&mut self, name :&str, pwh: PlayerPwHash, id_src :u8)
-			-> Result<PlayerIdPair, StrErr> {
+			-> Result<PlayerIdPair> {
 		let name_lower = name.to_lowercase();
 		let mut stmt = self.conn.prepare_cached("INSERT INTO player_name_id_map (name, lcname) \
 			VALUES (?, ?);")?;
