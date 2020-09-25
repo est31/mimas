@@ -191,7 +191,7 @@ impl Default for BlockParams {
 }
 
 impl BlockRoles {
-	fn with_get_id(get_id :impl Fn(&'static str) -> Result<MapBlock, String>) -> Result<Self, StrErr> {
+	fn with_get_id(get_id :impl Fn(&'static str) -> Result<MapBlock, StrErr>) -> Result<Self, StrErr> {
 		Ok(Self {
 			air : get_id("default:air")?,
 			water : get_id("default:water")?,
@@ -208,7 +208,7 @@ impl BlockRoles {
 	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
 		let get_id = |n| {
 			m.get_id(n)
-				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
+				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n).into())
 		};
 		Self::with_get_id(get_id)
 	}
