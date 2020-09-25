@@ -268,6 +268,19 @@ pub fn move_n_if_possible(invs :&mut [impl InvRef],
 	invs[from.0].as_mut().stacks[from.1].put(new_stack, true, STACK_SIZE_LIMIT);
 }
 
+pub fn merge_or_move(invs :&mut [impl InvRef],
+		from :(usize, usize), to :(usize, usize), only_move_one :bool) {
+	if only_move_one {
+		move_n_if_possible(
+			invs,
+			from, to, 1);
+	} else {
+		merge_or_swap(
+			invs,
+			from, to);
+	}
+}
+
 pub trait InvRef {
 	fn as_mut(&mut self) -> &mut SelectableInventory;
 }

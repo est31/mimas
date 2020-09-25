@@ -31,7 +31,7 @@ use mimas_server::generic_net::NetworkClientConn;
 use mimas_server::local_auth::{PlayerPwHash, HashParams};
 use mimas_server::config::Config;
 use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
-use mimas_server::inventory::SelectableInventory;
+use mimas_server::inventory::{SelectableInventory, InventoryPos};
 use mimas_server::game_params::{GameParamsHdl, DigGroup, ToolGroup};
 
 use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
@@ -40,7 +40,8 @@ use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
 use assets::{Assets, UiColors};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
-	ChestMenu, InventoryMenu, IDENTITY, render_inventory_hud};
+	ChestMenu, InventoryMenu, IDENTITY, render_inventory_hud,
+	SwapCommand};
 
 use voxel_walk::VoxelWalker;
 
@@ -124,12 +125,38 @@ macro_rules! maybe_inventory_change {
 }
 
 macro_rules! maybe_chest_inventory_change {
-	($m:ident, $this:ident) => {
+	($m:ident, $this:ident, $command:expr) => {
 		if $m.inventory() != &$this.sel_inventory {
 			$this.sel_inventory = $m.inventory().clone();
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
 		}
+		if let Some(cmd) = $command {
+			// Needed because it complains about missing type annotations otherwise
+			let cmd :SwapCommand = cmd;
+
+			let location_from = if cmd.from_pos.0 == 0 {
+				Some($m.chest_pos())
+			} else {
+				None
+			};
+			let from = InventoryPos {
+				stack_pos : cmd.from_pos.1,
+				location : location_from,
+			};
+			let location_to = if cmd.to_pos.0 == 0 {
+				Some($m.chest_pos())
+			} else {
+				None
+			};
+			let to = InventoryPos {
+				stack_pos : cmd.to_pos.1,
+				location : location_to,
+			};
+			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
+			let _ = $this.srv_conn.send(msg);
+		}
+
 		let mut chest_meta = $this.map.get_blk_meta_mut($m.chest_pos()).unwrap();
 		if Some($m.chest_inv()) != chest_meta.get().map(|v| {
 			let MetadataEntry::Inventory(inv) = v;
@@ -137,9 +164,7 @@ macro_rules! maybe_chest_inventory_change {
 		}) {
 			chest_meta.set(MetadataEntry::Inventory($m.chest_inv().clone()));
 
-			let meta = MetadataEntry::Inventory($m.chest_inv().clone());
-			let msg = ClientToServerMsg::SetMetadata($m.chest_pos(), meta);
-			let _ = $this.srv_conn.send(msg);
+			// TODO maybe do some checks to ensure that $command is Some?
 		}
 	};
 }
@@ -687,7 +712,7 @@ impl<C :NetworkClientConn> Game<C> {
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
 				let command = m.check_movement();
-				maybe_chest_inventory_change!(m, self);
+				maybe_chest_inventory_change!(m, self, command);
 			}
 		} else if let Some(ui_colors) = &self.ui_colors {
 			let params = glium::draw_parameters::DrawParameters {
@@ -773,7 +798,7 @@ impl<C :NetworkClientConn> Game<C> {
 				self.check_grab_change();
 				return false;
 			} else if let Some(m) = self.chest_menu.take() {
-				maybe_chest_inventory_change!(m, self);
+				maybe_chest_inventory_change!(m, self, None);
 
 				self.check_grab_change();
 				return false;

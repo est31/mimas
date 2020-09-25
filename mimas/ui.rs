@@ -596,9 +596,9 @@ impl ChestMenu {
 
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if button == MouseButton::Left {
-				inventory::merge_or_swap(
+				inventory::merge_or_move(
 					&mut self.invs,
-					from_pos, to_pos);
+					from_pos, to_pos, false);
 				return Some(SwapCommand {
 					from_pos,
 					to_pos,
@@ -606,9 +606,9 @@ impl ChestMenu {
 				});
 			}
 			if button == MouseButton::Right {
-				inventory::move_n_if_possible(
+				inventory::merge_or_move(
 					&mut self.invs,
-					from_pos, to_pos, 1);
+					from_pos, to_pos, true);
 				return Some(SwapCommand {
 					from_pos,
 					to_pos,

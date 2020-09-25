@@ -81,7 +81,7 @@ pub enum ClientToServerMsg {
 	Dig(Vector3<isize>),
 
 	SetPos(PlayerPosition),
-	InventorySwap(InventoryPos, InventoryPos),
+	InventorySwap(InventoryPos, InventoryPos, bool),
 	SetInventory(SelectableInventory),
 	Chat(String),
 }
@@ -908,7 +908,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					SetPos(_p) => unreachable!(),
 					SetInventory(_inv) => unreachable!(),
 
-					InventorySwap(from_pos, to_pos) => {
+					InventorySwap(from_pos, to_pos, only_move_one) => {
 						// Inventory movement (or swapping)
 
 						// Create a temporary RefCell so that we can have code that
@@ -959,7 +959,7 @@ impl<S :NetworkServerSocket> Server<S> {
 							do_for_inv_ref!(from_pos.location, inv, {
 								{
 									let mut invs = [(&mut inv) as &mut SelectableInventory];
-									inventory::merge_or_swap(&mut invs, from, to);
+									inventory::merge_or_move(&mut invs, from, to, only_move_one);
 								}
 								(inv, ())
 							});
@@ -975,7 +975,7 @@ impl<S :NetworkServerSocket> Server<S> {
 								let inv_from = do_for_inv_ref!(to_pos.location, inv_to, {
 									{
 										let mut invs = [(&mut inv_from) as &mut dyn InvRef, (&mut inv_to) as &mut dyn InvRef];
-										inventory::merge_or_swap(&mut invs, from, to);
+										inventory::merge_or_move(&mut invs, from, to, only_move_one);
 									}
 									(inv_to, inv_from,)
 								});
