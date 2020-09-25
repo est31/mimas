@@ -488,13 +488,23 @@ impl InventoryMenu {
 	}
 }
 
+pub struct SwapCommand {
+	pub from_pos :(usize, usize),
+	pub to_pos :(usize, usize),
+	// Whether to only move or to
+	// also try merging/swapping
+	pub only_move :bool,
+}
+
+
 pub struct ChestMenu {
 	params :GameParamsHdl,
 	invs :[SelectableInventory; 2],
 	chest_pos :Vector3<isize>,
 	last_mouse_pos :Option<PhysicalPosition<f64>>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
-	from_pos : Option<(usize, usize)>,
+	from_pos :Option<(usize, usize)>,
+	hover_idx :Option<(usize, usize)>,
 }
 
 impl ChestMenu {
@@ -510,6 +520,7 @@ impl ChestMenu {
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
+			hover_idx : None,
 		}
 	}
 	pub fn inventory(&self) -> &SelectableInventory {
@@ -563,12 +574,14 @@ impl ChestMenu {
 			&mut layout, slot_counts_x, &self.invs, mouse_pos,
 			self.from_pos);
 
-		let mut swap_command = None;
+		// TODO this is hacky, we change state in RENDERING code!!
+		self.hover_idx = hover_idx;
+	}
 
-		// TODO this is hacky, we change state in RENDERING code!!
+	pub fn check_movement(&mut self) -> Option<SwapCommand> {
+		let mut swap_command = None;
 		let input_ev = self.mouse_input_ev.take();
-		// TODO this is hacky, we change state in RENDERING code!!
-		if let (Some((state, button)), Some(hv)) = (input_ev, hover_idx) {
+		if let (Some((state, button)), Some(hv)) = (input_ev, self.hover_idx.take()) {
 			if state == ElementState::Released {
 				if let Some(from_pos) = self.from_pos {
 					if button == MouseButton::Left {
@@ -581,19 +594,29 @@ impl ChestMenu {
 			}
 		}
 
-		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if button == MouseButton::Left {
 				inventory::merge_or_swap(
 					&mut self.invs,
 					from_pos, to_pos);
+				return Some(SwapCommand {
+					from_pos,
+					to_pos,
+					only_move : false,
+				});
 			}
 			if button == MouseButton::Right {
 				inventory::move_n_if_possible(
 					&mut self.invs,
 					from_pos, to_pos, 1);
+				return Some(SwapCommand {
+					from_pos,
+					to_pos,
+					only_move : true,
+				});
 			}
 		}
+		None
 	}
 }
 

@@ -686,6 +686,7 @@ impl<C :NetworkClientConn> Game<C> {
 					tid_cache,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
+				let command = m.check_movement();
 				maybe_chest_inventory_change!(m, self);
 			}
 		} else if let Some(ui_colors) = &self.ui_colors {
