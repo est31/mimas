@@ -470,15 +470,15 @@ impl InventoryMenu {
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
 				// Putting into the crafting menu is not possible
 			} else {
-				if button == MouseButton::Left {
-					inventory::merge_or_swap(
+				let maybe_only_move = match button {
+					MouseButton::Left => Some(false),
+					MouseButton::Right => Some(true),
+					_ => None,
+				};
+				if let Some(only_move) = maybe_only_move {
+					inventory::merge_or_move(
 						&mut self.invs,
-						from_pos, to_pos);
-				}
-				if button == MouseButton::Right {
-					inventory::move_n_if_possible(
-						&mut self.invs,
-						from_pos, to_pos, 1);
+						from_pos, to_pos, only_move);
 				}
 			}
 		}
@@ -595,24 +595,19 @@ impl ChestMenu {
 		}
 
 		if let Some((from_pos, to_pos, button)) = swap_command {
-			if button == MouseButton::Left {
+			let maybe_only_move = match button {
+				MouseButton::Left => Some(false),
+				MouseButton::Right => Some(true),
+				_ => None,
+			};
+			if let Some(only_move) = maybe_only_move {
 				inventory::merge_or_move(
 					&mut self.invs,
-					from_pos, to_pos, false);
+					from_pos, to_pos, only_move);
 				return Some(SwapCommand {
 					from_pos,
 					to_pos,
-					only_move : false,
-				});
-			}
-			if button == MouseButton::Right {
-				inventory::merge_or_move(
-					&mut self.invs,
-					from_pos, to_pos, true);
-				return Some(SwapCommand {
-					from_pos,
-					to_pos,
-					only_move : true,
+					only_move,
 				});
 			}
 		}
