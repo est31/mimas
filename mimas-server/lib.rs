@@ -76,7 +76,6 @@ pub enum ClientToServerMsg {
 	/// where client and server have desynced, and prevents mistakingly
 	/// placing a wrong block.
 	PlaceBlock(Vector3<isize>, usize, MapBlock),
-	SetMetadata(Vector3<isize>, MetadataEntry),
 	PlaceTree(Vector3<isize>),
 	Dig(Vector3<isize>),
 
@@ -844,13 +843,6 @@ impl<S :NetworkServerSocket> Server<S> {
 						};
 						if let Some(mut hdl) = self.map.get_blk_mut(p) {
 							hdl.set(b);
-						} else {
-							// TODO log something about an attempted action in an unloaded chunk
-						}
-					},
-					SetMetadata(p, ne) => {
-						if let Some(mut hdl) = self.map.get_blk_meta_mut(p) {
-							hdl.set(ne);
 						} else {
 							// TODO log something about an attempted action in an unloaded chunk
 						}
