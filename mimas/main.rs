@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+extern crate anyhow;
 extern crate nalgebra;
 #[macro_use]
 extern crate glium;

@@ -8,6 +8,7 @@ name = "mimas"
 path = "main.rs"
 
 [dependencies]
+anyhow = "1.0"
 nalgebra = "0.22"
 num-traits = "0.2"
 frustum_query = "0.1"

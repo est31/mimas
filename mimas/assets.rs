@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail};
 use mimas_server::StrErr;
 use mimas_server::game_params::{GameParamsHdl, DrawStyle};
 
@@ -24,7 +25,7 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 	let hash = if let Some(hash) = hash {
 		hash
 	} else {
-		Err(format!("Couldn't find hash for texture {}", path))?
+		bail!("Couldn't find hash for texture {}", path);
 	};
 
 	let cache_dir = cache_dir()?;
@@ -39,7 +40,7 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 	};
 
 	if found_hash.as_slice() != hash.as_slice() {
-		Err(format!("Hash mismatch for texture {}", path))?
+		bail!("Hash mismatch for texture {}", path);
 	}
 
 	let img = image::load_from_memory(&buf)?;
@@ -83,7 +84,7 @@ fn format_hex(hex :&[u8]) -> String {
 }
 
 fn cache_dir() -> Result<PathBuf, StrErr> {
-	Ok(dirs::cache_dir().ok_or_else(|| "Couldn't find cache dir")?
+	Ok(dirs::cache_dir().ok_or_else(|| anyhow!("Couldn't find cache dir"))?
 		.join("mimas").join("asset-cache"))
 }
 
@@ -104,7 +105,8 @@ pub fn store_hashed_blobs(hashed_blobs :&[(Vec<u8>, Vec<u8>)]) -> Result<(), Str
 fn load_image(game_params :&GameParamsHdl, path :&str, opaque :bool) -> Result<(Vec<f32>, (u32, u32)), StrErr> {
 	let mut imgs_iter = path.split("^")
 		.map(|p| load_image_inner(game_params, p));
-	let mut image = imgs_iter.next().ok_or("No image path specified")??;
+	let mut image = imgs_iter.next()
+		.ok_or_else(|| anyhow!("No image path specified"))??;
 	let imgs = imgs_iter.collect::<Result<Vec<_>, StrErr>>()?;
 	for overlay in imgs.iter() {
 		image.pixels_mut()

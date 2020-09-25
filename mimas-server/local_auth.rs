@@ -1,3 +1,4 @@
+use anyhow::bail;
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::ToSql;
 use crate::sqlite_generic::{get_user_version, set_user_version,
@@ -41,16 +42,16 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 	let app_id = get_app_id(conn)?;
 	let user_version = get_user_version(conn)?;
 	if app_id != MIMAS_LOCALAUTH_APP_ID {
-		Err(format!("expected app id {} but was {}",
-			MIMAS_LOCALAUTH_APP_ID, app_id))?;
+		bail!("expected app id {} but was {}",
+			MIMAS_LOCALAUTH_APP_ID, app_id);
 	}
 	if user_version > USER_VERSION {
-		Err(format!("user_version of database {} newer than maximum supported {}",
-			user_version, USER_VERSION))?;
+		bail!("user_version of database {} newer than maximum supported {}",
+			user_version, USER_VERSION);
 	} else if user_version < USER_VERSION {
 		// TODO if format of the db changes,
 		// remove the error below and put any migration code here
-		Err(format!("user_version {} is too old", user_version))?;
+		bail!("user_version {} is too old", user_version);
 	}
 	Ok(())
 }
@@ -75,7 +76,7 @@ const PARAMS :&str = "$argon2id$v=19$m=4096,t=4,p=1$";
 impl PlayerPwHash {
 	pub fn deserialize(data :String) -> Result<Self, StrErr> {
 		if !data.starts_with(PARAMS) {
-			Err("Deserialization of player pw hash params not implemented yet!")?;
+			bail!("Deserialization of player pw hash params not implemented yet!");
 		}
 		let salt_hash = &data[PARAMS.len()..];
 		match salt_hash.split("$").collect::<Vec<_>>()[..] {
@@ -85,7 +86,7 @@ impl PlayerPwHash {
 				},
 				hash : base64::decode(hash_enc)?,
 			}),
-			_ => Err("player pw hash lacks salt or hash")?,
+			_ => bail!("player pw hash lacks salt or hash"),
 		}
 	}
 	pub fn serialize(&self) -> String {

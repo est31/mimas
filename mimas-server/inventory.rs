@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail};
 use crate::map::MapBlock;
 use std::num::NonZeroU16;
 use std::io::Read;
@@ -208,7 +209,7 @@ impl SelectableInventory {
 		let version = rdr.read_u8()?;
 		if version != 0 {
 			// The version is too recent
-			Err(format!("Unsupported serialized inventory version {}", version))?;
+			bail!("Unsupported serialized inventory version {}", version);
 		}
 		let selection_id = rdr.read_u16::<BigEndian>()?;
 		let selection = if selection_id == 0 {
@@ -224,7 +225,7 @@ impl SelectableInventory {
 			let count = rdr.read_u16::<BigEndian>()?;
 			if let Some(count) = NonZeroU16::new(count) {
 				let item = m.mb_from_id(item_id)
-					.ok_or_else(|| "invalid item id".to_owned())?;
+					.ok_or_else(|| anyhow!("invalid item id"))?;
 				stacks.push(Stack::Content {
 					item,
 					count,

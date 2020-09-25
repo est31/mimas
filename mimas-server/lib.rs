@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+extern crate anyhow;
 extern crate noise;
 extern crate nalgebra;
 extern crate rand_pcg;
@@ -45,8 +46,8 @@ pub mod server;
 pub use server::{ClientToServerMsg, ServerToClientMsg, Server, btchn};
 pub(crate) use server::btpic;
 
-use std::fmt::Display;
-
+pub use anyhow::Error as StrErr;
+/*
 #[derive(Debug)]
 pub struct StrErr(String);
 
@@ -54,4 +55,4 @@ impl<T :Display> From<T> for StrErr {
 	fn from(v :T) -> Self {
 		StrErr(format!("{}", v))
 	}
-}
+}*/

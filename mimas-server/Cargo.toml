@@ -13,6 +13,7 @@ name = "mimas_server"
 path = "lib.rs"
 
 [dependencies]
+anyhow = "1.0"
 noise = { version = "0.6", default-features = false }
 nalgebra = { version = "0.22", features = ["serde-serialize"] }
 rand_pcg = "0.2"

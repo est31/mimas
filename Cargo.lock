@@ -57,6 +57,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b602bfe940d21c130f3895acd65221e8a61270debe89d628b9cb4e3ccb8569b"
+
+[[package]]
 name = "approx"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1027,6 +1033,7 @@ dependencies = [
 name = "mimas"
 version = "0.5.0-dev"
 dependencies = [
+ "anyhow",
  "dirs",
  "frustum_query",
  "glium",
@@ -1056,6 +1063,7 @@ dependencies = [
 name = "mimas-server"
 version = "0.5.0-dev"
 dependencies = [
+ "anyhow",
  "base64 0.12.3",
  "bincode",
  "byteorder",

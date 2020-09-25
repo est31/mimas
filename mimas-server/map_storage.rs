@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail};
 use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
 use crate::map::{MapChunkData, MetadataEntry, CHUNKSIZE};
@@ -75,12 +76,12 @@ fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 	let app_id = get_app_id(conn)?;
 	let user_version = get_user_version(conn)?;
 	if app_id != MIMAS_SQLITE_APP_ID {
-		Err(format!("expected app id {} but was {}",
-			MIMAS_SQLITE_APP_ID, app_id))?;
+		bail!("expected app id {} but was {}",
+			MIMAS_SQLITE_APP_ID, app_id);
 	}
 	if user_version > USER_VERSION {
-		Err(format!("user_version of database {} newer than maximum supported {}",
-			user_version, USER_VERSION))?;
+		bail!("user_version of database {} newer than maximum supported {}",
+			user_version, USER_VERSION);
 	} else if user_version < USER_VERSION {
 		migrate_v2(conn)?;
 		set_user_version(conn, USER_VERSION)?;
@@ -161,7 +162,8 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 	let version = rdr.read_u8()?;
 	if version > 1 {
 		// The version is too recent
-		Err(format!("Unsupported map chunk version {}", version))?;
+
+		bail!("Unsupported map chunk version {}", version);
 	}
 	let mut gz_dec = GzDecoder::new(rdr);
 	let mut buffer = Vec::<u8>::new();
@@ -170,7 +172,7 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 	let mut r = MapChunkData::uninitialized();
 	for v in r.0.iter_mut() {
 		let n = rdr.read_u8()?;
-		*v = m.mb_from_id(n).ok_or("invalid block number")?;
+		*v = m.mb_from_id(n).ok_or(anyhow!("invalid block number"))?;
 	}
 	if version > 0 {
 		let count = rdr.read_u16::<BigEndian>()?;
@@ -181,7 +183,7 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 			let entries_count = rdr.read_u8()?;
 			if entries_count > 1 {
 				// For now, we only support 1 entry at most
-				Err(format!("Too many metadata entries: {}", entries_count))?;
+				bail!("Too many metadata entries: {}", entries_count);
 			} else if entries_count == 1 {
 				let kind = rdr.read_u8()?;
 				let entry = match kind {
@@ -190,7 +192,7 @@ fn deserialize_mapchunk_data(data :&[u8], m :&NameIdMap) -> Result<MapChunkData,
 						let inv = SelectableInventory::deserialize_rdr(&mut rdr, m)?;
 						MetadataEntry::Inventory(inv)
 					},
-					_ => Err(format!("Unsupported entry kind"))?,
+					_ => bail!("Unsupported entry kind"),
 				};
 				r.1.metadata.insert(pos, entry);
 			}
@@ -221,13 +223,13 @@ fn deserialize_name_id_map<T :Id>(data :&[u8]) -> Result<NameIdMap<T>, StrErr> {
 	let version = rdr.read_u8()?;
 	if version != 0 {
 		// The version is too recent
-		Err(format!("Unsupported name id map version {}", version))?;
+		bail!("Unsupported name id map version {}", version);
 	}
 	let count = rdr.read_u16::<BigEndian>()?;
 	if count >= u8::max_value() as u16 {
 		// We use u8 as storage for now so we don't support
 		// any counts above 255. 255 is reserved.
-		Err(format!("Too many id's stored in name id map {}", count))?;
+		bail!("Too many ids stored in name id map {}", count);
 	}
 	let mut res = Vec::with_capacity(count as usize);
 	for _ in 0 .. count {
@@ -334,7 +336,7 @@ fn value_to_vec(v :Option<Value>) -> Result<Option<Vec<u8>>, StrErr> {
 	Ok(match v {
 		Some(Value::Text(s)) => Some(s.into_bytes()),
 		Some(Value::Blob(b)) => Some(b),
-		Some(_) => return Err("SQL column entry type mismatch: Blob or String required.".into()),
+		Some(_) => bail!("SQL column entry type mismatch: Blob or String required."),
 		None => None,
 	})
 }

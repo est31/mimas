@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail};
 use crate::crafting::Recipe;
 use std::sync::Arc;
 use toml::from_str;
@@ -208,14 +209,14 @@ impl BlockRoles {
 	pub fn new(m :&NameIdMap) -> Result<Self, StrErr> {
 		let get_id = |n| {
 			m.get_id(n)
-				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n).into())
+				.ok_or_else(|| anyhow!("Couldn't find id for builtin role '{}'", n))
 		};
 		Self::with_get_id(get_id)
 	}
 	pub fn dummy(m :&NameIdMap) -> Result<Self, StrErr> {
 		let get_id = |n| {
 			m.get_id(n)
-				.ok_or_else(|| format!("Coudln't find id for builtin role '{}'", n))
+				.ok_or_else(|| anyhow!("Couldn't find id for builtin role '{}'", n))
 		};
 		let air_id = get_id("default:air")?;
 		Self::with_get_id(|_| Ok(air_id))
@@ -356,15 +357,14 @@ pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str), StrErr> {
 	let mut cit = name.split(':');
 	if let (Some(mn), Some(n), None) = (cit.next(), cit.next(), cit.next()) {
 		if !check_chars(mn) {
-			Err(format!("Invalid mod name '{}'. Only alphanumeric chars and _ allowed.", mn))?;
+			bail!("Invalid mod name '{}'. Only alphanumeric chars and _ allowed.", mn);
 		}
 		if !check_chars(n) {
-			Err(format!("Invalid name '{}'. Only alphanumeric chars and _ allowed.", n))?;
+			bail!("Invalid name '{}'. Only alphanumeric chars and _ allowed.", n);
 		}
 		Ok((mn, n))
 	} else {
-		Err(format!("Invalid name '{}'. Must be in format modname:name.", name))?;
-		unreachable!()
+		bail!("Invalid name '{}'. Must be in format modname:name.", name);
 	}
 }
 
@@ -376,8 +376,7 @@ pub fn resolve_dig_group_specifier(nm :&mut NameIdMap<DigGroup>, sp :&str)
 		let hardness = u16::from_str(hardness)?;
 		Ok((dig_group, hardness))
 	} else {
-		Err(format!("Invalid dig group specifier '{}'. Must be in format 'modname:name hardness'.", sp))?;
-		unreachable!()
+		bail!("Invalid dig group specifier '{}'. Must be in format 'modname:name hardness'.", sp);
 	}
 }
 
@@ -389,14 +388,13 @@ pub fn resolve_stack_specifier(nm :&NameIdMap, sp :&str)
 	let mut nit = sp.split(' ');
 	if let (Some(name), Some(count), None) = (nit.next(), nit.next(), nit.next()) {
 		let item = nm.get_id(name)
-			.ok_or_else(|| format!("Can't find any item named '{}'.", name))?;
+			.ok_or_else(|| anyhow!("Can't find any item named '{}'.", name))?;
 		let count = u16::from_str(count)?;
 		let count = NonZeroU16::new(count)
-			.ok_or_else(|| format!("Count may not be 0. Use \"\" instead."))?;
+			.ok_or_else(|| anyhow!("Count may not be 0. Use \"\" instead."))?;
 		Ok(Stack::Content { item, count })
 	} else {
-		Err(format!("Invalid stack specifier '{}'. Must be in format 'modname:name count'.", sp))?;
-		unreachable!()
+		bail!("Invalid stack specifier '{}'. Must be in format 'modname:name count'.", sp);
 	}
 }
 
@@ -409,7 +407,7 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 		.map(|tx| {
 			let path = asset_dir.to_owned().join(&tx);
 			let mut file = File::open(&path)
-				.map_err(|e| format!("Error opening file at {}: {}", path.to_string_lossy(), e))?;
+				.map_err(|e| anyhow!("Error opening file at {}: {}", path.to_string_lossy(), e))?;
 			let mut buf = Vec::new();
 			file.read_to_end(&mut buf)?;
 			let mut hasher = Sha256::new();
@@ -521,7 +519,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			None
 		};
 		let draw_style = match (color, texture) {
-			(Some(_), Some(_)) => Err("Both color and texture specified")?,
+			(Some(_), Some(_)) => bail!("Both color and texture specified"),
 			(Some(col), None) => Some(DrawStyle::Colored(col)),
 			(None, Some(Value::String(texture))) => {
 				textures.push(texture.to_owned());
@@ -541,10 +539,10 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 					textures.extend_from_slice(&arr);
 					Some(DrawStyle::TextureSidesTopBottom(arr[0].clone(), arr[1].clone(), arr[2].clone()))
 				} else {
-					Err(format!("false number of textures: {}", arr.len()))?
+					bail!("false number of textures: {}", arr.len());
 				}
 			},
-			(None, Some(_)) => Err("false type")?,
+			(None, Some(_)) => bail!("false type"),
 			(None, None) => None,
 		};
 		let inv_texture = if let Some(n) = block.get("inv_texture") {
@@ -632,7 +630,8 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 					if name == "" {
 						Ok(None)
 					} else {
-						let mb = name_id_map.get_id(name).ok_or("invalid name")?;
+						let mb = name_id_map.get_id(name)
+							.ok_or_else(|| anyhow!("invalid name"))?;
 						Ok(Some(mb))
 					}
 				})
@@ -654,11 +653,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			for ore in ores.iter() {
 				let name = ore.read::<str>("name")?;
 				let _name_components = parse_block_name(name)?;
-				let id = name_id_map.get_id(name).ok_or("invalid name")?;
+				let id = name_id_map.get_id(name)
+					.ok_or_else(|| anyhow!("invalid name"))?;
 
 				let noise_seed = ore.read::<str>("noise_seed")?;
 				if noise_seed.len() != 8 {
-					Err(format!("noise_seed needs to be 8 bytes long but has length {}", noise_seed.len()))?
+					bail!("noise_seed needs to be 8 bytes long but has length {}", noise_seed.len());
 				}
 				let noise_seed = noise_seed.as_bytes();
 				let noise_seed = [noise_seed[0], noise_seed[1], noise_seed[2], noise_seed[3],
@@ -666,7 +666,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 
 				let pcg_seed = ore.read::<str>("pcg_seed")?;
 				if pcg_seed.len() != 8 {
-					Err(format!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len()))?
+					bail!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len());
 				}
 				let pcg_seed = pcg_seed.as_bytes();
 				let pcg_seed = [pcg_seed[0], pcg_seed[1], pcg_seed[2], pcg_seed[3],
@@ -694,11 +694,12 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams, StrEr
 			for plant in plants.iter() {
 				let name = plant.read::<str>("name")?;
 				let _name_components = parse_block_name(name)?;
-				let id = name_id_map.get_id(name).ok_or("invalid name")?;
+				let id = name_id_map.get_id(name)
+					.ok_or_else(|| anyhow!("invalid name"))?;
 
 				let pcg_seed = plant.read::<str>("pcg_seed")?;
 				if pcg_seed.len() != 8 {
-					Err(format!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len()))?
+					bail!("pcg_seed needs to be 8 bytes long but has length {}", pcg_seed.len());
 				}
 				let pcg_seed = pcg_seed.as_bytes();
 				let pcg_seed = [pcg_seed[0], pcg_seed[1], pcg_seed[2], pcg_seed[3],
