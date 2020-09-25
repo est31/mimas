@@ -704,6 +704,7 @@ impl<C :NetworkClientConn> Game<C> {
 					tid_cache,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
+				m.check_event();
 				maybe_inventory_change!(m, self);
 			} else if let (Some(m), Some(ui_colors), Some(tid_cache)) = (&mut self.chest_menu, &self.ui_colors, &self.texture_id_cache) {
 				m.render(

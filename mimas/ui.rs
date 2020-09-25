@@ -352,6 +352,7 @@ pub struct InventoryMenu {
 	last_mouse_pos :Option<PhysicalPosition<f64>>,
 	mouse_input_ev :Option<(ElementState, MouseButton)>,
 	from_pos : Option<(usize, usize)>,
+	hover_idx :Option<(usize, usize)>,
 }
 
 impl InventoryMenu {
@@ -366,6 +367,7 @@ impl InventoryMenu {
 			last_mouse_pos : None,
 			mouse_input_ev : None,
 			from_pos : None,
+			hover_idx : None,
 		}
 	}
 	pub fn inventory(&self) -> &SelectableInventory {
@@ -433,12 +435,15 @@ impl InventoryMenu {
 			&mut layout, slot_counts_x, &self.invs, mouse_pos,
 			self.from_pos);
 
+		// TODO this is hacky, we change state in RENDERING code!!
+		self.hover_idx = hover_idx;
+
+	}
+	pub fn check_event(&mut self) {
 		let mut swap_command = None;
 
-		// TODO this is hacky, we change state in RENDERING code!!
 		let input_ev = self.mouse_input_ev.take();
-		// TODO this is hacky, we change state in RENDERING code!!
-		if let (Some((state, button)), Some(hv)) = (input_ev, hover_idx) {
+		if let (Some((state, button)), Some(hv)) = (input_ev, self.hover_idx) {
 			if state == ElementState::Released {
 				if let Some(from_pos) = self.from_pos {
 					if button == MouseButton::Left {
@@ -465,7 +470,6 @@ impl InventoryMenu {
 			}
 		}
 
-		// TODO this is hacky, we change state in RENDERING code!!
 		if let Some((from_pos, to_pos, button)) = swap_command {
 			if to_pos.0 == CRAFTING_OUTPUT_ID {
 				// Putting into the crafting menu is not possible
@@ -483,7 +487,6 @@ impl InventoryMenu {
 			}
 		}
 
-		// TODO this is hacky, we change state in RENDERING code!!
 		self.update_craft_output_inv();
 	}
 }
