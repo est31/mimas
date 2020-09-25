@@ -186,7 +186,7 @@ impl Assets {
 			},
 		})
 	}
-	pub fn add_flat_texture(&mut self, game_params :&GameParamsHdl, path :&str)-> TextureId {
+	pub fn add_flat_texture(&mut self, game_params :&GameParamsHdl, path :&str) -> TextureId {
 		let image = load_image(game_params, path, false)
 			.expect("couldn't load image");
 		let id = self.add_asset(image);
