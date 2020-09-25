@@ -1,18 +1,18 @@
+use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
+use crate::config::Config;
 use crate::map::{self, Map, ServerMap, MapBackend, MapChunkData,
 	CHUNKSIZE, MapBlock, MetadataEntry};
+use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
+use crate::inventory::{self, SelectableInventory, Stack, InventoryPos, InvRef};
+use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
+use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
+use crate::StrErr;
 use nalgebra::Vector3;
 use std::time::{Instant, Duration};
 use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
-use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
-use crate::config::Config;
-use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
-use crate::inventory::{self, SelectableInventory, Stack, InventoryPos, InvRef};
-use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
-use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
-use crate::StrErr;
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
 use srp::groups::G_4096;
