@@ -766,6 +766,53 @@ impl<S :NetworkServerSocket> Server<S> {
 		}
 		close_connections(&players_to_remove, &mut *players.borrow_mut());
 	}
+	pub fn handle_dig(&mut self, id :PlayerIdPair, p :Vector3<isize>) {
+		let mut remove = true;
+		if let Some(chest_meta) = self.map.get_blk_meta(p) {
+			if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
+				if !inv.is_empty() {
+					remove = false;
+				}
+			}
+		} else {
+			// TODO log something about an attempted action in an unloaded chunk
+			remove = false;
+		}
+		let mut drops = None;
+		if remove {
+			{
+				// We can unwrap here as above we set remove to false if
+				// the result is None
+				let mut hdl = self.map.get_blk_mut(p).unwrap();
+				drops = Some(self.params.p.get_block_params(hdl.get()).unwrap().drops);
+				let air_bl = self.params.p.block_roles.air;
+				hdl.set(air_bl);
+			}
+			let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
+			hdl.clear();
+		} else {
+			// Send the unchanged block to the client
+			if let Some(mut hdl) = self.map.get_blk_mut(p) {
+				hdl.fake_change();
+			}
+		}
+		let remove_player = {
+			let mut players = self.players.borrow_mut();
+			let player = &mut players.get_mut(&id).unwrap();
+			if remove {
+				// If we remove the block, put the dropped item
+				// into the inventory. Send the new inventory to
+				// the client in any case to override any
+				// possibly mistaken local prediction.
+				player.inventory.put(drops.unwrap());
+			}
+			let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
+			player.conn.send(msg).is_err()
+		};
+		if remove_player {
+			close_connections(&[id], &mut *self.players.borrow_mut());
+		}
+	}
 	pub fn handle_inv_move_or_swap(&mut self, id :PlayerIdPair, from_pos :InventoryPos,
 			to_pos :InventoryPos, only_move_one :bool) {
 		// Create a temporary RefCell so that we can have code that
@@ -938,51 +985,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					map::spawn_tree(&mut self.map, p, &self.params);
 				},
 				Dig(p) => {
-					let mut remove = true;
-					if let Some(chest_meta) = self.map.get_blk_meta(p) {
-						if let Some(MetadataEntry::Inventory(inv)) = chest_meta {
-							if !inv.is_empty() {
-								remove = false;
-							}
-						}
-					} else {
-						// TODO log something about an attempted action in an unloaded chunk
-						remove = false;
-					}
-					let mut drops = None;
-					if remove {
-						{
-							// We can unwrap here as above we set remove to false if
-							// the result is None
-							let mut hdl = self.map.get_blk_mut(p).unwrap();
-							drops = Some(self.params.p.get_block_params(hdl.get()).unwrap().drops);
-							let air_bl = self.params.p.block_roles.air;
-							hdl.set(air_bl);
-						}
-						let mut hdl = self.map.get_blk_meta_mut(p).unwrap();
-						hdl.clear();
-					} else {
-						// Send the unchanged block to the client
-						if let Some(mut hdl) = self.map.get_blk_mut(p) {
-							hdl.fake_change();
-						}
-					}
-					let remove_player = {
-						let mut players = self.players.borrow_mut();
-						let player = &mut players.get_mut(&id).unwrap();
-						if remove {
-							// If we remove the block, put the dropped item
-							// into the inventory. Send the new inventory to
-							// the client in any case to override any
-							// possibly mistaken local prediction.
-							player.inventory.put(drops.unwrap());
-						}
-						let msg = ServerToClientMsg::SetInventory(player.inventory.clone());
-						player.conn.send(msg).is_err()
-					};
-					if remove_player {
-						close_connections(&[id], &mut *self.players.borrow_mut());
-					}
+					self.handle_dig(id, p);
 				},
 				SetPos(_p) => unreachable!(),
 				SetInventory(_inv) => unreachable!(),
