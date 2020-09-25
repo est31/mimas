@@ -940,12 +940,23 @@ impl<S :NetworkServerSocket> Server<S> {
 									}
 								} else {
 									// Move inside the player's inventory
-									let mut players = self.players.borrow_mut();
-									let player = &mut players.get_mut(&id).unwrap();
-									let mut $name = &mut player.inventory;
+
+									// Store the inventory inside a local variable so that
+									// the borrow to all players gets invalidated
+									let mut inv = {
+										let mut players = self.players.borrow_mut();
+										let player = &mut players.get_mut(&id).unwrap();
+										player.inventory.clone()
+									};
+									let mut $name = &mut inv;
 
 									let invs = $thing;
 
+									{
+										let mut players = self.players.borrow_mut();
+										let player = &mut players.get_mut(&id).unwrap();
+										player.inventory = invs.0.clone();
+									};
 									// TODO maybe send changed inventory to player?
 
 									invs.1
