@@ -1,7 +1,6 @@
-use anyhow::Result;
+use anyhow::{Error, Result};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::net::{SocketAddr, ToSocketAddrs};
-use crate::StrErr;
 use quinn::RecvStream;
 use quinn::generic::EndpointBuilder;
 use quinn::crypto::rustls::TlsSession;
@@ -209,7 +208,7 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 			println!("failed to shutdown stream: {}", e)
 		}
 		break Ok(());
-	}}).map_err(|e :StrErr| e)?;
+	}}).map_err(|e :Error| e)?;
 	Ok(())
 }
 
