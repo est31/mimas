@@ -44,3 +44,14 @@ pub mod server;
 
 // TODO remove the blanket export
 pub use server::*;
+
+use std::fmt::Display;
+
+#[derive(Debug)]
+pub struct StrErr(String);
+
+impl<T :Display> From<T> for StrErr {
+	fn from(v :T) -> Self {
+		StrErr(format!("{}", v))
+	}
+}

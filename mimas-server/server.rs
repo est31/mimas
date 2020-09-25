@@ -6,13 +6,13 @@ use std::thread;
 use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
-use std::fmt::Display;
 use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use crate::config::Config;
 use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
 use crate::inventory::{self, SelectableInventory, Stack, InventoryPos, InvRef};
 use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
+use crate::StrErr;
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
 use srp::groups::G_4096;
@@ -62,15 +62,6 @@ enum AuthState {
 	Unauthenticated,
 	NewUser(String),
 	WaitingForM1(String, PlayerIdPair, SrpServer<Sha256>),
-}
-
-#[derive(Debug)]
-pub struct StrErr(String);
-
-impl<T :Display> From<T> for StrErr {
-	fn from(v :T) -> Self {
-		StrErr(format!("{}", v))
-	}
 }
 
 fn chunk_positions_around(pos :Vector3<isize>, xyradius :isize, zradius :isize) -> (Vector3<isize>, Vector3<isize>) {
