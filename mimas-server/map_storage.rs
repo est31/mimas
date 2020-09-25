@@ -23,7 +23,7 @@ pub struct SqliteStorageBackend {
 /// Magic used to identify the mimas application.
 ///
 /// This magic was taken from hexdump -n 32 /dev/urandom output.
-const MEHLON_SQLITE_APP_ID :i32 = 0x84eeae3cu32 as i32;
+const MIMAS_SQLITE_APP_ID :i32 = 0x84eeae3cu32 as i32;
 
 const USER_VERSION :u16 = 2;
 
@@ -34,7 +34,7 @@ const USER_VERSION :u16 = 2;
 const WRITES_PER_TRANSACTION :u32 = 50;
 
 fn init_db(conn :&mut Connection) -> Result<(), StrErr> {
-	set_app_id(conn, MEHLON_SQLITE_APP_ID)?;
+	set_app_id(conn, MIMAS_SQLITE_APP_ID)?;
 	set_user_version(conn, USER_VERSION)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS kvstore (
@@ -74,9 +74,9 @@ fn migrate_v2(conn :&mut Connection) -> Result<(), StrErr> {
 fn expect_user_ver(conn :&mut Connection) -> Result<(), StrErr> {
 	let app_id = get_app_id(conn)?;
 	let user_version = get_user_version(conn)?;
-	if app_id != MEHLON_SQLITE_APP_ID {
+	if app_id != MIMAS_SQLITE_APP_ID {
 		Err(format!("expected app id {} but was {}",
-			MEHLON_SQLITE_APP_ID, app_id))?;
+			MIMAS_SQLITE_APP_ID, app_id))?;
 	}
 	if user_version > USER_VERSION {
 		Err(format!("user_version of database {} newer than maximum supported {}",
