@@ -439,7 +439,8 @@ impl InventoryMenu {
 		self.hover_idx = hover_idx;
 
 	}
-	pub fn check_event(&mut self) {
+	pub fn check_event(&mut self) -> Option<SwapCommand> {
+		let mut res = None;
 		let mut swap_command = None;
 
 		let input_ev = self.mouse_input_ev.take();
@@ -483,11 +484,17 @@ impl InventoryMenu {
 					inventory::merge_or_move(
 						&mut self.invs,
 						from_pos, to_pos, only_move);
+					res = Some(SwapCommand {
+						from_pos,
+						to_pos,
+						only_move,
+					});
 				}
 			}
 		}
 
 		self.update_craft_output_inv();
+		res
 	}
 }
 
