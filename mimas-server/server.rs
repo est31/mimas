@@ -923,10 +923,25 @@ impl<S :NetworkServerSocket> Server<S> {
 						// Don't send anything to the client, its
 						// prediction was alright.
 					};
+					let mut block_set = false;
 					if let Some(mut hdl) = self.map.get_blk_mut(p) {
+						// TODO check if air
 						hdl.set(b);
+						block_set = true;
 					} else {
 						// TODO log something about an attempted action in an unloaded chunk
+					}
+					let has_inv = self.params.p.get_block_params(b).unwrap().inventory;
+					if let (Some(stack_num), true) = (has_inv, block_set) {
+						if let Some(mut hdl) = self.map.get_blk_meta_mut(p) {
+							let inv = SelectableInventory::empty_with_size(stack_num as usize);
+							hdl.set(MetadataEntry::Inventory(inv));
+						} else {
+							// TODO log error about an attempted action in an unloaded chunk
+							// It needs to be an ERROR because we should already have
+							// set the block above successfully so if we can't set it now
+							// again, there is some problem...
+						}
 					}
 				},
 				PlaceTree(p) => {
