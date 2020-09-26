@@ -54,6 +54,7 @@ pub enum ServerToClientMsg {
 
 	SetPos(PlayerPosition),
 	SetInventory(SelectableInventory),
+	SetCraftInventory(SelectableInventory),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
 }
@@ -84,6 +85,8 @@ struct Player<C: NetworkServerConn> {
 	pos :PlayerPosition,
 	inventory :SelectableInventory,
 	inventory_last_ser :SelectableInventory,
+	craft_inventory :SelectableInventory,
+	craft_inventory_last_ser :SelectableInventory,
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
@@ -97,6 +100,8 @@ impl<C: NetworkServerConn> Player<C> {
 			pos : PlayerPosition::default(),
 			inventory : waiting.inv.clone().unwrap(),
 			inventory_last_ser : waiting.inv.unwrap(),
+			craft_inventory : waiting.craft_inv.clone().unwrap(),
+			craft_inventory_last_ser : waiting.craft_inv.clone().unwrap(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
@@ -112,6 +117,7 @@ struct KvWaitingPlayer<C: NetworkServerConn> {
 	nick :String,
 	pos :Option<PlayerPosition>,
 	inv :Option<SelectableInventory>,
+	craft_inv :Option<SelectableInventory>,
 }
 
 impl<C: NetworkServerConn> KvWaitingPlayer<C> {
@@ -122,10 +128,11 @@ impl<C: NetworkServerConn> KvWaitingPlayer<C> {
 			nick,
 			pos : None,
 			inv : None,
+			craft_inv : None,
 		}
 	}
 	fn ready(&self) -> bool {
-		self.pos.is_some() && self.inv.is_some()
+		self.pos.is_some() && self.inv.is_some() && self.craft_inv.is_some()
 	}
 }
 
@@ -413,9 +420,9 @@ impl<S :NetworkServerSocket> Server<S> {
 		let nm = &self.params.p.name_id_map;
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
 			if let hash_map::Entry::Occupied(mut kvw) = pwfk.entry(id) {
-				let mut ready = false;
+				let mut check = false;
 				if key == "position" {
-					let KvWaitingPlayer { pos, inv, .. } = kvw.get_mut();
+					let KvWaitingPlayer { pos, .. } = kvw.get_mut();
 					*pos = Some(if let Some(buf) = value {
 						PlayerPosition::deserialize(&buf)
 							.ok()
@@ -424,9 +431,9 @@ impl<S :NetworkServerSocket> Server<S> {
 						// No value could be found
 						PlayerPosition::default()
 					});
-					ready = inv.is_some();
+					check = true;
 				} else if key == "inventory" {
-					let KvWaitingPlayer { inv, pos, .. } = kvw.get_mut();
+					let KvWaitingPlayer { inv, .. } = kvw.get_mut();
 					*inv = Some(if let Some(buf) = value {
 						SelectableInventory::deserialize(&buf, nm)
 							.ok()
@@ -435,9 +442,20 @@ impl<S :NetworkServerSocket> Server<S> {
 						// No value could be found
 						SelectableInventory::new()
 					});
-					ready = pos.is_some();
+					check = true;
+				} else if key == "craft_inventory" {
+					let KvWaitingPlayer { craft_inv, .. } = kvw.get_mut();
+					*craft_inv = Some(if let Some(buf) = value {
+						SelectableInventory::deserialize(&buf, nm)
+							.ok()
+							.unwrap_or_else(SelectableInventory::crafting_inv)
+					} else {
+						// No value could be found
+						SelectableInventory::crafting_inv()
+					});
+					check = true;
 				}
-				if ready {
+				if check && kvw.get().ready() {
 					players_to_add.push(kvw.remove());
 				}
 			}
@@ -517,6 +535,11 @@ impl<S :NetworkServerSocket> Server<S> {
 				self.map.set_player_kv(player.ids, "inventory", serialized_inv);
 				player.inventory_last_ser = player.inventory.clone();
 			}
+			if player.craft_inventory_last_ser != player.craft_inventory {
+				let serialized_inv = player.craft_inventory.serialize();
+				self.map.set_player_kv(player.ids, "craft_inventory", serialized_inv);
+				player.inventory_last_ser = player.craft_inventory.clone();
+			}
 		}
 		Ok(())
 	}
@@ -571,6 +594,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		const PAYLOAD :u32 = 0;
 		self.map.get_player_kv(id, "position", PAYLOAD);
 		self.map.get_player_kv(id, "inventory", PAYLOAD);
+		self.map.get_player_kv(id, "craft_inventory", PAYLOAD);
 		self.players_waiting_for_kv.insert(id, KvWaitingPlayer::new(conn, id, nick));
 	}
 	fn add_player(&mut self, pl :KvWaitingPlayer<S::Conn>) {
@@ -585,6 +609,10 @@ impl<S :NetworkServerSocket> Server<S> {
 			pl.conn.send(msg).unwrap();
 
 			let msg = ServerToClientMsg::SetInventory(pl.inv.clone().unwrap());
+			// TODO get rid of unwrap
+			pl.conn.send(msg).unwrap();
+
+			let msg = ServerToClientMsg::SetCraftInventory(pl.craft_inv.clone().unwrap());
 			// TODO get rid of unwrap
 			pl.conn.send(msg).unwrap();
 

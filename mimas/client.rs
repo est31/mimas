@@ -423,6 +423,9 @@ impl<C :NetworkClientConn> Game<C> {
 					ServerToClientMsg::SetInventory(inv) => {
 						self.sel_inventory = inv;
 					},
+					ServerToClientMsg::SetCraftInventory(inv) => {
+						self.craft_inv = inv;
+					},
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);
 					},
