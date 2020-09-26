@@ -128,8 +128,6 @@ macro_rules! maybe_chest_inventory_change {
 	($m:ident, $this:ident, $command:expr) => {
 		if $m.inventory() != &$this.sel_inventory {
 			$this.sel_inventory = $m.inventory().clone();
-			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
-			let _ = $this.srv_conn.send(msg);
 		}
 		if let Some(cmd) = $command {
 			// Needed because it complains about missing type annotations otherwise
@@ -154,6 +152,9 @@ macro_rules! maybe_chest_inventory_change {
 				location : location_to,
 			};
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
+			let _ = $this.srv_conn.send(msg);
+		} else if $m.inventory() != &$this.sel_inventory {
+			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
 		}
 
