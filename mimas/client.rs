@@ -111,8 +111,28 @@ pub struct Game<C :NetworkClientConn> {
 }
 
 macro_rules! maybe_inventory_change {
-	($m:ident, $this:ident) => {
-		if $m.inventory() != &$this.sel_inventory {
+	($m:ident, $this:ident, $command:expr) => {
+		let mut command_sent = false;
+		if let Some(cmd) = $command {
+			// Needed because it complains about missing type annotations otherwise
+			let cmd :SwapCommand = cmd;
+
+			if cmd.from_pos.0 == 1 && cmd.to_pos.0 == 1 {
+				let from = InventoryPos {
+					stack_pos : cmd.from_pos.1,
+					location : None,
+				};
+				let to = InventoryPos {
+					stack_pos : cmd.to_pos.1,
+					location : None,
+				};
+				let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
+				let _ = $this.srv_conn.send(msg);
+
+				command_sent = true;
+			}
+		}
+		if !command_sent && $m.inventory() != &$this.sel_inventory {
 			$this.sel_inventory = $m.inventory().clone();
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
@@ -731,8 +751,8 @@ impl<C :NetworkClientConn> Game<C> {
 					tid_cache,
 					&mut self.display,
 					&self.program, glyph_brush, &mut target);
-				m.check_event();
-				maybe_inventory_change!(m, self);
+				let command = m.check_event();
+				maybe_inventory_change!(m, self, command);
 			} else if let (Some(m), Some(ui_colors), Some(tid_cache)) = (&mut self.chest_menu, &self.ui_colors, &self.texture_id_cache) {
 				m.render(
 					ui_colors,
@@ -821,7 +841,7 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 		if input.virtual_keycode == Some(VirtualKeyCode::Escape) {
 			if let Some(m) = self.inventory_menu.take() {
-				maybe_inventory_change!(m, self);
+				maybe_inventory_change!(m, self, None);
 
 				self.check_grab_change();
 				return false;
@@ -843,7 +863,7 @@ impl<C :NetworkClientConn> Game<C> {
 			Some(VirtualKeyCode::I) => {
 				if input.state == ElementState::Pressed {
 					if let Some(m) = self.inventory_menu.take() {
-						maybe_inventory_change!(m, self);
+						maybe_inventory_change!(m, self, None);
 					} else {
 						// TODO unwrap below is a bit bad because players might
 						// want to open inventory before the server has sent the params
