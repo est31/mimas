@@ -490,11 +490,10 @@ impl<C :NetworkClientConn> Game<C> {
 		if touches_ground || self.camera.fly_mode {
 			self.camera.velocity = nalgebra::zero();
 			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
-				// Jumping speed
-				let jumping_speed = Vector3::new(0.0, 0.0, 120.0);
-				self.camera.velocity = jumping_speed;
+				// Start a jump
+				self.camera.jump_offs = Some(0.0);
 			}
-		} else {
+		} else if self.camera.jump_offs.is_none() {
 			let gravity = Vector3::new(0.0, 0.0, -9.81);
 			self.camera.velocity += gravity * 3.0 * time_delta;
 			// Maximum falling speed
@@ -503,6 +502,32 @@ impl<C :NetworkClientConn> Game<C> {
 		}
 		//delta_pos.try_normalize_mut(std::f32::EPSILON);
 		delta_pos
+	}
+	fn handle_jump(&mut self, time_delta :f32) -> Vector3<f32> {
+		// Duration of a jump in seconds
+		const JUMP_ANIM_END :f32 = 0.15;
+		// The height of the jump at its highest point
+		let jump_height = Vector3::new(0.0, 0.0, 1.5);
+		// Handle jump end
+		if self.camera.jump_offs.iter().any(|v| *v > JUMP_ANIM_END) {
+			self.camera.jump_offs = None;
+		}
+		// Handle jump itself
+		if let Some(jump_offs) = self.camera.jump_offs.as_mut()  {
+			let new_jump_offs = *jump_offs + time_delta;
+			// The jump curve (upwards). The function needs to
+			// start at positive value <1.0 and end at 1.0.
+			// We do a "smooth" jump by not immediately
+			// going upwards at top speed but instead use a parabola
+			fn delta_fn(offs :f32) -> f32 {
+				let offs = offs / JUMP_ANIM_END + 1.0;
+				offs * offs * (1.0 / 4.0)
+			}
+			let jump_delta = delta_fn(new_jump_offs) - delta_fn(*jump_offs);
+			*jump_offs = new_jump_offs;
+			return jump_height * jump_delta;
+		}
+		Vector3::new(0.0, 0.0, 0.0)
 	}
 	fn movement(&mut self, time_delta :f32) {
 		let mut delta_pos = self.camera.delta_pos();
@@ -517,6 +542,7 @@ impl<C :NetworkClientConn> Game<C> {
 			delta_pos += self.camera.velocity;
 		}
 		delta_pos = delta_pos * time_delta;
+		delta_pos += self.handle_jump(time_delta);
 		if !self.camera.is_noclip() {
 			delta_pos = self.collide_delta_pos(delta_pos, time_delta);
 		}
@@ -1158,6 +1184,7 @@ struct Camera {
 	yaw :f32,
 	pos :Vector3<f32>,
 	velocity :Vector3<f32>,
+	jump_offs :Option<f32>,
 
 	forward_pressed :bool,
 	left_pressed :bool,
@@ -1186,6 +1213,7 @@ impl Camera {
 			yaw : 0.0,
 			pos : Vector3::new(60.0, 40.0, 20.0),
 			velocity : Vector3::new(0.0, 0.0, 0.0),
+			jump_offs : None,
 
 			forward_pressed : false,
 			left_pressed : false,
