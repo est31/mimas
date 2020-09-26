@@ -11,7 +11,7 @@ use nalgebra::Vector3;
 use std::time::{Instant, Duration};
 use std::thread;
 use std::cell::RefCell;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap, hash_map};
 use std::rc::Rc;
 use srp::server::{SrpServer, UserRecord};
 use srp::client::SrpClient;
@@ -412,9 +412,10 @@ impl<S :NetworkServerSocket> Server<S> {
 		let pwfk = &mut self.players_waiting_for_kv;
 		let nm = &self.params.p.name_id_map;
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
-			let mut ready = false;
-			if key == "position" {
-				if let Some(KvWaitingPlayer { pos, inv, .. }) = pwfk.get_mut(&id) {
+			if let hash_map::Entry::Occupied(mut kvw) = pwfk.entry(id) {
+				let mut ready = false;
+				if key == "position" {
+					let KvWaitingPlayer { pos, inv, .. } = kvw.get_mut();
 					*pos = Some(if let Some(buf) = value {
 						PlayerPosition::deserialize(&buf)
 							.ok()
@@ -424,9 +425,8 @@ impl<S :NetworkServerSocket> Server<S> {
 						PlayerPosition::default()
 					});
 					ready = inv.is_some();
-				}
-			} else if key == "inventory" {
-				if let Some(KvWaitingPlayer { inv, pos, .. }) = pwfk.get_mut(&id) {
+				} else if key == "inventory" {
+					let KvWaitingPlayer { inv, pos, .. } = kvw.get_mut();
 					*inv = Some(if let Some(buf) = value {
 						SelectableInventory::deserialize(&buf, nm)
 							.ok()
@@ -437,10 +437,8 @@ impl<S :NetworkServerSocket> Server<S> {
 					});
 					ready = pos.is_some();
 				}
-			}
-			if ready {
-				if let Some(kvw) = pwfk.remove(&id) {
-					players_to_add.push(kvw);
+				if ready {
+					players_to_add.push(kvw.remove());
 				}
 			}
 		});
