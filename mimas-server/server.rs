@@ -89,21 +89,43 @@ struct Player<C: NetworkServerConn> {
 }
 
 impl<C: NetworkServerConn> Player<C> {
-	pub fn from_stuff(conn :C, ids :PlayerIdPair,
-			nick :String, inventory :SelectableInventory) -> Self {
+	pub fn from_waiting(waiting :KvWaitingPlayer<C>) -> Self {
 		Player {
-			conn,
-			ids,
-			nick,
+			conn : waiting.conn,
+			ids : waiting.ids,
+			nick : waiting.nick,
 			pos : PlayerPosition::default(),
-			inventory,
-			inventory_last_ser : SelectableInventory::new(),
+			inventory : waiting.inv.clone().unwrap(),
+			inventory_last_ser : waiting.inv.unwrap(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
 	}
 	fn pos(&self) -> Vector3<f32> {
 		self.pos.pos()
+	}
+}
+
+struct KvWaitingPlayer<C: NetworkServerConn> {
+	conn :C,
+	ids :PlayerIdPair,
+	nick :String,
+	pos :Option<PlayerPosition>,
+	inv :Option<SelectableInventory>,
+}
+
+impl<C: NetworkServerConn> KvWaitingPlayer<C> {
+	fn new(conn :C, ids :PlayerIdPair, nick :String) -> Self {
+		Self {
+			conn,
+			ids,
+			nick,
+			pos : None,
+			inv : None,
+		}
+	}
+	fn ready(&self) -> bool {
+		self.pos.is_some() && self.inv.is_some()
 	}
 }
 
@@ -114,9 +136,7 @@ pub struct Server<S :NetworkServerSocket> {
 	config :Config,
 	auth_back :Option<SqliteLocalAuth>,
 	unauthenticated_players :Vec<(S::Conn, AuthState)>,
-	players_waiting_for_kv :HashMap<PlayerIdPair,
-		(S::Conn, String,
-			Option<PlayerPosition>, Option<SelectableInventory>)>,
+	players_waiting_for_kv :HashMap<PlayerIdPair, KvWaitingPlayer<S::Conn>>,
 	players :Rc<RefCell<HashMap<PlayerIdPair, Player<S::Conn>>>>,
 
 	last_frame_time :Instant,
@@ -394,7 +414,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		self.map.run_for_kv_results(&mut |id, _payload, key, value| {
 			let mut ready = false;
 			if key == "position" {
-				if let Some((_conn, _nick, pos, inv)) = pwfk.get_mut(&id) {
+				if let Some(KvWaitingPlayer { pos, inv, .. }) = pwfk.get_mut(&id) {
 					*pos = Some(if let Some(buf) = value {
 						PlayerPosition::deserialize(&buf)
 							.ok()
@@ -406,7 +426,7 @@ impl<S :NetworkServerSocket> Server<S> {
 					ready = inv.is_some();
 				}
 			} else if key == "inventory" {
-				if let Some((_conn, _nick, pos, inv)) = pwfk.get_mut(&id) {
+				if let Some(KvWaitingPlayer { inv, pos, .. }) = pwfk.get_mut(&id) {
 					*inv = Some(if let Some(buf) = value {
 						SelectableInventory::deserialize(&buf, nm)
 							.ok()
@@ -419,14 +439,13 @@ impl<S :NetworkServerSocket> Server<S> {
 				}
 			}
 			if ready {
-				if let Some((conn, nick, Some(pos), Some(inv)))
-						= pwfk.remove(&id) {
-					players_to_add.push((conn, id, nick, pos, inv));
+				if let Some(kvw) = pwfk.remove(&id) {
+					players_to_add.push(kvw);
 				}
 			}
 		});
-		for (conn, id, nick, pos, inv) in players_to_add {
-			self.add_player(conn, id, nick, pos, inv);
+		for kvw in players_to_add {
+			self.add_player(kvw);
 		}
 	}
 	fn get_msgs(&mut self) -> Vec<(PlayerIdPair, ClientToServerMsg)> {
@@ -554,25 +573,26 @@ impl<S :NetworkServerSocket> Server<S> {
 		const PAYLOAD :u32 = 0;
 		self.map.get_player_kv(id, "position", PAYLOAD);
 		self.map.get_player_kv(id, "inventory", PAYLOAD);
-		self.players_waiting_for_kv.insert(id, (conn, nick, None, None));
+		self.players_waiting_for_kv.insert(id, KvWaitingPlayer::new(conn, id, nick));
 	}
-	fn add_player(&mut self, conn :S::Conn, id :PlayerIdPair,
-			nick :String, pos :PlayerPosition, inv :SelectableInventory) {
+	fn add_player(&mut self, pl :KvWaitingPlayer<S::Conn>) {
+		let nick = pl.nick.clone();
 		let player_count = {
 			let msg = ServerToClientMsg::GameParams(self.params.p.clone());
 			// TODO get rid of unwrap
-			conn.send(msg).unwrap();
+			pl.conn.send(msg).unwrap();
 
-			let msg = ServerToClientMsg::SetPos(pos);
+			let msg = ServerToClientMsg::SetPos(pl.pos.unwrap());
 			// TODO get rid of unwrap
-			conn.send(msg).unwrap();
+			pl.conn.send(msg).unwrap();
 
-			let msg = ServerToClientMsg::SetInventory(inv.clone());
+			let msg = ServerToClientMsg::SetInventory(pl.inv.clone().unwrap());
 			// TODO get rid of unwrap
-			conn.send(msg).unwrap();
+			pl.conn.send(msg).unwrap();
 
 			let mut players = self.players.borrow_mut();
-			let player = Player::from_stuff(conn, id, nick.clone(), inv);
+			let id = pl.ids;
+			let player = Player::from_waiting(pl);
 			players.insert(id, player);
 			players.len()
 		};
