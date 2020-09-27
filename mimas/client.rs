@@ -136,9 +136,11 @@ macro_rules! maybe_inventory_change {
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
 			let _ = $this.srv_conn.send(msg);
 		} else if $m.inventory() != &$this.sel_inventory {
-			$this.sel_inventory = $m.inventory().clone();
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
+		}
+		if $m.inventory() != &$this.sel_inventory {
+			$this.sel_inventory = $m.inventory().clone();
 		}
 		if $m.craft_inv() != &$this.craft_inv {
 			$this.craft_inv = $m.craft_inv().clone();
