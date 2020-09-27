@@ -439,7 +439,7 @@ impl InventoryMenu {
 		self.hover_idx = hover_idx;
 
 	}
-	pub fn check_event(&mut self) -> Option<SwapCommand> {
+	pub fn check_event(&mut self) -> Option<SwapOrCraftCommand> {
 		let mut res = None;
 		let mut swap_command = None;
 
@@ -464,6 +464,7 @@ impl InventoryMenu {
 								st.take_n(1);
 							}
 						}
+						return Some(SwapOrCraftCommand::Craft);
 					} else {
 						self.from_pos = Some(hv);
 					}
@@ -484,11 +485,11 @@ impl InventoryMenu {
 					inventory::merge_or_move(
 						&mut self.invs,
 						from_pos, to_pos, only_move);
-					res = Some(SwapCommand {
+					res = Some(SwapOrCraftCommand::Swap(SwapCommand {
 						from_pos,
 						to_pos,
 						only_move,
-					});
+					}));
 				}
 			}
 		}
@@ -498,6 +499,7 @@ impl InventoryMenu {
 	}
 }
 
+#[derive(PartialEq, Eq)]
 pub struct SwapCommand {
 	pub from_pos :(usize, usize),
 	pub to_pos :(usize, usize),
@@ -506,6 +508,11 @@ pub struct SwapCommand {
 	pub only_move :bool,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum SwapOrCraftCommand {
+	Craft,
+	Swap(SwapCommand),
+}
 
 pub struct ChestMenu {
 	params :GameParamsHdl,

@@ -1,5 +1,6 @@
 use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use crate::config::Config;
+use crate::crafting::get_matching_recipe;
 use crate::map::{self, Map, ServerMap, MapBackend, MapChunkData,
 	CHUNKSIZE, MapBlock, MetadataEntry};
 use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
@@ -39,6 +40,7 @@ pub enum ClientToServerMsg {
 
 	SetPos(PlayerPosition),
 	InventorySwap(InventoryPos, InventoryPos, bool),
+	Craft,
 	SetInventory(SelectableInventory),
 	Chat(String),
 }
@@ -859,7 +861,7 @@ impl<S :NetworkServerSocket> Server<S> {
 
 					invs.1
 				} else { // InventoryLocation::CraftInv
-					// Move inside the player's inventory
+					// Move inside the player's craft inventory
 
 					// Store the inventory inside a local variable so that
 					// the borrow to all players gets invalidated
@@ -912,6 +914,22 @@ impl<S :NetworkServerSocket> Server<S> {
 				});
 				(inv_from, (),)
 			});
+		}
+	}
+
+	pub fn handle_craft(&mut self, id :PlayerIdPair) {
+		let mut players = self.players.borrow_mut();
+		let player = &mut players.get_mut(&id).unwrap();
+
+		let recipe = get_matching_recipe(&player.craft_inventory, &self.params.p);
+		let output = recipe.map(|r| r.output);
+
+		if let Some(output) = output {
+			player.inventory.put(output);
+			// Reduce inputs of input inv.
+			for st in player.craft_inventory.stacks_mut().iter_mut() {
+				st.take_n(1);
+			}
 		}
 	}
 	pub fn run_loop(&mut self) {
@@ -1024,6 +1042,9 @@ impl<S :NetworkServerSocket> Server<S> {
 
 				InventorySwap(from_pos, to_pos, only_move_one) => {
 					self.handle_inv_move_or_swap(id, from_pos, to_pos, only_move_one);
+				},
+				Craft => {
+					self.handle_craft(id);
 				},
 				Chat(m) => {
 					if m.starts_with('/') {

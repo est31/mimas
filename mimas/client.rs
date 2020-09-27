@@ -41,7 +41,7 @@ use assets::{Assets, UiColors};
 
 use ui::{render_menu, square_mesh, ChatWindow, ChatWindowEvent,
 	ChestMenu, InventoryMenu, IDENTITY, render_inventory_hud,
-	SwapCommand};
+	SwapOrCraftCommand, SwapCommand};
 
 use voxel_walk::VoxelWalker;
 
@@ -112,10 +112,10 @@ pub struct Game<C :NetworkClientConn> {
 
 macro_rules! maybe_inventory_change {
 	($m:ident, $this:ident, $command:expr) => {
-		if let Some(cmd) = $command {
-			// Needed because it complains about missing type annotations otherwise
-			let cmd :SwapCommand = cmd;
-
+		if let Some(SwapOrCraftCommand::Craft) = $command {
+			let msg = ClientToServerMsg::Craft;
+			let _ = $this.srv_conn.send(msg);
+		} else if let Some(SwapOrCraftCommand::Swap(cmd)) = $command {
 			fn ind_to_loc(ind :usize) -> InventoryLocation {
 				match ind {
 					0 => InventoryLocation::CraftInv,
