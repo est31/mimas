@@ -136,8 +136,7 @@ macro_rules! maybe_inventory_change {
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
 			let _ = $this.srv_conn.send(msg);
 		} else if $m.inventory() != &$this.sel_inventory {
-			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
-			let _ = $this.srv_conn.send(msg);
+			// TODO this is an error log something
 		}
 		if $m.inventory() != &$this.sel_inventory {
 			$this.sel_inventory = $m.inventory().clone();
@@ -177,8 +176,7 @@ macro_rules! maybe_chest_inventory_change {
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
 			let _ = $this.srv_conn.send(msg);
 		} else if $m.inventory() != &$this.sel_inventory {
-			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
-			let _ = $this.srv_conn.send(msg);
+			// TODO this is an error log something
 		}
 
 		let mut chest_meta = $this.map.get_blk_meta_mut($m.chest_pos()).unwrap();

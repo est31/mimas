@@ -42,7 +42,6 @@ pub enum ClientToServerMsg {
 	InventorySwap(InventoryPos, InventoryPos, bool),
 	Craft,
 	InventorySelect(Option<usize>),
-	SetInventory(SelectableInventory),
 	Chat(String),
 }
 
@@ -478,9 +477,6 @@ impl<S :NetworkServerSocket> Server<S> {
 				match msg {
 					Ok(Some(ClientToServerMsg::SetPos(p))) => {
 						player.pos = p;
-					},
-					Ok(Some(ClientToServerMsg::SetInventory(inv))) => {
-						player.inventory = inv;
 					},
 					Ok(Some(msg)) => {
 						msgs.push((*id, msg));
@@ -1039,7 +1035,6 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.handle_dig(id, p);
 				},
 				SetPos(_p) => unreachable!(),
-				SetInventory(_inv) => unreachable!(),
 
 				InventorySwap(from_pos, to_pos, only_move_one) => {
 					self.handle_inv_move_or_swap(id, from_pos, to_pos, only_move_one);
