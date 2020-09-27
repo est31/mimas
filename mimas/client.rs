@@ -1087,7 +1087,7 @@ impl<C :NetworkClientConn> Game<C> {
 							} else if lines_diff > 0.0 {
 								self.sel_inventory.rotate(false);
 							}
-							let msg = ClientToServerMsg::SetInventory(self.sel_inventory.clone());
+							let msg = ClientToServerMsg::InventorySelect(self.sel_inventory.selection());
 							let _ = self.srv_conn.send(msg);
 						}
 					},

@@ -41,6 +41,7 @@ pub enum ClientToServerMsg {
 	SetPos(PlayerPosition),
 	InventorySwap(InventoryPos, InventoryPos, bool),
 	Craft,
+	InventorySelect(Option<usize>),
 	SetInventory(SelectableInventory),
 	Chat(String),
 }
@@ -1045,6 +1046,13 @@ impl<S :NetworkServerSocket> Server<S> {
 				},
 				Craft => {
 					self.handle_craft(id);
+				},
+				InventorySelect(selection) => {
+					let mut players = self.players.borrow_mut();
+					let player = &mut players.get_mut(&id).unwrap();
+					if !player.inventory.set_selection(selection) {
+						// TODO log something about an error or something
+					}
 				},
 				Chat(m) => {
 					if m.starts_with('/') {

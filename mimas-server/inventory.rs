@@ -173,6 +173,15 @@ impl SelectableInventory {
 		}
 		stack
 	}
+	/// Sets the selection to the specified value,
+	/// if the number is valid (less than number of stacks)
+	pub fn set_selection(&mut self, selection :Option<usize>) -> bool {
+		if selection.iter().any(|v| *v >= self.stacks.len()) {
+			return false;
+		}
+		self.selection = selection;
+		true
+	}
 	pub fn selection(&self) -> Option<usize> {
 		self.selection
 	}
