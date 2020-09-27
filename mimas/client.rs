@@ -172,7 +172,7 @@ macro_rules! maybe_chest_inventory_change {
 			};
 			let to = InventoryPos {
 				stack_pos : cmd.to_pos.1,
-				location : ind_to_loc(cmd.from_pos.0),
+				location : ind_to_loc(cmd.to_pos.0),
 			};
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
 			let _ = $this.srv_conn.send(msg);
