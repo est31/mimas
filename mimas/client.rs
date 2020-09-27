@@ -119,7 +119,8 @@ macro_rules! maybe_inventory_change {
 			fn ind_to_loc(ind :usize) -> InventoryLocation {
 				match ind {
 					0 => InventoryLocation::CraftInv,
-					1 => todo!(), // TODO something about craft output inv
+					// We don't generate movement commands to/from the craft output inv
+					1 => unreachable!(),
 					2 => InventoryLocation::PlayerInv,
 					_ => unreachable!(),
 				}
