@@ -31,7 +31,7 @@ use mimas_server::generic_net::NetworkClientConn;
 use mimas_server::local_auth::{PlayerPwHash, HashParams};
 use mimas_server::config::Config;
 use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
-use mimas_server::inventory::{SelectableInventory, InventoryPos};
+use mimas_server::inventory::{SelectableInventory, InventoryPos, InventoryLocation};
 use mimas_server::game_params::{GameParamsHdl, DigGroup, ToolGroup};
 
 use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
@@ -112,27 +112,29 @@ pub struct Game<C :NetworkClientConn> {
 
 macro_rules! maybe_inventory_change {
 	($m:ident, $this:ident, $command:expr) => {
-		let mut command_sent = false;
 		if let Some(cmd) = $command {
 			// Needed because it complains about missing type annotations otherwise
 			let cmd :SwapCommand = cmd;
 
-			if cmd.from_pos.0 == 1 && cmd.to_pos.0 == 1 {
-				let from = InventoryPos {
-					stack_pos : cmd.from_pos.1,
-					location : None,
-				};
-				let to = InventoryPos {
-					stack_pos : cmd.to_pos.1,
-					location : None,
-				};
-				let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
-				let _ = $this.srv_conn.send(msg);
-
-				command_sent = true;
+			fn ind_to_loc(ind :usize) -> InventoryLocation {
+				match ind {
+					0 => InventoryLocation::CraftInv,
+					1 => todo!(), // TODO something about craft output inv
+					2 => InventoryLocation::PlayerInv,
+					_ => unreachable!(),
+				}
 			}
-		}
-		if !command_sent && $m.inventory() != &$this.sel_inventory {
+			let from = InventoryPos {
+				stack_pos : cmd.from_pos.1,
+				location : ind_to_loc(cmd.from_pos.0),
+			};
+			let to = InventoryPos {
+				stack_pos : cmd.to_pos.1,
+				location : ind_to_loc(cmd.to_pos.0),
+			};
+			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
+			let _ = $this.srv_conn.send(msg);
+		} else if $m.inventory() != &$this.sel_inventory {
 			$this.sel_inventory = $m.inventory().clone();
 			let msg = ClientToServerMsg::SetInventory($this.sel_inventory.clone());
 			let _ = $this.srv_conn.send(msg);
@@ -153,23 +155,21 @@ macro_rules! maybe_chest_inventory_change {
 			// Needed because it complains about missing type annotations otherwise
 			let cmd :SwapCommand = cmd;
 
-			let location_from = if cmd.from_pos.0 == 0 {
-				Some($m.chest_pos())
-			} else {
-				None
+			let ind_to_loc = |ind :usize| -> InventoryLocation {
+				match ind {
+					0 => InventoryLocation::WorldMeta($m.chest_pos()),
+					1 => InventoryLocation::PlayerInv,
+					_ => unreachable!(),
+				}
 			};
+
 			let from = InventoryPos {
 				stack_pos : cmd.from_pos.1,
-				location : location_from,
-			};
-			let location_to = if cmd.to_pos.0 == 0 {
-				Some($m.chest_pos())
-			} else {
-				None
+				location : ind_to_loc(cmd.from_pos.0),
 			};
 			let to = InventoryPos {
 				stack_pos : cmd.to_pos.1,
-				location : location_to,
+				location : ind_to_loc(cmd.from_pos.0),
 			};
 			let msg = ClientToServerMsg::InventorySwap(from, to, cmd.only_move);
 			let _ = $this.srv_conn.send(msg);

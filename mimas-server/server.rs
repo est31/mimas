@@ -3,7 +3,8 @@ use crate::config::Config;
 use crate::map::{self, Map, ServerMap, MapBackend, MapChunkData,
 	CHUNKSIZE, MapBlock, MetadataEntry};
 use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
-use crate::inventory::{self, SelectableInventory, Stack, InventoryPos, InvRef};
+use crate::inventory::{self, SelectableInventory, Stack, InventoryPos,
+	InventoryLocation, InvRef};
 use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
 use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
 use anyhow::Result;
@@ -819,7 +820,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		// Helper macro to save us some repetitive code
 		macro_rules! do_for_inv_ref {
 			($location:expr, $name:ident, $thing:expr) => {
-				if let Some(p) = $location {
+				if let InventoryLocation::WorldMeta(p) = $location {
 					// Move between two locations inside the chest
 					if let Some(mut hdl) = map_cell.borrow_mut().get_blk_meta_mut(p) {
 						if let Some(MetadataEntry::Inventory(inv)) = hdl.get().clone() {
@@ -835,7 +836,7 @@ impl<S :NetworkServerSocket> Server<S> {
 						// TODO log something about an attempted action in an unloaded chunk
 						return;
 					}
-				} else {
+				} else if InventoryLocation::PlayerInv == $location {
 					// Move inside the player's inventory
 
 					// Store the inventory inside a local variable so that
@@ -857,6 +858,28 @@ impl<S :NetworkServerSocket> Server<S> {
 					// TODO maybe send changed inventory to player?
 
 					invs.1
+				} else { // InventoryLocation::CraftInv
+					// Move inside the player's inventory
+
+					// Store the inventory inside a local variable so that
+					// the borrow to all players gets invalidated
+					let mut inv = {
+						let mut players = self.players.borrow_mut();
+						let player = &mut players.get_mut(&id).unwrap();
+						player.craft_inventory.clone()
+					};
+					let mut $name = &mut inv;
+
+					let invs = $thing;
+
+					{
+						let mut players = self.players.borrow_mut();
+						let player = &mut players.get_mut(&id).unwrap();
+						player.craft_inventory = invs.0.clone();
+					};
+					// TODO maybe send changed inventory to player?
+
+					invs.1
 				}
 			};
 		}
@@ -872,7 +895,7 @@ impl<S :NetworkServerSocket> Server<S> {
 				(inv, ())
 			});
 		} else {
-			if from_pos.location.is_some() && to_pos.location.is_some() {
+			if from_pos.location.is_world_meta() && to_pos.location.is_world_meta() {
 				// TODO log something about attempted move between two chests.
 				// For now, this is unsupported (and would panic anyways due to the RefCell).
 				return;

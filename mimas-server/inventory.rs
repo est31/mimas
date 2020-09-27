@@ -304,5 +304,18 @@ pub struct InventoryPos {
 	pub stack_pos :usize,
 	/// None if the local player's inventory.
 	/// Some(pos) if chest at given position.
-	pub location :Option<Vector3<isize>>,
+	pub location :InventoryLocation,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum InventoryLocation {
+	WorldMeta(Vector3<isize>),
+	PlayerInv,
+	CraftInv,
+}
+
+impl InventoryLocation {
+	pub fn is_world_meta(&self) -> bool {
+		matches!(self, InventoryLocation::WorldMeta(_))
+	}
 }
