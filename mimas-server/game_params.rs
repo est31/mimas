@@ -41,6 +41,7 @@ pub struct BlockParams {
 	pub inv_texture :Option<String>,
 	pub pointable :bool,
 	pub placeable :bool,
+	pub on_place_plants_tree :bool,
 	pub solid :bool,
 	pub inventory :Option<u8>,
 	pub display_name :String,
@@ -180,6 +181,7 @@ impl Default for BlockParams {
 			inv_texture : None,
 			pointable : true,
 			placeable : true,
+			on_place_plants_tree : false,
 			solid : true,
 			display_name : String::new(),
 			inventory : None,
@@ -566,6 +568,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams> {
 		let placeable = block.get("placeable")
 			.unwrap_or(&Value::Boolean(true));
 		let placeable = *placeable.convert::<bool>()?;
+		let on_place_plants_tree = block.get("on_place_plants_tree")
+			.unwrap_or(&Value::Boolean(false));
+		let on_place_plants_tree = *on_place_plants_tree.convert::<bool>()?;
 		let solid = block.get("solid")
 			.unwrap_or(&Value::Boolean(true));
 		let solid = *solid.convert::<bool>()?;
@@ -593,6 +598,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams> {
 			inv_texture,
 			pointable,
 			placeable,
+			on_place_plants_tree,
 			solid,
 			display_name,
 			inventory,

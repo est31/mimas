@@ -482,6 +482,7 @@ texture = [
 [[block]]
 name = "default:sapling"
 texture = "assets/textures/default_sapling.png"
+on_place_plants_tree = true
 crossed = true
 solid = false
 
