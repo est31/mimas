@@ -9,20 +9,7 @@ path = "main.rs"
 
 [dependencies]
 anyhow = "1.0"
-nalgebra = "0.22"
-num-traits = "0.2"
-frustum_query = "0.1"
 glium = "0.28"
-#glium-glyph = { path = "../../glium-glyph" }
-#glium-glyph = { git = "https://github.com/est31/glium-glyph" }
-glium-glyph = "0.9"
-rand_pcg = "0.2"
-rand = "0.7"
 structopt = "0.3"
-srp = "0.4"
-sha2 = "0.8"
-image = { version = "0.23", default-features = false, features = ["png"] }
 mimas-server = { path = "../mimas-server" }
-mimas-meshgen = { path = "../mimas-meshgen" }
 mimas-client = { path = "../mimas-client" }
-dirs = "3.0"
