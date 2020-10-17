@@ -41,7 +41,9 @@ pub mod inventory;
 pub mod crafting;
 pub mod game_params;
 pub mod toml_util;
+pub mod protocol;
 pub mod server;
 
-pub use server::{ClientToServerMsg, ServerToClientMsg, Server, btchn};
+pub use protocol::{ClientToServerMsg, ServerToClientMsg};
+pub use server::{Server, btchn};
 pub(crate) use server::btpic;

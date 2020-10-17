@@ -1,13 +1,14 @@
 use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use crate::config::Config;
 use crate::crafting::get_matching_recipe;
-use crate::map::{self, Map, ServerMap, MapBackend, MapChunkData,
-	CHUNKSIZE, MapBlock, MetadataEntry};
+use crate::map::{self, Map, ServerMap, MapBackend,
+	CHUNKSIZE, MetadataEntry};
 use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
 use crate::inventory::{self, SelectableInventory, Stack, InventoryPos,
 	InventoryLocation, InvRef};
-use crate::local_auth::{SqliteLocalAuth, AuthBackend, PlayerPwHash, HashParams};
-use crate::game_params::{GameParams, ServerGameParams, ServerGameParamsHdl};
+use crate::local_auth::{SqliteLocalAuth, AuthBackend};
+use crate::game_params::{ServerGameParams, ServerGameParamsHdl};
+use crate::protocol::{ClientToServerMsg, ServerToClientMsg};
 use anyhow::Result;
 use nalgebra::Vector3;
 use std::time::{Instant, Duration};
@@ -20,48 +21,6 @@ use srp::client::SrpClient;
 use srp::groups::G_4096;
 use sha2::Sha256;
 use rand::RngCore;
-
-#[derive(Serialize, Deserialize)]
-pub enum ClientToServerMsg {
-	LogIn(String, Vec<u8>),
-	SendHash(PlayerPwHash), // "Auth" for new users
-	SendM1(Vec<u8>), // Auth for existing users
-	GetHashedBlobs(Vec<Vec<u8>>),
-
-	/// Params: Position, current inventory selection location, mapblock to place
-	///
-	/// The redundancy of specifying both inventory selection location
-	/// and mapblock to place allows the server to recognize cases
-	/// where client and server have desynced, and prevents mistakingly
-	/// placing a wrong block.
-	PlaceBlock(Vector3<isize>, usize, MapBlock),
-	/// Params: Position, current inventory selection location, mapblock to place
-	PlaceTree(Vector3<isize>, usize, MapBlock),
-	Dig(Vector3<isize>),
-
-	SetPos(PlayerPosition),
-	InventorySwap(InventoryPos, InventoryPos, bool),
-	Craft,
-	InventorySelect(Option<usize>),
-	Chat(String),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum ServerToClientMsg {
-	HashEnrollment,
-	HashParamsBpub(HashParams, Vec<u8>),
-	LogInFail(String),
-	GameParams(GameParams),
-	HashedBlobs(Vec<(Vec<u8>, Vec<u8>)>),
-
-	PlayerPositions(PlayerIdPair, Vec<(PlayerIdPair, PlayerPosition)>),
-
-	SetPos(PlayerPosition),
-	SetInventory(SelectableInventory),
-	SetCraftInventory(SelectableInventory),
-	ChunkUpdated(Vector3<isize>, MapChunkData),
-	Chat(String),
-}
 
 enum AuthState {
 	Unauthenticated,
