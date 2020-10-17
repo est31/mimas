@@ -481,8 +481,9 @@ texture = [
 
 [[block]]
 name = "default:sapling"
-inv_texture = "assets/textures/default_sapling.png"
-placeable = false
+texture = "assets/textures/default_sapling.png"
+crossed = true
+solid = false
 
 [[recipe]]
 inputs = [
