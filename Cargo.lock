@@ -1229,8 +1229,6 @@ dependencies = [
  "rust-argon2",
  "rustls",
  "serde",
- "serde-big-array",
- "serde_derive",
  "sha2",
  "srp",
  "structopt",

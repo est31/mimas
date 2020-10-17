@@ -5,10 +5,6 @@ extern crate noise;
 extern crate nalgebra;
 extern crate rand_pcg;
 extern crate rand;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_big_array;
 extern crate bincode;
 extern crate twox_hash;
 extern crate toml;
