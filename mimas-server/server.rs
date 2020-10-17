@@ -35,7 +35,8 @@ pub enum ClientToServerMsg {
 	/// where client and server have desynced, and prevents mistakingly
 	/// placing a wrong block.
 	PlaceBlock(Vector3<isize>, usize, MapBlock),
-	PlaceTree(Vector3<isize>),
+	/// Params: Position, current inventory selection location, mapblock to place
+	PlaceTree(Vector3<isize>, usize, MapBlock),
 	Dig(Vector3<isize>),
 
 	SetPos(PlayerPosition),
@@ -1028,7 +1029,29 @@ impl<S :NetworkServerSocket> Server<S> {
 						}
 					}
 				},
-				PlaceTree(p) => {
+				PlaceTree(p, sel_idx, b) => {
+					// Block to make the borrow_mut work
+					{
+						let players = &mut self.players.borrow_mut();
+						let player = players.get_mut(&id).unwrap();
+						let sel = player.inventory.get_sel_idx_and_content();
+						if Some((sel_idx, b)) != sel {
+							// TODO log something about selected inventory mismatch
+							// between client and server
+
+							// TODO Maybe send msg to the client
+							// that the block placing failed??
+							continue;
+						}
+						player.inventory.take_selected();
+						// Don't send anything to the client, its
+						// prediction was alright.
+					};
+					let on_place_plants_tree = self.params.p.get_block_params(b).unwrap().on_place_plants_tree;
+					if !on_place_plants_tree {
+						// TODO log something about on_place_plants_tree not being set
+						continue;
+					}
 					map::spawn_tree(&mut self.map, p, &self.params);
 				},
 				Dig(p) => {

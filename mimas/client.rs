@@ -974,12 +974,12 @@ impl<C :NetworkClientConn> Game<C> {
 				if let Some((sel_idx, sel)) = sel {
 					let bp = params.get_block_params(sel).unwrap();
 					if bp.placeable {
+						let taken = self.sel_inventory.take_selected();
+						assert_eq!(taken, Some(sel));
 						if bp.on_place_plants_tree {
-							let msg = ClientToServerMsg::PlaceTree(before_selected);
+							let msg = ClientToServerMsg::PlaceTree(before_selected, sel_idx, sel);
 							let _ = self.srv_conn.send(msg);
 						} else {
-							let taken = self.sel_inventory.take_selected();
-							assert_eq!(taken, Some(sel));
 							let mut blk = self.map.get_blk_mut(before_selected).unwrap();
 							blk.set(sel);
 							let msg = ClientToServerMsg::PlaceBlock(before_selected, sel_idx, sel);
@@ -1062,13 +1062,6 @@ impl<C :NetworkClientConn> Game<C> {
 								self.camera.handle_mouse_left(pressed);
 							} else if button == MouseButton::Right {
 								self.camera.handle_mouse_right(pressed);
-							}
-							if let Some((_selected_pos, before_selected))
-									= self.selected_pos {
-								if pressed && button == MouseButton::Middle {
-									let msg = ClientToServerMsg::PlaceTree(before_selected);
-									let _ = self.srv_conn.send(msg);
-								}
 							}
 						}
 						if self.has_focus {
