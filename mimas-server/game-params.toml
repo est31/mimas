@@ -389,6 +389,18 @@ inputs = [
 ]
 output = "default:stick 4"
 
+[[block]]
+name = "default:sapling"
+inv_texture = "assets/textures/default_sapling.png"
+placeable = false
+
+[[recipe]]
+inputs = [
+	"default:leaves", "default:leaves",
+	"default:leaves", "default:leaves",
+]
+output = "default:sapling 1"
+
 # Tools
 
 [[block]]
