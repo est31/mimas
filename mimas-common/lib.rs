@@ -42,8 +42,21 @@ pub mod crafting;
 pub mod game_params;
 pub mod toml_util;
 pub mod protocol;
-pub mod server;
 
 pub use protocol::{ClientToServerMsg, ServerToClientMsg};
-pub use server::{Server, btchn};
-pub(crate) use server::btpic;
+use map::CHUNKSIZE;
+use nalgebra::Vector3;
+
+/// Block position to position inside chunk
+pub fn btpic(v :Vector3<isize>) -> Vector3<isize> {
+	v.map(|v| (v as f32).rem_euclid(CHUNKSIZE as f32) as isize)
+}
+
+/// Block position to chunk position
+pub fn btchn(v :Vector3<isize>) -> Vector3<isize> {
+	fn r(x :isize) -> isize {
+		let x = x as f32 / (CHUNKSIZE as f32);
+		x.floor() as isize * CHUNKSIZE
+	}
+	v.map(r)
+}

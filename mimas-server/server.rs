@@ -9,6 +9,7 @@ use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
 use mimas_common::local_auth::{SqliteLocalAuth, AuthBackend};
 use mimas_common::game_params::{ServerGameParams, ServerGameParamsHdl};
 use mimas_common::protocol::{ClientToServerMsg, ServerToClientMsg};
+use mimas_common::btchn;
 use anyhow::Result;
 use nalgebra::Vector3;
 use std::time::{Instant, Duration};
@@ -1052,18 +1053,4 @@ fn close_connections(conns_to_close :&[PlayerIdPair], connections :&mut HashMap<
 		println!("closing connection");
 		connections.remove(&id);
 	}
-}
-
-/// Block position to chunk position
-pub fn btchn(v :Vector3<isize>) -> Vector3<isize> {
-	fn r(x :isize) -> isize {
-		let x = x as f32 / (CHUNKSIZE as f32);
-		x.floor() as isize * CHUNKSIZE
-	}
-	v.map(r)
-}
-
-/// Block position to position inside chunk
-pub(crate) fn btpic(v :Vector3<isize>) -> Vector3<isize> {
-	v.map(|v| (v as f32).rem_euclid(CHUNKSIZE as f32) as isize)
 }

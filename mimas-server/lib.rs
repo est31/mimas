@@ -31,5 +31,4 @@ extern crate base64;
 
 pub mod server;
 
-pub use server::{Server, btchn};
-pub(crate) use server::btpic;
+pub use server::Server;
