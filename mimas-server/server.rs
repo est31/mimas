@@ -7,7 +7,7 @@ use mimas_common::map_storage::{self, PlayerIdPair, PlayerPosition};
 use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
 	InventoryLocation, InvRef};
 use mimas_common::local_auth::{SqliteLocalAuth, AuthBackend};
-use mimas_common::game_params::{ServerGameParams, ServerGameParamsHdl};
+use mimas_common::game_params::ServerGameParamsHdl;
 use mimas_common::protocol::{ClientToServerMsg, ServerToClientMsg};
 use mimas_common::btchn;
 use anyhow::Result;
@@ -22,6 +22,8 @@ use srp::client::SrpClient;
 use srp::groups::G_4096;
 use sha2::Sha256;
 use rand::RngCore;
+
+use crate::game_params::load_server_game_params;
 
 enum AuthState {
 	Unauthenticated,
@@ -123,7 +125,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let backends = map_storage::backends_from_config(&mut config, !singleplayer);
 		let (mut storage_back, auth_back) = backends;
 		let nm = map_storage::load_name_id_map(&mut storage_back).unwrap();
-		let params = ServerGameParams::load(nm);
+		let params = load_server_game_params(nm);
 		map_storage::save_name_id_map(&mut storage_back, &params.p.name_id_map).unwrap();
 		let mut map = ServerMap::new(config.mapgen_seed,
 			params.clone(), storage_back);

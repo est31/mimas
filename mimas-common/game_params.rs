@@ -343,12 +343,6 @@ impl GameParams {
 	}
 }
 
-impl ServerGameParams {
-	pub fn load(nm :NameIdMap) -> ServerGameParamsHdl {
-		Arc::new(load_params_failible(nm).expect("Couldn't load game params"))
-	}
-}
-
 /// Ensures that the modname:name format is used and
 /// returns (modname, name) tuple if it is
 pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str)> {
@@ -442,12 +436,12 @@ fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value
 	Ok(tool_groups)
 }
 
-fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams> {
+fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
 
 	let override_default = val.get("override-default")
 		.unwrap_or(&Value::Boolean(false));
 	let mut params = if !*override_default.convert::<bool>()? {
-		default_game_params(nm_from_db)?
+		default_game_params(nm_from_db, default_game_params_str)?
 	} else {
 		let block_roles = BlockRoles::dummy(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
@@ -729,30 +723,21 @@ fn from_val(val :Value, nm_from_db :NameIdMap) -> Result<ServerGameParams> {
 	Ok(params)
 }
 
-fn default_game_params(nm :NameIdMap) -> Result<ServerGameParams> {
-	let file_str = DEFAULT_GAME_PARAMS_STR;
-	let val = from_str(&file_str)?;
-	let res = from_val(val, nm)?;
+pub fn default_game_params(nm :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
+	let val = from_str(&default_game_params_str)?;
+	let res = from_val(val, nm, default_game_params_str)?;
 	Ok(res)
 }
 
-#[cfg(test)]
-#[test]
-fn default_game_params_parse_test() {
-	let nm = NameIdMap::builtin_name_list();
-	default_game_params(nm).unwrap();
-}
-
-pub fn load_params_failible(nm :NameIdMap) -> Result<ServerGameParams> {
+pub fn load_params_failible(nm :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);
-			DEFAULT_GAME_PARAMS_STR.to_owned()
+			default_game_params_str.to_owned()
 		});
 
 	let val = from_str(&file_str)?;
-	let res = from_val(val, nm)?;
+	let res = from_val(val, nm, default_game_params_str)?;
 	Ok(res)
 }
 
-static DEFAULT_GAME_PARAMS_STR :&str = include_str!("game-params.toml");

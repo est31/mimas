@@ -29,6 +29,7 @@ extern crate byteorder;
 extern crate flate2;
 extern crate base64;
 
+mod game_params;
 pub mod server;
 
 pub use server::Server;
