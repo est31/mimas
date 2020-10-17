@@ -42,23 +42,7 @@ name = "default:cobble"
 dig_group = "default:group_stone 2"
 texture = "assets/textures/default_cobble.png"
 
-[[block]]
-name = "default:tree"
-texture = [
-	"assets/textures/default_tree.png",
-	"assets/textures/default_tree_top.png"
-]
-
-[[block]]
-name = "default:leaves"
-texture = "assets/textures/default_leaves.png"
-
-[[block]]
-name = "default:cactus"
-texture = [
-	"assets/textures/default_cactus_side.png",
-	"assets/textures/default_cactus_top.png"
-]
+## Ores
 
 [[block]]
 name = "default:coal"
@@ -389,18 +373,6 @@ inputs = [
 ]
 output = "default:stick 4"
 
-[[block]]
-name = "default:sapling"
-inv_texture = "assets/textures/default_sapling.png"
-placeable = false
-
-[[recipe]]
-inputs = [
-	"default:leaves", "default:leaves",
-	"default:leaves", "default:leaves",
-]
-output = "default:sapling 1"
-
 # Tools
 
 [[block]]
@@ -487,7 +459,39 @@ inputs = [
 ]
 output = "default:pick_diamond 1"
 
-# Grass
+## Plants
+
+[[block]]
+name = "default:tree"
+texture = [
+	"assets/textures/default_tree.png",
+	"assets/textures/default_tree_top.png"
+]
+
+[[block]]
+name = "default:leaves"
+texture = "assets/textures/default_leaves.png"
+
+[[block]]
+name = "default:cactus"
+texture = [
+	"assets/textures/default_cactus_side.png",
+	"assets/textures/default_cactus_top.png"
+]
+
+[[block]]
+name = "default:sapling"
+inv_texture = "assets/textures/default_sapling.png"
+placeable = false
+
+[[recipe]]
+inputs = [
+	"default:leaves", "default:leaves",
+	"default:leaves", "default:leaves",
+]
+output = "default:sapling 1"
+
+## Grass
 
 [[block]]
 name = "default:grass_1"
