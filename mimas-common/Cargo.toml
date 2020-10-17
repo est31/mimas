@@ -18,7 +18,6 @@ serde = "1.0"
 serde_derive = "1.0"
 bincode = "1.0"
 serde-big-array = "0.3"
-structopt = "0.3"
 twox-hash = "1.5"
 toml = "0.5"
 rust-argon2 = "0.8"
@@ -30,7 +29,6 @@ tokio = { version = "0.2", default-features = false, features = ["io-util", "rt-
 futures = "0.3"
 quinn = { version = "0.6", default-features = false, features = [ "tls-rustls" ] }
 rcgen = { version = "0.8", default-features = false }
-srp = "0.4"
 sha2 = "0.8"
 
 # For map storage

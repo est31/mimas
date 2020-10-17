@@ -1190,8 +1190,6 @@ dependencies = [
  "serde-big-array",
  "serde_derive",
  "sha2",
- "srp",
- "structopt",
  "tokio",
  "toml",
  "twox-hash",
