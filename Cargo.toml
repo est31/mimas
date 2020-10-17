@@ -1,5 +1,5 @@
 [workspace]
-members = ["mimas", "mimas-server", "mimas-meshgen"]
+members = ["mimas", "mimas-client", "mimas-server", "mimas-meshgen"]
 default-members = ["mimas"]
 
 [profile.dev]

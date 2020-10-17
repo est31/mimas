@@ -15,17 +15,11 @@ extern crate sha2;
 extern crate image;
 extern crate dirs;
 
+extern crate mimas_client;
 extern crate mimas_server;
-extern crate mimas_meshgen;
-
-mod assets;
-mod client;
-mod collide;
-mod ui;
-mod voxel_walk;
 
 use glium::glutin;
-use client::Game;
+use mimas_client::client::Game;
 
 use structopt::StructOpt;
 

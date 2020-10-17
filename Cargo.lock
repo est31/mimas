@@ -1144,6 +1144,7 @@ dependencies = [
  "glium",
  "glium-glyph",
  "image",
+ "mimas-client",
  "mimas-meshgen",
  "mimas-server",
  "nalgebra",
@@ -1153,6 +1154,26 @@ dependencies = [
  "sha2",
  "srp",
  "structopt",
+]
+
+[[package]]
+name = "mimas-client"
+version = "0.5.0-dev"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "frustum_query",
+ "glium",
+ "glium-glyph",
+ "image",
+ "mimas-meshgen",
+ "mimas-server",
+ "nalgebra",
+ "num-traits 0.2.12",
+ "rand 0.7.3",
+ "rand_pcg",
+ "sha2",
+ "srp",
 ]
 
 [[package]]
