@@ -4,6 +4,7 @@ extern crate anyhow;
 extern crate glium;
 extern crate structopt;
 
+extern crate mimas_common;
 extern crate mimas_client;
 extern crate mimas_server;
 
@@ -15,9 +16,9 @@ use structopt::StructOpt;
 use anyhow::Result;
 use std::thread;
 use mimas_server::Server;
-use mimas_server::generic_net::{MpscServerSocket, NetworkClientConn};
-use mimas_server::quic_net::QuicClientConn;
-use mimas_server::config::load_config;
+use mimas_common::generic_net::{MpscServerSocket, NetworkClientConn};
+use mimas_common::quic_net::QuicClientConn;
+use mimas_common::config::load_config;
 
 /// Mimas client
 #[derive(StructOpt, Debug)]

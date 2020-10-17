@@ -10,4 +10,4 @@ path = "lib.rs"
 [dependencies]
 nalgebra = "0.22"
 glium = "0.28"
-mimas-server = { path = "../mimas-server" }
+mimas-common = { path = "../mimas-common" }

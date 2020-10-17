@@ -3,12 +3,12 @@
 extern crate nalgebra;
 #[macro_use]
 extern crate glium;
-extern crate mimas_server;
+extern crate mimas_common;
 
-use mimas_server::map::{MapChunkData,
+use mimas_common::map::{MapChunkData,
 	CHUNKSIZE};
-use mimas_server::game_params::{GameParamsHdl, DrawStyle, Id};
-use mimas_server::map::MapBlock;
+use mimas_common::game_params::{GameParamsHdl, DrawStyle, Id};
+use mimas_common::map::MapBlock;
 use nalgebra::Vector3;
 
 #[repr(transparent)]

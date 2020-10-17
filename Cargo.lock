@@ -1141,6 +1141,7 @@ dependencies = [
  "anyhow",
  "glium",
  "mimas-client",
+ "mimas-common",
  "mimas-server",
  "structopt",
 ]
@@ -1155,8 +1156,8 @@ dependencies = [
  "glium",
  "glium-glyph",
  "image",
+ "mimas-common",
  "mimas-meshgen",
- "mimas-server",
  "nalgebra",
  "num-traits 0.2.12",
  "rand 0.7.3",
@@ -1166,11 +1167,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "mimas-common"
+version = "0.5.0-dev"
+dependencies = [
+ "anyhow",
+ "base64 0.13.0",
+ "bincode",
+ "byteorder",
+ "flate2",
+ "futures",
+ "libsqlite3-sys",
+ "nalgebra",
+ "noise",
+ "quinn",
+ "rand 0.7.3",
+ "rand_pcg",
+ "rcgen",
+ "rusqlite",
+ "rust-argon2",
+ "rustls",
+ "serde",
+ "serde-big-array",
+ "serde_derive",
+ "sha2",
+ "srp",
+ "structopt",
+ "tokio",
+ "toml",
+ "twox-hash",
+ "webpki",
+]
+
+[[package]]
 name = "mimas-meshgen"
 version = "0.5.0-dev"
 dependencies = [
  "glium",
- "mimas-server",
+ "mimas-common",
  "nalgebra",
 ]
 
@@ -1185,6 +1218,7 @@ dependencies = [
  "flate2",
  "futures",
  "libsqlite3-sys",
+ "mimas-common",
  "nalgebra",
  "noise",
  "quinn",

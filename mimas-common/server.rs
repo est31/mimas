@@ -1,14 +1,14 @@
-use mimas_common::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
-use mimas_common::config::Config;
-use mimas_common::crafting::get_matching_recipe;
-use mimas_common::map::{self, Map, ServerMap, MapBackend,
+use crate::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
+use crate::config::Config;
+use crate::crafting::get_matching_recipe;
+use crate::map::{self, Map, ServerMap, MapBackend,
 	CHUNKSIZE, MetadataEntry};
-use mimas_common::map_storage::{self, PlayerIdPair, PlayerPosition};
-use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
+use crate::map_storage::{self, PlayerIdPair, PlayerPosition};
+use crate::inventory::{self, SelectableInventory, Stack, InventoryPos,
 	InventoryLocation, InvRef};
-use mimas_common::local_auth::{SqliteLocalAuth, AuthBackend};
-use mimas_common::game_params::{ServerGameParams, ServerGameParamsHdl};
-use mimas_common::protocol::{ClientToServerMsg, ServerToClientMsg};
+use crate::local_auth::{SqliteLocalAuth, AuthBackend};
+use crate::game_params::{ServerGameParams, ServerGameParamsHdl};
+use crate::protocol::{ClientToServerMsg, ServerToClientMsg};
 use anyhow::Result;
 use nalgebra::Vector3;
 use std::time::{Instant, Duration};
@@ -927,7 +927,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let msgs = self.get_msgs();
 
 		for (id, msg) in msgs {
-			use mimas_common::ClientToServerMsg::*;
+			use crate::ClientToServerMsg::*;
 			match msg {
 				LogIn(..) |
 				SendHash(_) |

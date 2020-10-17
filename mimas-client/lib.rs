@@ -14,7 +14,7 @@ extern crate sha2;
 extern crate image;
 extern crate dirs;
 
-extern crate mimas_server;
+extern crate mimas_common;
 extern crate mimas_meshgen;
 
 mod assets;

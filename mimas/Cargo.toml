@@ -11,5 +11,6 @@ path = "main.rs"
 anyhow = "1.0"
 glium = "0.28"
 structopt = "0.3"
+mimas-common = { path = "../mimas-common" }
 mimas-server = { path = "../mimas-server" }
 mimas-client = { path = "../mimas-client" }

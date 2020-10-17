@@ -29,7 +29,21 @@ extern crate byteorder;
 extern crate flate2;
 extern crate base64;
 
+pub mod map;
+pub mod mapgen;
+pub mod map_storage;
+pub mod generic_net;
+pub mod quic_net;
+pub mod config;
+pub mod sqlite_generic;
+pub mod local_auth;
+pub mod inventory;
+pub mod crafting;
+pub mod game_params;
+pub mod toml_util;
+pub mod protocol;
 pub mod server;
 
+pub use protocol::{ClientToServerMsg, ServerToClientMsg};
 pub use server::{Server, btchn};
 pub(crate) use server::btpic;

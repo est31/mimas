@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use mimas_server::game_params::{GameParamsHdl, DrawStyle};
+use mimas_common::game_params::{GameParamsHdl, DrawStyle};
 
 use std::fs::File;
 use std::io::Read;

@@ -8,10 +8,10 @@ use glium::glutin::event::{KeyboardInput, VirtualKeyCode,
 	ElementState, MouseButton};
 use glium::glutin::dpi::PhysicalPosition;
 use glium_glyph::glyph_brush::GlyphCruncher;
-use mimas_server::inventory::{self, SelectableInventory, Stack,
+use mimas_common::inventory::{self, SelectableInventory, Stack,
 	HUD_SLOT_COUNT};
-use mimas_server::crafting::get_matching_recipe;
-use mimas_server::game_params::GameParamsHdl;
+use mimas_common::crafting::get_matching_recipe;
+use mimas_common::game_params::GameParamsHdl;
 
 use mimas_meshgen::{Vertex, TextureId, TextureIdCache};
 

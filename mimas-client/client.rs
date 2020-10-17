@@ -1,4 +1,4 @@
-use mimas_server::map::{Map, MapBackend, ClientMap,
+use mimas_common::map::{Map, MapBackend, ClientMap,
 	CHUNKSIZE, MapBlock, MetadataEntry};
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
@@ -26,13 +26,13 @@ use srp::groups::G_4096;
 use sha2::Sha256;
 use rand::RngCore;
 
-use mimas_server::{btchn, ServerToClientMsg, ClientToServerMsg};
-use mimas_server::generic_net::NetworkClientConn;
-use mimas_server::local_auth::{PlayerPwHash, HashParams};
-use mimas_server::config::Config;
-use mimas_server::map_storage::{PlayerPosition, PlayerIdPair};
-use mimas_server::inventory::{SelectableInventory, InventoryPos, InventoryLocation};
-use mimas_server::game_params::{GameParamsHdl, DigGroup, ToolGroup};
+use mimas_common::{btchn, ServerToClientMsg, ClientToServerMsg};
+use mimas_common::generic_net::NetworkClientConn;
+use mimas_common::local_auth::{PlayerPwHash, HashParams};
+use mimas_common::config::Config;
+use mimas_common::map_storage::{PlayerPosition, PlayerIdPair};
+use mimas_common::inventory::{SelectableInventory, InventoryPos, InventoryLocation};
+use mimas_common::game_params::{GameParamsHdl, DigGroup, ToolGroup};
 
 use mimas_meshgen::{Vertex, mesh_for_chunk, push_block,
 	BlockTextureIds, TextureIdCache, ChunkMesh};

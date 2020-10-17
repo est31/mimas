@@ -5,9 +5,9 @@ extern crate structopt;
 
 use anyhow::Result;
 use mimas_server::Server;
-//use mimas_server::generic_net::TcpServerSocket;
-use mimas_server::quic_net::QuicServerSocket;
-use mimas_server::config::load_config;
+//use mimas_common::generic_net::TcpServerSocket;
+use mimas_common::quic_net::QuicServerSocket;
+use mimas_common::config::load_config;
 
 use structopt::StructOpt;
 
