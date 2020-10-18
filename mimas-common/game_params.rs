@@ -345,7 +345,7 @@ impl GameParams {
 
 /// Ensures that the modname:name format is used and
 /// returns (modname, name) tuple if it is
-pub(crate) fn parse_block_name(name :&str) -> Result<(&str, &str)> {
+pub fn parse_block_name(name :&str) -> Result<(&str, &str)> {
 	fn check_chars(v :&str) -> bool {
 		v.chars().all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
 	}

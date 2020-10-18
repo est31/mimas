@@ -5,6 +5,8 @@ extern crate noise;
 extern crate nalgebra;
 extern crate rand_pcg;
 extern crate rand;
+#[macro_use]
+extern crate serde_derive;
 extern crate bincode;
 extern crate twox_hash;
 extern crate toml;
@@ -27,5 +29,6 @@ extern crate base64;
 
 mod game_params;
 pub mod server;
+mod map_storage;
 
 pub use server::Server;

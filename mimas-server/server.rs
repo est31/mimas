@@ -3,7 +3,7 @@ use mimas_common::config::Config;
 use mimas_common::crafting::get_matching_recipe;
 use mimas_common::map::{self, Map, ServerMap, MapBackend,
 	CHUNKSIZE, MetadataEntry};
-use mimas_common::map_storage::{self, PlayerIdPair, PlayerPosition};
+use mimas_common::map_storage::{PlayerIdPair, PlayerPosition};
 use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
 	InventoryLocation, InvRef};
 use mimas_common::local_auth::{SqliteLocalAuth, AuthBackend};
@@ -24,6 +24,7 @@ use sha2::Sha256;
 use rand::RngCore;
 
 use crate::game_params::load_server_game_params;
+use crate::map_storage;
 
 enum AuthState {
 	Unauthenticated,
