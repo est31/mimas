@@ -1,5 +1,6 @@
 use mimas_common::map::{Map, MapBackend, ClientMap,
 	CHUNKSIZE, MapBlock, MetadataEntry};
+use mimas_common::player::PlayerMode;
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
@@ -426,6 +427,11 @@ impl<C :NetworkClientConn> Game<C> {
 					},
 					ServerToClientMsg::SetCraftInventory(inv) => {
 						self.craft_inv = inv;
+					},
+					ServerToClientMsg::SetModes(modes) => {
+						self.camera.fly_mode = modes.contains(&PlayerMode::Fly);
+						self.camera.noclip_mode = modes.contains(&PlayerMode::Noclip);
+						self.camera.fast_mode = modes.contains(&PlayerMode::Fast);
 					},
 					ServerToClientMsg::ChunkUpdated(p, c) => {
 						self.map.set_chunk(p, c);

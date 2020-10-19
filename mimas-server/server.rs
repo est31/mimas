@@ -9,6 +9,7 @@ use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
 use mimas_common::local_auth::{SqliteLocalAuth, AuthBackend};
 use mimas_common::game_params::ServerGameParamsHdl;
 use mimas_common::protocol::{ClientToServerMsg, ServerToClientMsg};
+use mimas_common::player::PlayerMode;
 use mimas_common::btchn;
 use anyhow::Result;
 use nalgebra::Vector3;
@@ -45,15 +46,38 @@ fn gen_chunks_around<B :MapBackend>(map :&mut Map<B>, pos :Vector3<isize>, xyrad
 	map.gen_chunks_in_area(chunk_pos_min, chunk_pos_max);
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+struct PlayerSlowStates {
+	// Nick of the player.
+	// This is NOT the authoritative location,
+	// only a cached value meant to help people
+	// who haven't gotten a copy of the auth db.
+	nick :String,
+	modes :HashSet<PlayerMode>,
+}
+
+impl PlayerSlowStates {
+	fn new(nick :&str) -> Self {
+		Self {
+			nick : nick.to_owned(),
+			modes : HashSet::new(),
+		}
+	}
+}
+
 struct Player<C: NetworkServerConn> {
 	conn :C,
 	ids :PlayerIdPair,
 	nick :String,
 	pos :PlayerPosition,
+
 	inventory :SelectableInventory,
 	inventory_last_ser :SelectableInventory,
 	craft_inventory :SelectableInventory,
 	craft_inventory_last_ser :SelectableInventory,
+	slow_states :PlayerSlowStates,
+	slow_states_last_ser :PlayerSlowStates,
+
 	sent_chunks :HashSet<Vector3<isize>>,
 	last_chunk_pos :Vector3<isize>,
 }
@@ -69,6 +93,8 @@ impl<C: NetworkServerConn> Player<C> {
 			inventory_last_ser : waiting.inv.unwrap(),
 			craft_inventory : waiting.craft_inv.clone().unwrap(),
 			craft_inventory_last_ser : waiting.craft_inv.clone().unwrap(),
+			slow_states : waiting.slow_states.clone().unwrap(),
+			slow_states_last_ser : waiting.slow_states.clone().unwrap(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
 		}
@@ -85,6 +111,7 @@ struct KvWaitingPlayer<C: NetworkServerConn> {
 	pos :Option<PlayerPosition>,
 	inv :Option<SelectableInventory>,
 	craft_inv :Option<SelectableInventory>,
+	slow_states :Option<PlayerSlowStates>,
 }
 
 impl<C: NetworkServerConn> KvWaitingPlayer<C> {
@@ -96,10 +123,13 @@ impl<C: NetworkServerConn> KvWaitingPlayer<C> {
 			pos : None,
 			inv : None,
 			craft_inv : None,
+			slow_states : None,
 		}
 	}
 	fn ready(&self) -> bool {
-		self.pos.is_some() && self.inv.is_some() && self.craft_inv.is_some()
+		self.pos.is_some() && self.inv.is_some()
+			&& self.craft_inv.is_some()
+			&& self.slow_states.is_some()
 	}
 }
 
@@ -421,6 +451,17 @@ impl<S :NetworkServerSocket> Server<S> {
 						SelectableInventory::crafting_inv()
 					});
 					check = true;
+				} else if key == "slow_states" {
+					let KvWaitingPlayer { slow_states, nick,.. } = kvw.get_mut();
+					*slow_states = Some(if let Some(buf) = value {
+						toml::from_slice(&buf)
+							.ok()
+							.unwrap_or_else(|| PlayerSlowStates::new(nick))
+					} else {
+						// No value could be found
+						PlayerSlowStates::new(nick)
+					});
+					check = true;
 				}
 				if check && kvw.get().ready() {
 					players_to_add.push(kvw.remove());
@@ -504,6 +545,11 @@ impl<S :NetworkServerSocket> Server<S> {
 				self.map.set_player_kv(player.ids, "craft_inventory", serialized_inv);
 				player.inventory_last_ser = player.craft_inventory.clone();
 			}
+			if player.slow_states_last_ser != player.slow_states {
+				let serialized_states = toml::to_string(&player.slow_states).unwrap().into_bytes();
+				self.map.set_player_kv(player.ids, "slow_states", serialized_states);
+				player.slow_states_last_ser = player.slow_states.clone();
+			}
 		}
 		Ok(())
 	}
@@ -559,6 +605,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		self.map.get_player_kv(id, "position", PAYLOAD);
 		self.map.get_player_kv(id, "inventory", PAYLOAD);
 		self.map.get_player_kv(id, "craft_inventory", PAYLOAD);
+		self.map.get_player_kv(id, "slow_states", PAYLOAD);
 		self.players_waiting_for_kv.insert(id, KvWaitingPlayer::new(conn, id, nick));
 	}
 	fn add_player(&mut self, pl :KvWaitingPlayer<S::Conn>) {
@@ -577,6 +624,11 @@ impl<S :NetworkServerSocket> Server<S> {
 			pl.conn.send(msg).unwrap();
 
 			let msg = ServerToClientMsg::SetCraftInventory(pl.craft_inv.clone().unwrap());
+			// TODO get rid of unwrap
+			pl.conn.send(msg).unwrap();
+
+			let modes = pl.slow_states.as_ref().unwrap().modes.clone();
+			let msg = ServerToClientMsg::SetModes(modes);
 			// TODO get rid of unwrap
 			pl.conn.send(msg).unwrap();
 

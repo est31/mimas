@@ -3,7 +3,9 @@ use crate::map_storage::{PlayerIdPair, PlayerPosition};
 use crate::inventory::{SelectableInventory, InventoryPos};
 use crate::local_auth::{PlayerPwHash, HashParams};
 use crate::game_params::GameParams;
+use crate::player::PlayerMode;
 use nalgebra::Vector3;
+use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServerMsg {
@@ -43,6 +45,7 @@ pub enum ServerToClientMsg {
 	SetPos(PlayerPosition),
 	SetInventory(SelectableInventory),
 	SetCraftInventory(SelectableInventory),
+	SetModes(HashSet<PlayerMode>),
 	ChunkUpdated(Vector3<isize>, MapChunkData),
 	Chat(String),
 }

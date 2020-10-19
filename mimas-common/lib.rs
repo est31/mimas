@@ -41,6 +41,7 @@ pub mod crafting;
 pub mod game_params;
 pub mod toml_util;
 pub mod protocol;
+pub mod player;
 
 pub use protocol::{ClientToServerMsg, ServerToClientMsg};
 use map::CHUNKSIZE;
