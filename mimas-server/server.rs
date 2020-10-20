@@ -1073,6 +1073,15 @@ impl<S :NetworkServerSocket> Server<S> {
 					self.handle_dig(id, p);
 				},
 				SetPos(_p) => unreachable!(),
+				SetMode(mode, enabled) => {
+					let mut players = self.players.borrow_mut();
+					let player = &mut players.get_mut(&id).unwrap();
+					if enabled {
+						player.slow_states.modes.insert(mode);
+					} else {
+						player.slow_states.modes.remove(&mode);
+					}
+				},
 
 				InventorySwap(from_pos, to_pos, only_move_one) => {
 					self.handle_inv_move_or_swap(id, from_pos, to_pos, only_move_one);

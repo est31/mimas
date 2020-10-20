@@ -885,6 +885,28 @@ impl<C :NetworkClientConn> Game<C> {
 					self.check_grab_change();
 				}
 			},
+			Some(VirtualKeyCode::K) => {
+				if input.state == ElementState::Pressed {
+					self.camera.fly_mode = !self.camera.fly_mode;
+					let msg = ClientToServerMsg::SetMode(PlayerMode::Fly, self.camera.fly_mode);
+					let _ = self.srv_conn.send(msg);
+				}
+			},
+			Some(VirtualKeyCode::J) => {
+				if input.state == ElementState::Pressed {
+					self.camera.fast_mode = !self.camera.fast_mode;
+					let msg = ClientToServerMsg::SetMode(PlayerMode::Fast, self.camera.fast_mode);
+					let _ = self.srv_conn.send(msg);
+				}
+			},
+			Some(VirtualKeyCode::H) => {
+				if input.state == ElementState::Pressed {
+					self.camera.noclip_mode = !self.camera.noclip_mode;
+					let msg= ClientToServerMsg::SetMode(PlayerMode::Noclip, self.camera.noclip_mode);
+					let _ = self.srv_conn.send(msg);
+				}
+			},
+
 			_ => (),
 		}
 		self.camera.handle_kinput(input);
@@ -1286,21 +1308,6 @@ impl Camera {
 		}
 		if key == VirtualKeyCode::E {
 			self.fast_pressed = input.state == ElementState::Pressed;
-		}
-		if key == VirtualKeyCode::K {
-			if input.state == ElementState::Pressed {
-				self.fly_mode = !self.fly_mode;
-			}
-		}
-		if key == VirtualKeyCode::J {
-			if input.state == ElementState::Pressed {
-				self.fast_mode = !self.fast_mode;
-			}
-		}
-		if key == VirtualKeyCode::H {
-			if input.state == ElementState::Pressed {
-				self.noclip_mode = !self.noclip_mode;
-			}
 		}
 
 		if let Some(b) = b {

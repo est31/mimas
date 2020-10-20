@@ -26,6 +26,8 @@ pub enum ClientToServerMsg {
 	Dig(Vector3<isize>),
 
 	SetPos(PlayerPosition),
+	/// Client has enabled/disabled a mode
+	SetMode(PlayerMode, bool),
 	InventorySwap(InventoryPos, InventoryPos, bool),
 	Craft,
 	InventorySelect(Option<usize>),
