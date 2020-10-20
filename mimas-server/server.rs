@@ -84,6 +84,17 @@ struct Player<C: NetworkServerConn> {
 
 impl<C: NetworkServerConn> Player<C> {
 	pub fn from_waiting(waiting :KvWaitingPlayer<C>) -> Self {
+		let mut slow_states = waiting.slow_states.clone().unwrap();
+		// The nick field in slow_states is only a map db cache of
+		// the real nick stored in the auth db, helpful e.g. when
+		// you only get the map db and want to figure out player nicks.
+		// Here we update the nick if we notice it has changed,
+		// but make sure that it's done in a way that the update
+		// is written to the DB as well (by not updating
+		// the _last_ser field).
+		if slow_states.nick != waiting.nick {
+			slow_states.nick = waiting.nick.clone();
+		}
 		Player {
 			conn : waiting.conn,
 			ids : waiting.ids,
@@ -93,7 +104,7 @@ impl<C: NetworkServerConn> Player<C> {
 			inventory_last_ser : waiting.inv.unwrap(),
 			craft_inventory : waiting.craft_inv.clone().unwrap(),
 			craft_inventory_last_ser : waiting.craft_inv.clone().unwrap(),
-			slow_states : waiting.slow_states.clone().unwrap(),
+			slow_states,
 			slow_states_last_ser : waiting.slow_states.clone().unwrap(),
 			sent_chunks : HashSet::new(),
 			last_chunk_pos : Vector3::new(0, 0, 0),
