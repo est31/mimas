@@ -6,8 +6,10 @@ Featuring:
 
 * Texture support for inventory items
 * Player avatar improvements (eyes, rotation)
+* Persistence of player mode (flying, fast, etc.)
 * New items:
   - Tools (Pickaxes)
+  - Saplings
   - Ore lumps, ingots
 * Blocks
   - Tin ore
