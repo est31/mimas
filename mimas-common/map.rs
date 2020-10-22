@@ -5,7 +5,7 @@ use crate::map_storage::PlayerIdPair;
 use crate::game_params::{ServerGameParamsHdl, Id, UncheckedId};
 use crate::inventory::SelectableInventory;
 
-use super::mapgen::{Schematic, MapgenThread};
+use super::schematic::Schematic;
 
 pub const CHUNKSIZE :isize = 16;
 
@@ -67,7 +67,6 @@ pub struct Map<B :MapBackend> {
 	on_change :Box<dyn Fn(Vector3<isize>, &MapChunkData)>,
 }
 
-pub type ServerMap = Map<MapgenThread>;
 pub type ClientMap = Map<ClientBackend>;
 
 impl MapChunkData {

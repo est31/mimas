@@ -29,7 +29,6 @@ extern crate flate2;
 extern crate base64;
 
 pub mod map;
-pub mod mapgen;
 pub mod map_storage;
 pub mod generic_net;
 pub mod quic_net;
@@ -42,6 +41,7 @@ pub mod game_params;
 pub mod toml_util;
 pub mod protocol;
 pub mod player;
+pub mod schematic;
 
 pub use protocol::{ClientToServerMsg, ServerToClientMsg};
 use map::CHUNKSIZE;

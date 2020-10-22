@@ -30,5 +30,6 @@ extern crate base64;
 mod game_params;
 pub mod server;
 mod map_storage;
+mod mapgen;
 
 pub use server::Server;

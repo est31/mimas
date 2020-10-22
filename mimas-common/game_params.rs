@@ -13,7 +13,7 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::io::Read;
 use crate::inventory::Stack;
-use crate::mapgen::{Schematic, self};
+use crate::schematic::{Schematic, self};
 use sha2::{Sha256, Digest};
 
 pub type GameParamsHdl = Arc<GameParams>;
@@ -131,20 +131,20 @@ pub struct GameParams {
 }
 
 pub struct Ore {
-	pub(crate) block :MapBlock,
-	pub(crate) noise_seed :[u8; 8],
-	pub(crate) pcg_seed :[u8; 8],
-	pub(crate) freq :f64,
-	pub(crate) pcg_chance :f64,
-	pub(crate)limit_a :f64,
-	pub(crate) limit_b :f64,
-	pub(crate) limit_boundary :isize,
+	pub block :MapBlock,
+	pub noise_seed :[u8; 8],
+	pub pcg_seed :[u8; 8],
+	pub freq :f64,
+	pub pcg_chance :f64,
+	pub limit_a :f64,
+	pub limit_b :f64,
+	pub limit_boundary :isize,
 }
 
 pub struct Plant {
-	pub(crate) block :MapBlock,
-	pub(crate) pcg_seed :[u8; 8],
-	pub(crate) pcg_limit :f64,
+	pub block :MapBlock,
+	pub pcg_seed :[u8; 8],
+	pub pcg_limit :f64,
 }
 
 pub struct MapgenParams {
@@ -227,8 +227,8 @@ impl BlockRoles {
 impl Schematics {
 	pub fn new(roles :&BlockRoles) -> Self {
 		Self {
-			tree_schematic : mapgen::tree_schematic(roles),
-			cactus_schematic : mapgen::cactus_schematic(roles),
+			tree_schematic : schematic::tree_schematic(roles),
+			cactus_schematic : schematic::cactus_schematic(roles),
 		}
 	}
 }

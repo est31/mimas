@@ -1,7 +1,7 @@
 use mimas_common::generic_net::{NetworkServerSocket, NetworkServerConn, NetErr};
 use mimas_common::config::Config;
 use mimas_common::crafting::get_matching_recipe;
-use mimas_common::map::{self, Map, ServerMap, MapBackend,
+use mimas_common::map::{self, Map, MapBackend,
 	CHUNKSIZE, MetadataEntry};
 use mimas_common::map_storage::{PlayerIdPair, PlayerPosition};
 use mimas_common::inventory::{self, SelectableInventory, Stack, InventoryPos,
@@ -24,6 +24,7 @@ use srp::groups::G_4096;
 use sha2::Sha256;
 use rand::RngCore;
 
+use crate::mapgen::{ServerMap, server_map_new};
 use crate::game_params::load_server_game_params;
 use crate::map_storage;
 
@@ -169,7 +170,7 @@ impl<S :NetworkServerSocket> Server<S> {
 		let nm = map_storage::load_name_id_map(&mut storage_back).unwrap();
 		let params = load_server_game_params(nm);
 		map_storage::save_name_id_map(&mut storage_back, &params.p.name_id_map).unwrap();
-		let mut map = ServerMap::new(config.mapgen_seed,
+		let mut map = server_map_new(config.mapgen_seed,
 			params.clone(), storage_back);
 
 		let unauthenticated_players = Vec::<_>::new();
