@@ -5,6 +5,7 @@ use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
 use glium::glutin::platform::desktop::EventLoopExtDesktop;
+use glutin::event::ModifiersState;
 use glutin::dpi::PhysicalPosition;
 use glutin::event_loop::{EventLoop, ControlFlow};
 use glutin::event::{Event, ElementState, KeyboardInput, VirtualKeyCode,
@@ -103,6 +104,7 @@ pub struct Game<C :NetworkClientConn> {
 	inventory_menu :Option<InventoryMenu>,
 	chest_menu :Option<ChestMenu>,
 	menu_enabled :bool,
+	modifiers :ModifiersState,
 
 	map :ClientMap,
 	camera :Camera,
@@ -288,6 +290,7 @@ impl<C :NetworkClientConn> Game<C> {
 			inventory_menu : None,
 			chest_menu : None,
 			menu_enabled : false,
+			modifiers : ModifiersState::empty(),
 			map,
 			camera,
 
@@ -839,7 +842,7 @@ impl<C :NetworkClientConn> Game<C> {
 	}
 	fn handle_kinput(&mut self, input :&KeyboardInput) -> bool {
 		match input.virtual_keycode {
-			Some(VirtualKeyCode::Q) if input.modifiers.ctrl() => {
+			Some(VirtualKeyCode::Q) if self.modifiers.ctrl() => {
 				return true;
 			},
 			_ => (),
@@ -1114,6 +1117,9 @@ impl<C :NetworkClientConn> Game<C> {
 							let msg = ClientToServerMsg::InventorySelect(self.sel_inventory.selection());
 							let _ = self.srv_conn.send(msg);
 						}
+					},
+					WindowEvent::ModifiersChanged(modifiers) => {
+						self.modifiers = modifiers;
 					},
 
 					_ => (),
