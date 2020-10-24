@@ -521,7 +521,16 @@ impl<C :NetworkClientConn> Game<C> {
 				}
 			}
 		}
-		if touches_ground || self.camera.fly_mode {
+		let player_bottom = self.camera.pos - Vector3::new(0.0, 0.0, 1.8);
+		let player_block = player_bottom.map(|v| v.floor() as isize);
+		let in_climbable = self.map.get_blk(player_block)
+			.and_then(|v| params.get_block_params(v))
+			.map(|v| v.climbable) == Some(true);
+		self.camera.in_climbable = in_climbable;
+		if in_climbable {
+			self.camera.velocity = nalgebra::zero();
+			self.camera.jump_offs = None;
+		} else if touches_ground || self.camera.fly_mode {
 			self.camera.velocity = nalgebra::zero();
 			if touches_ground && !self.camera.fly_mode && self.camera.up_pressed {
 				// Start a jump
@@ -572,7 +581,7 @@ impl<C :NetworkClientConn> Game<C> {
 			const DELTA :f32 = 10.0;
 			delta_pos *= DELTA;
 		}
-		if !self.camera.fly_mode {
+		if !(self.camera.fly_mode || self.camera.in_climbable) {
 			delta_pos += self.camera.velocity;
 		}
 		delta_pos = delta_pos * time_delta;
@@ -1242,6 +1251,7 @@ struct Camera {
 	pos :Vector3<f32>,
 	velocity :Vector3<f32>,
 	jump_offs :Option<f32>,
+	in_climbable :bool,
 
 	forward_pressed :bool,
 	left_pressed :bool,
@@ -1271,6 +1281,7 @@ impl Camera {
 			pos : Vector3::new(60.0, 40.0, 20.0),
 			velocity : Vector3::new(0.0, 0.0, 0.0),
 			jump_offs : None,
+			in_climbable : false,
 
 			forward_pressed : false,
 			left_pressed : false,
@@ -1334,7 +1345,7 @@ impl Camera {
 		if self.right_pressed {
 			delta_pos -= Vector3::y();
 		}
-		if self.fly_mode {
+		if self.fly_mode || self.in_climbable {
 			if self.up_pressed {
 				delta_pos += Vector3::z()
 			}

@@ -43,6 +43,7 @@ pub struct BlockParams {
 	pub placeable :bool,
 	pub on_place_plants_tree :bool,
 	pub solid :bool,
+	pub climbable :bool,
 	pub inventory :Option<u8>,
 	pub display_name :String,
 	pub drops :Stack,
@@ -183,6 +184,7 @@ impl Default for BlockParams {
 			placeable : true,
 			on_place_plants_tree : false,
 			solid : true,
+			climbable : false,
 			display_name : String::new(),
 			inventory : None,
 			drops : Stack::Empty,
@@ -568,6 +570,9 @@ fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static
 		let solid = block.get("solid")
 			.unwrap_or(&Value::Boolean(true));
 		let solid = *solid.convert::<bool>()?;
+		let climbable = block.get("climbable")
+			.unwrap_or(&Value::Boolean(false));
+		let climbable = *climbable.convert::<bool>()?;
 		let inventory = if let Some(v) = block.get("inventory") {
 			Some(v.convert::<i64>()?.to_owned() as u8)
 		} else {
@@ -594,6 +599,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static
 			placeable,
 			on_place_plants_tree,
 			solid,
+			climbable,
 			display_name,
 			inventory,
 			drops,
