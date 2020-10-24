@@ -698,8 +698,8 @@ impl<C :NetworkClientConn> Game<C> {
 			.map(|m| &m.0)
 			.chain(vbuffs_to_draw.iter().filter_map(|m| m.1.as_ref()));
 		for buff in vbuffs_to_draw_iter
-				.chain(selbuff.iter())
-				.chain(pl_buf.iter()) {
+				.chain(pl_buf.iter())
+				.chain(selbuff.iter()) {
 			drawn_chunks_count += 1;
 			target.draw(buff,
 				&glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
