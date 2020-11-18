@@ -10,12 +10,10 @@ extern crate serde_derive;
 extern crate bincode;
 extern crate twox_hash;
 extern crate toml;
-extern crate rustls;
 extern crate argon2;
 
 extern crate webpki;
 extern crate quinn;
-extern crate tokio;
 extern crate futures;
 extern crate rcgen;
 extern crate srp;
