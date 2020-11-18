@@ -27,10 +27,6 @@ toml = "0.5"
 rust-argon2 = "0.8"
 
 # For the networking
-webpki = "0.21"
-futures = "0.3"
-quinn = { version = "0.6", default-features = false, features = [ "tls-rustls" ] }
-rcgen = { version = "0.8", default-features = false }
 srp = "0.5"
 sha2 = "0.9"
 

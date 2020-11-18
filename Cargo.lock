@@ -1230,15 +1230,12 @@ dependencies = [
  "bincode",
  "byteorder",
  "flate2",
- "futures",
  "libsqlite3-sys",
  "mimas-common",
  "nalgebra",
  "noise",
- "quinn",
  "rand 0.7.3",
  "rand_pcg",
- "rcgen",
  "rusqlite",
  "rust-argon2",
  "serde",
@@ -1248,7 +1245,6 @@ dependencies = [
  "structopt",
  "toml",
  "twox-hash",
- "webpki",
 ]
 
 [[package]]
