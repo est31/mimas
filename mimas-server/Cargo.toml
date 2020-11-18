@@ -16,7 +16,7 @@ path = "lib.rs"
 mimas-common = { path = "../mimas-common" }
 anyhow = "1.0"
 noise = { version = "0.6", default-features = false }
-nalgebra = { version = "0.22", features = ["serde-serialize"] }
+nalgebra = { version = "0.23", features = ["serde-serialize"] }
 rand_pcg = "0.2"
 rand = "0.7"
 serde = "1.0"

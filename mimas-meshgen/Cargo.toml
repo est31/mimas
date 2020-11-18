@@ -8,6 +8,6 @@ name = "mimas_meshgen"
 path = "lib.rs"
 
 [dependencies]
-nalgebra = "0.22"
+nalgebra = "0.23"
 glium = "0.28"
 mimas-common = { path = "../mimas-common" }
