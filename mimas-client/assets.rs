@@ -34,8 +34,8 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 
 	let found_hash = {
 		let mut hasher = Sha256::new();
-		hasher.input(&buf);
-		hasher.result().as_slice().to_owned()
+		hasher.update(&buf);
+		hasher.finalize().as_slice().to_owned()
 	};
 
 	if found_hash.as_slice() != hash.as_slice() {
@@ -65,7 +65,7 @@ pub fn find_uncached_hashes(game_params :&GameParamsHdl) -> Result<Vec<Vec<u8>>>
 		let mut hasher = Sha256::new();
 
 		std::io::copy(&mut file, &mut hasher)?;
-		let hash_obtained = hasher.result().as_slice().to_owned();
+		let hash_obtained = hasher.finalize().as_slice().to_owned();
 		if &hash_obtained != hash {
 			// TODO this shouldn't happen (corrupted file etc)
 			// so emit a warning or something

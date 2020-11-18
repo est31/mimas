@@ -29,7 +29,7 @@ tokio = { version = "0.2", default-features = false, features = ["io-util", "rt-
 futures = "0.3"
 quinn = { version = "0.6", default-features = false, features = [ "tls-rustls" ] }
 rcgen = { version = "0.8", default-features = false }
-sha2 = "0.8"
+sha2 = "0.9"
 
 # For map storage
 rusqlite = "0.24"

@@ -18,8 +18,8 @@ glium = "0.28"
 glium-glyph = "0.9"
 rand_pcg = "0.2"
 rand = "0.7"
-srp = "0.4"
-sha2 = "0.8"
+srp = "0.5"
+sha2 = "0.9"
 image = { version = "0.23", default-features = false, features = ["png"] }
 mimas-common = { path = "../mimas-common" }
 mimas-meshgen = { path = "../mimas-meshgen" }

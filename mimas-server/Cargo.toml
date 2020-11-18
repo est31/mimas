@@ -33,8 +33,8 @@ tokio = { version = "0.2", default-features = false, features = ["io-util", "rt-
 futures = "0.3"
 quinn = { version = "0.6", default-features = false, features = [ "tls-rustls" ] }
 rcgen = { version = "0.8", default-features = false }
-srp = "0.4"
-sha2 = "0.8"
+srp = "0.5"
+sha2 = "0.9"
 
 # For map storage
 serde_derive = "1.0"

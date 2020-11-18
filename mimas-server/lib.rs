@@ -19,7 +19,6 @@ extern crate tokio;
 extern crate futures;
 extern crate rcgen;
 extern crate srp;
-extern crate sha2;
 
 extern crate rusqlite;
 extern crate libsqlite3_sys;

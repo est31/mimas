@@ -410,7 +410,7 @@ fn texture_hashes(asset_dir :impl AsRef<Path>,
 			let mut hasher = Sha256::new();
 			let mut buf_rdr = buf.as_slice();
 			std::io::copy(&mut buf_rdr, &mut hasher)?;
-			let hash = hasher.result().as_slice().to_owned();
+			let hash = hasher.finalize().as_slice().to_owned();
 			Ok((tx.to_owned(), hash, buf))
 		})
 		.collect::<Result<Vec<_>>>()
