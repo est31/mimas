@@ -43,7 +43,7 @@ fn load_image_inner(game_params :&GameParamsHdl, path :&str) -> Result<RgbaImage
 	}
 
 	let img = image::load_from_memory(&buf)?;
-	Ok(img.to_rgba())
+	Ok(img.to_rgba8())
 }
 
 pub fn find_uncached_hashes(game_params :&GameParamsHdl) -> Result<Vec<Vec<u8>>> {
