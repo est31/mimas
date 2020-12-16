@@ -4,7 +4,7 @@ use mimas_common::player::PlayerMode;
 use glium::{glutin, Surface, VertexBuffer};
 use glium::texture::SrgbTexture2dArray;
 use glium::uniforms::{MagnifySamplerFilter, SamplerWrapFunction};
-use glium::glutin::platform::desktop::EventLoopExtDesktop;
+use glium::glutin::platform::run_return::EventLoopExtRunReturn;
 use glutin::event::ModifiersState;
 use glutin::dpi::PhysicalPosition;
 use glutin::event_loop::{EventLoop, ControlFlow};

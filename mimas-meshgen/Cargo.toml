@@ -9,5 +9,5 @@ path = "lib.rs"
 
 [dependencies]
 nalgebra = "0.23"
-glium = "0.28"
+glium = "0.29"
 mimas-common = { path = "../mimas-common" }
