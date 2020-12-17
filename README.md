@@ -13,7 +13,7 @@ The game is named after the Saturn moon [Mimas](https://en.wikipedia.org/wiki/Mi
 In order to be able to build mimas, three crates have been published:
 
 * [glium-glyph](https://github.com/est31/glium-glyph), so that mimas can render text
-* [serde-big-array](https://github.com/est31/serde-big-array), to work around the current 32 elements restriction of Rust
+* [serde-big-array](https://github.com/est31/serde-big-array), to work around the current 32 elements restriction of serde
 * [rcgen](https://github.com/est31/rcgen/), to create certificates for quic network communication
 
 ### Compiling / Running
