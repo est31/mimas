@@ -11,7 +11,7 @@ cargo run --release
 You can also connect it to an existing server:
 
 ```
-cargo run --release -- --connect <host>:<port>--nick username --password pw
+cargo run --release -- --connect <host>:<port> --nick username --password pw
 ```
 
 E.g. to connect to localhost, you can do:
