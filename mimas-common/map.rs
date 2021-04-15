@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 use std::collections::hash_map::{HashMap, Entry};
+use serde_big_array::BigArray;
 use crate::{btchn, btpic};
 use crate::map_storage::PlayerIdPair;
 use crate::game_params::{ServerGameParamsHdl, Id, UncheckedId};
@@ -51,8 +52,6 @@ impl MapChunkMetadata {
 		}
 	}
 }
-
-big_array! { BigArray; }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MapChunkData(
