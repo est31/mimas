@@ -280,7 +280,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		}
 		let blk = chunk.get_blk(pos);
 		cache.get_bl_tex_ids(blk).is_some()
-	};
+	}
 	fn get_tex_ind(chunk: &MapChunkData, pos :Vector3<isize>,
 			offsets :[isize; 3], cache :&TextureIdCache) -> Option<BlockTextureIds> {
 		let blk = chunk.get_blk(pos);
@@ -290,7 +290,7 @@ pub fn mesh_for_chunk(offs :Vector3<isize>, chunk :&MapChunkData,
 		} else {
 			texture_ids
 		}
-	};
+	}
 	fn walk_for_all_blocks<G :FnMut(&mut Walker<TextureId>, Option<TextureId>, Vector3<isize>)>(
 			f :fn(isize, isize, isize) -> Vector3<isize>,
 			face :fn(BlockTextureIds) -> TextureId,
