@@ -1,9 +1,8 @@
 use anyhow::{Error, Result};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::time::SystemTime;
 use std::net::{SocketAddr, ToSocketAddrs};
 use quinn::RecvStream;
-use quinn::generic::EndpointBuilder;
-use quinn::crypto::rustls::TlsSession;
 use crate::generic_net::{MsgStream, NetErr, MsgStreamClientConn,
 	MsgStreamServerConn, NetworkServerSocket};
 use std::sync::Arc;
@@ -12,6 +11,10 @@ use std::thread;
 
 use futures::StreamExt;
 use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
+
+use rustls::{PrivateKey, Certificate};
+use rustls::client::{ServerCertVerified, ServerCertVerifier, ServerName};
+
 use tokio::runtime;
 use tokio::io::AsyncWriteExt;
 
@@ -36,47 +39,46 @@ macro_rules! ltry {
 
 /// A certificate verifier that accepts any certificate
 struct NullVerifier;
-impl rustls::ServerCertVerifier for NullVerifier {
+impl ServerCertVerifier for NullVerifier {
 	fn verify_server_cert(
 		&self,
-		_roots :&rustls::RootCertStore,
-		_presented_certs :&[rustls::Certificate],
-		_dns_name :webpki::DNSNameRef,
+		_end_entity :&Certificate,
+		_intermediates :&[Certificate],
+		_server_name :&ServerName,
+		_scts :&mut dyn Iterator<Item = &[u8]>,
 		_ocsp_response :&[u8],
-	) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
-		Ok(rustls::ServerCertVerified::assertion())
+		_now :SystemTime,
+	) -> Result<ServerCertVerified, rustls::Error> {
+		Ok(ServerCertVerified::assertion())
 	}
 }
 
 fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<()> {
-
-	let mut server_config = quinn::generic::ServerConfigBuilder::default();
 	let cert = rcgen::generate_simple_self_signed(vec!["mimas-host".into()])?;
 
 	let key_der = cert.serialize_private_key_der();
 	let cert_der = cert.serialize_der()?;
-	let key = quinn::PrivateKey::from_der(&key_der)?;
-	let cert = quinn::Certificate::from_der(&cert_der)?;
+	let key = PrivateKey(key_der);
+	let cert = Certificate(cert_der);
 
-	server_config.certificate(quinn::CertificateChain::from_certs(vec![cert]), key)?;
+	let server_crypto = rustls::ServerConfig::builder()
+		.with_safe_defaults()
+		.with_no_client_auth()
+		.with_single_cert(vec![cert], key)?;
 
-	let mut server_config = server_config.build();
+	let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(server_crypto));
 
 	Arc::get_mut(&mut server_config.transport)
 		.unwrap()
 		// Prevent the connection from timing out
 		// when there is no activiy on the connection
-		.max_idle_timeout(None)?;
+		.max_idle_timeout(None);
 
-	let mut runtime = runtime::Builder::new()
-		.basic_scheduler()
+	let runtime = runtime::Builder::new_current_thread()
 		.enable_all()
 		.build()?;
 
-	let mut endpoint = EndpointBuilder::default();
-	endpoint.listen(server_config);
-
-	let (_endpoint, mut incoming) = runtime.enter(|| endpoint.bind(addr))?;
+	let (_endpoint, mut incoming) = quinn::Endpoint::server(server_config, *addr)?;
 
 	runtime.block_on(async move {
 		while let Some(connecting) = incoming.next().await {
@@ -149,38 +151,32 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		mut to_send :UnboundedReceiver<Vec<u8>>, to_receive :Sender<Vec<u8>>) -> Result<()> {
 	let url = url.to_socket_addrs()?.next().expect("socket addr expected");
 
-	let mut endpoint = EndpointBuilder::default();
-	let mut client_config = quinn::generic::ClientConfigBuilder::<TlsSession>::default();
+	let config = rustls::client::ClientConfig::builder()
+		.with_safe_defaults()
+		// Trust all certificates
+		.with_custom_certificate_verifier(Arc::new(NullVerifier))
+		.with_no_client_auth();
 
-	client_config.protocols(&[b"mimas"]);
+	let listen_addr = "[::]:0".parse().unwrap();
 
-	let mut client_config = client_config.build();
+	let mut endpoint = quinn::Endpoint::client(listen_addr)?;
+	let mut client_config = quinn::ClientConfig::new(Arc::new(config));
 
 	Arc::get_mut(&mut client_config.transport)
 		.unwrap()
 		// Prevent the connection from timing out
 		// when there is no activiy on the connection
-		.max_idle_timeout(None)?;
+		.max_idle_timeout(None);
 
-	// Trust all certificates
-	Arc::get_mut(&mut client_config.crypto).unwrap().dangerous()
-		.set_certificate_verifier(Arc::new(NullVerifier));
 
-	endpoint.default_client_config(client_config);
+	endpoint.set_default_client_config(client_config);
 
-	let mut runtime = runtime::Builder::new()
-		.basic_scheduler()
+	let runtime = runtime::Builder::new_current_thread()
 		.enable_all()
 		.build()?;
 
-	let listen_addr = "[::]:0".parse().unwrap();
-
 	runtime.block_on(async { loop {
-		let (endpoint, _incoming) = endpoint.bind(&listen_addr)?;
-		let endpoint_future = endpoint.connect(
-			&url,
-			"mimas-host"
-		)?;
+		let endpoint_future = endpoint.connect(url, "mimas-host")?;
 		let new_conn = match endpoint_future.await {
 			Ok(new_conn) => new_conn,
 			Err(e) => {

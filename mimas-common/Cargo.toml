@@ -23,11 +23,11 @@ toml = "0.5"
 rust-argon2 = "0.8"
 
 # For the networking
-webpki = "0.21"
-rustls = { version = "0.17", features = ["dangerous_configuration"] }
-tokio = { version = "0.2", default-features = false, features = ["io-util", "rt-core"] }
+webpki = "0.22"
+rustls = { version = "0.20", features = ["dangerous_configuration"] }
+tokio = { version = "1.14", default-features = false, features = ["io-util"] }
 futures = "0.3"
-quinn = { version = "0.6", default-features = false, features = [ "tls-rustls" ] }
+quinn = { version = "0.8", default-features = false, features = [ "tls-rustls" ] }
 rcgen = { version = "0.8", default-features = false }
 sha2 = "0.9"
 
