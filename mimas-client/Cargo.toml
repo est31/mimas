@@ -9,7 +9,7 @@ path = "lib.rs"
 
 [dependencies]
 anyhow = "1.0"
-nalgebra = "0.23"
+nalgebra = "0.29"
 num-traits = "0.2"
 frustum_query = "0.1"
 glium = "0.30"
