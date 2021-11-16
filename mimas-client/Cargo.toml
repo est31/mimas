@@ -23,4 +23,4 @@ sha2 = "0.9"
 image = { version = "0.23", default-features = false, features = ["png"] }
 mimas-common = { path = "../mimas-common" }
 mimas-meshgen = { path = "../mimas-meshgen" }
-dirs = "3.0"
+dirs = "4.0"
