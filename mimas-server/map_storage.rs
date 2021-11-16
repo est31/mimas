@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension};
 use rusqlite::types::{Value, ToSql};
 use mimas_common::map::{MapChunkData, MetadataEntry, CHUNKSIZE};
 use nalgebra::Vector3;
@@ -42,7 +42,7 @@ fn init_db(conn :&mut Connection) -> Result<()> {
 			kkey VARCHAR(16) PRIMARY KEY,
 			content BLOB
 		);",
-		NO_PARAMS,
+		[],
 	)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS chunks (
@@ -52,7 +52,7 @@ fn init_db(conn :&mut Connection) -> Result<()> {
 			content BLOB,
 			PRIMARY KEY(x, y, z)
 		)",
-		NO_PARAMS,
+		[],
 	)?;
 	migrate_v2(conn)?;
 	Ok(())
@@ -67,7 +67,7 @@ fn migrate_v2(conn :&mut Connection) -> Result<()> {
 			content BLOB,
 			PRIMARY KEY(id_src, id, kkey)
 		)",
-		NO_PARAMS,
+		[],
 	)?;
 	Ok(())
 }
@@ -111,14 +111,14 @@ impl SqliteStorageBackend {
 			self.ctr = WRITES_PER_TRANSACTION;
 			if !self.conn.is_autocommit() {
 				let mut stmt = self.conn.prepare_cached("COMMIT;")?;
-				stmt.execute(NO_PARAMS)?;
+				stmt.execute([])?;
 			}
 		} else {
 			self.ctr -= 1;
 		}
 		if self.conn.is_autocommit() {
 			let mut stmt = self.conn.prepare_cached("BEGIN;")?;
-			stmt.execute(NO_PARAMS)?;
+			stmt.execute([])?;
 		}
 		Ok(())
 	}
@@ -272,7 +272,7 @@ impl StorageBackend for SqliteStorageBackend {
 		if !self.conn.is_autocommit() {
 			self.ctr = WRITES_PER_TRANSACTION;
 			let mut stmt = self.conn.prepare_cached("COMMIT;")?;
-			stmt.execute(NO_PARAMS)?;
+			stmt.execute([])?;
 		}
 		Ok(())
 	}

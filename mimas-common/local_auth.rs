@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use rusqlite::{Connection, NO_PARAMS, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension};
 use rusqlite::types::ToSql;
 use crate::sqlite_generic::{get_user_version, set_user_version,
 	get_app_id, set_app_id, open_or_create_db};
@@ -25,14 +25,14 @@ fn init_db(conn :&mut Connection) -> Result<()> {
 			lcname VARCHAR(16),
 			UNIQUE(lcname)
 		)",
-		NO_PARAMS,
+		[],
 	)?;
 	conn.execute(
 		"CREATE TABLE IF NOT EXISTS player_pw_hashes (
 			id INTEGER PRIMARY KEY,
 			pwhash VARCHAR(16)
 		)",
-		NO_PARAMS,
+		[],
 	)?;
 	Ok(())
 }
