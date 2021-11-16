@@ -9,7 +9,7 @@ path = "main.rs"
 
 [dependencies]
 anyhow = "1.0"
-glium = "0.29"
+glium = "0.30"
 structopt = "0.3"
 mimas-common = { path = "../mimas-common" }
 mimas-server = { path = "../mimas-server" }
