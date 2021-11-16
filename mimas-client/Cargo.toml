@@ -16,8 +16,8 @@ glium = "0.30"
 #glium-glyph = { path = "../../glium-glyph" }
 #glium-glyph = { git = "https://github.com/est31/glium-glyph" }
 glium-glyph = "0.11"
-rand_pcg = "0.2"
-rand = "0.7"
+rand_pcg = "0.3"
+rand = "0.8"
 srp = "0.5"
 sha2 = "0.9"
 image = { version = "0.23", default-features = false, features = ["png"] }
