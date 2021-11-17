@@ -4,7 +4,7 @@ use std::sync::Arc;
 use toml::from_str;
 use toml::value::{Value, Array, Table};
 use std::fs::{read_to_string, File};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use crate::map::MapBlock;
 use crate::toml_util::TomlReadExt;
 use std::collections::HashMap;
@@ -438,12 +438,13 @@ fn parse_tool_groups(dig_group_ids :&mut NameIdMap<DigGroup>, tgs :Option<&Value
 	Ok(tool_groups)
 }
 
-fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
+fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static str,
+		asset_dir :&Path) -> Result<ServerGameParams> {
 
 	let override_default = val.get("override-default")
 		.unwrap_or(&Value::Boolean(false));
 	let mut params = if !*override_default.convert::<bool>()? {
-		default_game_params(nm_from_db, default_game_params_str)?
+		default_game_params(nm_from_db, default_game_params_str, &asset_dir)?
 	} else {
 		let block_roles = BlockRoles::dummy(&nm_from_db)?;
 		let schematics = Schematics::new(&block_roles);
@@ -611,14 +612,7 @@ fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static
 
 	let texture_h = &mut params.p.texture_hashes;
 	let texture_bl = &mut params.textures;
-	let asset_dir = std::env::current_exe()?
-		.parent()
-		.unwrap_or_else(|| Path::new("."))
-		.join("..")
-		.join("..");
-	#[cfg(test)]
-	let asset_dir = asset_dir.join("..");
-	texture_hashes(asset_dir, textures)?
+	texture_hashes(&asset_dir, textures)?
 		.into_iter()
 		.for_each(|(name, hash, blob)| {
 			texture_h.insert(name, hash.clone());
@@ -729,13 +723,28 @@ fn from_val(val :Value, nm_from_db :NameIdMap, default_game_params_str :&'static
 	Ok(params)
 }
 
-pub fn default_game_params(nm :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
+pub fn asset_dir_relative() -> Result<PathBuf> {
+	let asset_dir = std::env::current_exe()?
+		.parent()
+		.unwrap_or_else(|| Path::new("."))
+		.join("..")
+		.join("..");
+	Ok(asset_dir)
+}
+
+pub fn asset_dir_testing() -> Result<PathBuf> {
+	Ok(asset_dir_relative()?.join(".."))
+}
+
+pub fn default_game_params(nm :NameIdMap, default_game_params_str :&'static str,
+		asset_dir :&Path) -> Result<ServerGameParams> {
 	let val = from_str(&default_game_params_str)?;
-	let res = from_val(val, nm, default_game_params_str)?;
+	let res = from_val(val, nm, default_game_params_str, &asset_dir)?;
 	Ok(res)
 }
 
-pub fn load_params_failible(nm :NameIdMap, default_game_params_str :&'static str) -> Result<ServerGameParams> {
+pub fn load_params_failible(nm :NameIdMap, default_game_params_str :&'static str,
+		asset_dir :&Path) -> Result<ServerGameParams> {
 	let file_str = read_to_string("game-params.toml")
 		.unwrap_or_else(|err| {
 			println!("Using default game params because of error: {}", err);
@@ -743,7 +752,7 @@ pub fn load_params_failible(nm :NameIdMap, default_game_params_str :&'static str
 		});
 
 	let val = from_str(&file_str)?;
-	let res = from_val(val, nm, default_game_params_str)?;
+	let res = from_val(val, nm, default_game_params_str, asset_dir)?;
 	Ok(res)
 }
 
