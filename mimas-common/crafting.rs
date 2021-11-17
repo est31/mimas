@@ -8,16 +8,43 @@ pub struct Recipe {
 	pub output :Stack,
 }
 
+const fn build_sqrt_table<const N :usize>() -> [u8; N] {
+	let mut res = [0u8; N];
+	let mut v = 1;
+	let mut w;
+	loop {
+		w = (v as usize) * (v as usize);
+		if w >= N {
+			break;
+		}
+		res[w] = v;
+		v += 1;
+	}
+	res
+}
+
+fn isqrt(v :usize) -> usize {
+	// Use a lookup table for common values for v.
+	// We know that the if and else branches are returning
+	// different values if v is not a square number.
+	// This is okay however, as non-square inputs are not
+	// supposed to be passed to this function.
+	static SQRT_TABLE :[u8; 128] = build_sqrt_table();
+	if v < SQRT_TABLE.len() {
+		SQRT_TABLE[v] as usize
+	} else {
+		(v as f32).sqrt() as usize
+	}
+}
+
 impl Recipe {
 	fn matches(&self,
 			inv :&SelectableInventory) -> bool {
 		if inv.stacks().len() < self.inputs.len() {
 			return false;
 		}
-		// TODO we recompute this sqrt here every time.
-		// might be smarter to cache it?
-		let inv_size_sqrt = (inv.stacks().len() as f32).sqrt() as usize;
-		let recipe_size_sqrt = (self.inputs.len() as f32).sqrt() as usize;
+		let inv_size_sqrt = isqrt(inv.stacks().len());
+		let recipe_size_sqrt = isqrt(self.inputs.len());
 		let size_sqrt_diff = inv_size_sqrt - recipe_size_sqrt;
 		// Try all possible offsets
 		for offs_line in 0 ..= size_sqrt_diff {
