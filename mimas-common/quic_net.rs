@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::time::SystemTime;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -54,6 +54,7 @@ impl ServerCertVerifier for NullVerifier {
 }
 
 fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Result<()> {
+
 	let cert = rcgen::generate_simple_self_signed(vec!["mimas-host".into()])?;
 
 	let key_der = cert.serialize_private_key_der();
@@ -78,9 +79,9 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 		.enable_all()
 		.build()?;
 
-	let (_endpoint, mut incoming) = quinn::Endpoint::server(server_config, *addr)?;
-
 	runtime.block_on(async move {
+		let (_endpoint, mut incoming) = quinn::Endpoint::server(server_config, *addr)?;
+
 		while let Some(connecting) = incoming.next().await {
 			let sender_clone = conn_send.clone();
 			tokio::spawn(async move { loop {
@@ -119,8 +120,8 @@ fn run_quinn_server(addr :&SocketAddr, conn_send :Sender<QuicServerConn>) -> Res
 				break;
 			} });
 		}
-	});
-	Ok(())
+		Ok(())
+	})
 }
 
 async fn msg_rcv_task(mut rdr :RecvStream, to_receive :Sender<Vec<u8>>) {
@@ -159,7 +160,6 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 
 	let listen_addr = "[::]:0".parse().unwrap();
 
-	let mut endpoint = quinn::Endpoint::client(listen_addr)?;
 	let mut client_config = quinn::ClientConfig::new(Arc::new(config));
 
 	Arc::get_mut(&mut client_config.transport)
@@ -169,43 +169,46 @@ fn run_quinn_client(url :impl ToSocketAddrs,
 		.max_idle_timeout(None);
 
 
-	endpoint.set_default_client_config(client_config);
 
 	let runtime = runtime::Builder::new_current_thread()
 		.enable_all()
 		.build()?;
 
-	runtime.block_on(async { loop {
-		let endpoint_future = endpoint.connect(url, "mimas-host")?;
-		let new_conn = match endpoint_future.await {
-			Ok(new_conn) => new_conn,
-			Err(e) => {
-				eprintln!("Net Error: {:?}", e);
-				break Ok(());
-			},
-		};
-		println!("connected to server.");
-		let stream = new_conn.connection.open_bi();
-		let (mut wtr, rdr) = match stream.await {
-			Ok(stream) => stream,
-			Err(e) => {
-				eprintln!("Net Error: {:?}", e);
-				break Ok(());
-			},
-		};
-		spawn_msg_rcv_task(rdr, to_receive);
-		while let Some(msg) = to_send.next().await {
-			let len_buf = (msg.len() as u64).to_be_bytes();
-			ltry!(wtr.write_all(&len_buf).await; break);
-			ltry!(wtr.write_all(&msg).await; break);
+	runtime.block_on(async {
+		let mut endpoint = quinn::Endpoint::client(listen_addr)?;
+		endpoint.set_default_client_config(client_config);
+
+		loop {
+			let endpoint_future = endpoint.connect(url, "mimas-host")?;
+			let new_conn = match endpoint_future.await {
+				Ok(new_conn) => new_conn,
+				Err(e) => {
+					eprintln!("Net Error: {:?}", e);
+					break Ok(());
+				},
+			};
+			println!("connected to server.");
+			let stream = new_conn.connection.open_bi();
+			let (mut wtr, rdr) = match stream.await {
+				Ok(stream) => stream,
+				Err(e) => {
+					eprintln!("Net Error: {:?}", e);
+					break Ok(());
+				},
+			};
+			spawn_msg_rcv_task(rdr, to_receive);
+			while let Some(msg) = to_send.next().await {
+				let len_buf = (msg.len() as u64).to_be_bytes();
+				ltry!(wtr.write_all(&len_buf).await; break);
+				ltry!(wtr.write_all(&msg).await; break);
+			}
+			// Gracefully terminate the stream
+			if let Err(e) = wtr.shutdown().await {
+				println!("failed to shutdown stream: {}", e)
+			}
+			break Ok(());
 		}
-		// Gracefully terminate the stream
-		if let Err(e) = wtr.shutdown().await {
-			println!("failed to shutdown stream: {}", e)
-		}
-		break Ok(());
-	}}).map_err(|e :Error| e)?;
-	Ok(())
+	})
 }
 
 pub struct QuicMsgStream {
