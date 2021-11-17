@@ -16,6 +16,15 @@ jobs:
     - uses: actions/checkout@master
       with:
         submodules: recursive
+    - uses: actions/cache@v2
+      with:
+      path: |
+        ~/.cargo/bin/
+        ~/.cargo/registry/index/
+        ~/.cargo/registry/cache/
+        ~/.cargo/git/db/
+        target/
+      key: ${{ runner.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Install Rust
       if: matrix.os != 'macOS-latest'
       uses: actions-rs/toolchain@v1
